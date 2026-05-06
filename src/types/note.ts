@@ -1,0 +1,9 @@
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  updatedAt: number;
+  createdAt: number;
+  isFavorite?: boolean;
+  tags?: string[];
+}
