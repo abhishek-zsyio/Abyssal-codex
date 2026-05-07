@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, memo, useDefe
 import { Note } from "@/types/note";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Eye, Edit3, Save, Clock, CornerDownRight, Hash, Copy, Check, Star, Download, X, Maximize, Minimize, PanelRight, Trash2, Activity, FileCode, ShieldAlert, FileText, Link, Database, Play } from "lucide-react";
+import { Eye, Edit3, Clock, CornerDownRight, Hash, Copy, Check, Star, Download, X, Maximize, PanelRight, Trash2, Activity, FileCode, ShieldAlert, FileText, Link, Database, Globe, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -47,6 +47,7 @@ interface EditorProps {
   onUpdate: (id: string, updates: Partial<Note>) => void;
   onDelete: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
+  onTogglePublic?: (id: string) => void;
   allNotes?: Note[];
   onNavigate?: (id: string) => void;
   showSidebar?: boolean;
@@ -56,16 +57,20 @@ const EditorHeader = ({
   title,
   id,
   isFavorite,
+  isPublic,
   isEditing,
   isZenMode,
   copiedContent,
   copiedLink,
+  copiedShareLink,
   onToggleFavorite,
+  onTogglePublic,
   onDownload,
   onToggleEdit,
   onToggleZen,
   onCopy,
   onCopyWikiLink,
+  onCopyShareLink,
   onCommit,
   isRightSidebarOpen,
   onToggleRightSidebar,
@@ -109,6 +114,15 @@ const EditorHeader = ({
       <div className="flex items-center gap-1 border-x border-[var(--border)] border-dotted px-4 h-10 hidden sm:flex">
         <Button variant="ghost" size="icon" onClick={onToggleFavorite} title="Toggle Favorite" className="h-8 w-8">
           <Star size={14} className={cn(isFavorite ? "fill-[var(--primary)] text-[var(--primary)]" : "text-[var(--muted-foreground)]")} />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onTogglePublic} 
+          title={isPublic ? "Public Fragment (Click to make Private)" : "Private Fragment (Click to Share & Copy)"} 
+          className="h-8 w-8"
+        >
+          {copiedShareLink ? <Check size={14} className="text-[var(--accent)] animate-bounce" /> : <Globe size={14} className={cn(isPublic ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]")} />}
         </Button>
         <Button variant="ghost" size="icon" onClick={onDownload} title="Download Source" className="h-8 w-8">
           <Download size={14} className="text-[var(--muted-foreground)]" />
@@ -223,7 +237,7 @@ const MONACO_THEMES: Record<string, string> = {
   "tokyo-night": "tokyo-night",
 };
 
-const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes = [], onNavigate, showSidebar = true }: EditorProps) => {
+const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onTogglePublic, allNotes = [], onNavigate, showSidebar = true }: EditorProps) => {
   const { theme } = useTheme();
   const { isEnabled, availablePlugins } = usePlugins();
   const { toast } = useToast();
@@ -235,6 +249,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(showSidebar);
   const [copiedContent, setCopiedContent] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
@@ -748,11 +763,29 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
           title={title} 
           id={note.id} 
           isFavorite={note.isFavorite}
+          isPublic={note.isPublic}
           isEditing={isEditing}
           isZenMode={isZenMode}
           copiedContent={copiedContent}
           copiedLink={copiedLink}
+          copiedShareLink={copiedShareLink}
           onToggleFavorite={() => onToggleFavorite?.(note.id)}
+          onTogglePublic={() => {
+            const newState = !note.isPublic;
+            onTogglePublic?.(note.id);
+            if (newState) {
+              const origin = typeof window !== 'undefined' && window.location.origin.startsWith('http') 
+                ? window.location.origin 
+                : 'http://localhost:3000';
+              const shareUrl = `${origin}/share/${note.id}`;
+              navigator.clipboard.writeText(shareUrl);
+              setCopiedShareLink(true);
+              toast("PUBLIC & COPIED TO CLIPBOARD", "success");
+              setTimeout(() => setCopiedShareLink(false), 2000);
+            } else {
+              toast("FRAGMENT_SET_TO_PRIVATE", "system");
+            }
+          }}
           onDownload={handleDownloadMd}
           onToggleEdit={setIsEditing}
           onToggleZen={() => setIsZenMode(!isZenMode)}

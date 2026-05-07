@@ -158,7 +158,7 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
       .force("link", d3.forceLink<Node, Link>(initialLinks).id(d => d.id).distance(120).strength(0.5))
       .force("charge", d3.forceManyBody().strength(-200))
       .force("center", d3.forceCenter(0, 0))
-      .force("collision", d3.forceCollide().radius(d => d.size + 20));
+      .force("collision", d3.forceCollide<Node>().radius(d => d.size + 20));
 
     simulationRef.current = simulation;
 

@@ -13,7 +13,7 @@ import { splitMarkdown } from "@/utils/markdown-splitter";
 interface MarkdownPreviewProps {
   content: string;
   allNotes: any[];
-  onNavigate: (id: string) => void;
+  onNavigate?: (id: string) => void;
   theme: string;
   isEnabled: (id: string) => boolean;
   availablePlugins: any[];

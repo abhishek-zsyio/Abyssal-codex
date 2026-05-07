@@ -12,11 +12,6 @@ export const softSpring = {
   mass: 1,
 };
 
-export const bounceSpring = {
-  type: "spring" as const,
-  stiffness: 400,
-  damping: 10,
-};
 
 export const microSpring = {
   type: "spring" as const,

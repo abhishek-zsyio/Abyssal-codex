@@ -1,0 +1,8 @@
+node_modules
+.next
+src-tauri
+.git
+.vercel
+out
+build
+*.tsbuildinfo

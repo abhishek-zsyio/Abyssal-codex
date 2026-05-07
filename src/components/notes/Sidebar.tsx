@@ -3,7 +3,7 @@
 import React, { useRef, memo, useState, useMemo } from "react";
 import { Note } from "@/types/note";
 import { cn } from "../../lib/utils";
-import { Plus, Search, Trash2, X, Star, Upload, Download, Hash, Tag, Sun, Moon, HelpCircle, Terminal as TerminalIcon, Package, ShieldCheck, FileText, Calendar, Palette, Share2 } from "lucide-react";
+import { Plus, Search, Trash2, X, Star, Upload, Download, Hash, Tag, HelpCircle, Terminal as TerminalIcon, Package, ShieldCheck, FileText, Calendar, Palette, Share2 } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { spring, softSpring, microSpring, staggerContainer, slideInLeft } from "@/lib/transitions";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { usePlugins } from "@/hooks/use-plugins";
 import SidebarPlugins from "./SidebarPlugins";
 import SidebarHelp from "./SidebarHelp";
-import NexusGraphVisualizer from "./NexusGraphVisualizer";
 
 interface SidebarProps {
   notes: Note[];

@@ -64,6 +64,7 @@ export function useNotes() {
             title: n.title,
             content: n.content,
             isFavorite: n.is_favorite,
+            isPublic: n.is_public,
             tags: n.tags || [],
             updatedAt: n.updated_at ? new Date(n.updated_at).getTime() : Date.now(),
             createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
@@ -101,6 +102,7 @@ export function useNotes() {
         title: n.title,
         content: n.content,
         is_favorite: n.isFavorite,
+        is_public: n.isPublic,
         tags: n.tags,
         updated_at: new Date(n.updatedAt || Date.now()).toISOString(),
         created_at: new Date(n.createdAt || Date.now()).toISOString(),
@@ -174,6 +176,19 @@ export function useNotes() {
     toast("Note deleted successfully", "system");
   }, [user, supabase, toast]);
 
+  const togglePublic = useCallback((id: string) => {
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === id ? { ...n, isPublic: !n.isPublic, updatedAt: Date.now() } : n
+      )
+    );
+    const note = notes.find(n => n.id === id);
+    if (note) {
+      const newState = !note.isPublic;
+      toast(newState ? "Note is now PUBLIC" : "Note is now PRIVATE", "system");
+    }
+  }, [notes, toast]);
+
   const toggleFavorite = useCallback((id: string) => {
     setNotes((prev) =>
       prev.map((n) =>
@@ -204,6 +219,7 @@ export function useNotes() {
     updateNote, 
     deleteNote, 
     toggleFavorite, 
+    togglePublic,
     exportAllNotes, 
     importNotes, 
     isLoading 

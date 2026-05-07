@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo, useEffect, useDeferredValue, useTransition, memo, useCallback } from "react";
+import { useState, useMemo, useEffect, useDeferredValue, useTransition, memo, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
-import { spring, softSpring, microSpring, transitionDefaults } from "@/lib/transitions";
-import { Menu, X, Columns, FileText, Clock } from "lucide-react";
+import { softSpring } from "@/lib/transitions";
+import { X, FileText } from "lucide-react";
 import Fuse from "fuse.js";
 
 // Components
@@ -87,7 +87,7 @@ const Tab = memo(({
 
 Tab.displayName = "Tab";
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlNoteId = searchParams.get("id");
@@ -98,6 +98,7 @@ export default function Home() {
     updateNote, 
     deleteNote, 
     toggleFavorite, 
+    togglePublic,
     exportAllNotes, 
     importNotes, 
     isLoading 
@@ -447,11 +448,11 @@ export default function Home() {
                           className="h-full w-full flex-1 min-h-0 flex"
                         >
                           <div className={cn("h-full min-w-0", isSplitPane && secondaryNote ? "w-1/2 border-r border-[var(--border)]" : "w-full")}>
-                            <NotesEditor note={activeNote} onUpdate={updateNote} onDelete={handleDeleteNote} onToggleFavorite={toggleFavorite} allNotes={notes} onNavigate={handleSelectNote} showSidebar={!isSplitPane} />
+                            <NotesEditor note={activeNote} onUpdate={updateNote} onDelete={handleDeleteNote} onToggleFavorite={toggleFavorite} onTogglePublic={togglePublic} allNotes={notes} onNavigate={handleSelectNote} showSidebar={!isSplitPane} />
                           </div>
                           {isSplitPane && secondaryNote && (
                             <div className="h-full w-1/2 min-w-0 hidden md:block">
-                              <NotesEditor note={secondaryNote} onUpdate={updateNote} onDelete={handleDeleteNote} onToggleFavorite={toggleFavorite} allNotes={notes} onNavigate={handleSelectNote} showSidebar={!isSplitPane} />
+                              <NotesEditor note={secondaryNote} onUpdate={updateNote} onDelete={handleDeleteNote} onToggleFavorite={toggleFavorite} onTogglePublic={togglePublic} allNotes={notes} onNavigate={handleSelectNote} showSidebar={!isSplitPane} />
                             </div>
                           )}
                         </motion.div>
@@ -505,5 +506,17 @@ export default function Home() {
         <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       </main>
     </>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen w-full flex items-center justify-center bg-[var(--background)]">
+        <Spinner className="w-12 h-12" />
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
