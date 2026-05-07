@@ -87,7 +87,7 @@ const EmptyState = ({ onAddNote }: EmptyStateProps) => {
       
       <Button 
         variant="warning"
-        onClick={onAddNote}
+        onClick={() => onAddNote()}
         className="px-12 py-5"
       >
         <Plus size={20} className="mr-3" />

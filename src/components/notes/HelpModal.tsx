@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Keyboard, Link, FileText, Zap, Hash } from "lucide-react";
+import { X, Keyboard, Link, FileText, Zap, Hash, Package } from "lucide-react";
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -16,10 +16,24 @@ const SECTIONS = [
     color: "var(--primary)",
     items: [
       { keys: ["⌘", "K"], desc: "Command Palette" },
+      { keys: ["⌘", "B"], desc: "Zen Mode (Plugin)" },
       { keys: ["⌘", "N"], desc: "New note" },
       { keys: ["⌘", "S"], desc: "Save / Commit" },
+      { keys: ["`"], desc: "Toggle Terminal" },
       { keys: ["?"], desc: "Toggle this help" },
       { keys: ["Esc"], desc: "Close modal" },
+    ],
+  },
+  {
+    icon: Package,
+    title: "Plugins",
+    color: "var(--primary)",
+    items: [
+      { keys: ["Package Icon"], desc: "Open Plugin Store" },
+      { keys: ["Install"], desc: "Download modules" },
+      { keys: ["Power Toggle"], desc: "Enable/Disable" },
+      { keys: ["[[note]]"], desc: "Auto-Wiki links" },
+      { keys: ["/"], desc: "Vim command mode" },
     ],
   },
   {
@@ -61,7 +75,7 @@ const SECTIONS = [
     color: "var(--primary)",
     items: [
       { keys: ["Split Pane"], desc: "Two notes side-by-side" },
-      { keys: ["Zen Mode"], desc: "Fullscreen editing" },
+      { keys: ["Zen Mode"], desc: "Focus writing (Plugin Required)" },
       { keys: ["Read Mode"], desc: "Rendered preview" },
       { keys: ["Export"], desc: "JSON workspace backup" },
       { keys: ["☀ / 🌙"], desc: "Light / Dark mode" },

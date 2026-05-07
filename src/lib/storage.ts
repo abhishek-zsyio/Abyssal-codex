@@ -1,11 +1,13 @@
 import { get, set, del } from "idb-keyval";
 
 const DB_KEY = "abyssal-codex-notes-v1";
+const PLUGINS_KEY = "abyssal-codex-plugins-v1";
 
 export const storage = {
-  async getNotes<T>(): Promise<T | null> {
+  async getNotes<T>(userId?: string): Promise<T | null> {
     try {
-      const data = await get<T>(DB_KEY);
+      const key = userId ? `${DB_KEY}-${userId}` : DB_KEY;
+      const data = await get<T>(key);
       return data ?? null;
     } catch (error) {
       console.error("Storage Error (GET):", error);
@@ -13,17 +15,39 @@ export const storage = {
     }
   },
 
-  async saveNotes<T>(notes: T): Promise<void> {
+  async saveNotes<T>(notes: T, userId?: string): Promise<void> {
     try {
-      await set(DB_KEY, notes);
+      const key = userId ? `${DB_KEY}-${userId}` : DB_KEY;
+      await set(key, notes);
     } catch (error) {
       console.error("Storage Error (SET):", error);
     }
   },
 
+  async getPlugins<T>(): Promise<T | null> {
+    try {
+      const data = await get<T>(PLUGINS_KEY);
+      return data ?? null;
+    } catch (error) {
+      console.error("Plugin Storage Error (GET):", error);
+      return null;
+    }
+  },
+
+  async savePlugins<T>(plugins: T): Promise<void> {
+    try {
+      await set(PLUGINS_KEY, plugins);
+    } catch (error) {
+      console.error("Plugin Storage Error (SET):", error);
+    }
+  },
+
   async clear(): Promise<void> {
     try {
-      await del(DB_KEY);
+      await Promise.all([
+        del(DB_KEY),
+        del(PLUGINS_KEY)
+      ]);
     } catch (error) {
       console.error("Storage Error (DEL):", error);
     }

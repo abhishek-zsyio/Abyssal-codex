@@ -1,20 +1,22 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo, useDeferredValue } from "react";
 import { Note } from "@/types/note";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Eye, Edit3, Save, Clock, CornerDownRight, Hash, Copy, Check, Star, Download, X, Maximize, Minimize, PanelRight, Trash2, Activity, FileCode, ShieldAlert, FileText, Link, Database } from "lucide-react";
+import { Eye, Edit3, Save, Clock, CornerDownRight, Hash, Copy, Check, Star, Download, X, Maximize, Minimize, PanelRight, Trash2, Activity, FileCode, ShieldAlert, FileText, Link, Database, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
-import { gruvboxDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { gruvboxDark, nord, dracula, oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import Editor, { loader } from "@monaco-editor/react";
 
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/DataDisplay";
 import { StatusIndicator } from "@/components/ui/Feedback";
 import { useTheme } from "@/hooks/use-theme";
+import { usePlugins } from "@/hooks/use-plugins";
+import { useToast } from "@/hooks/use-toast";
 
 import json from 'react-syntax-highlighter/dist/esm/languages/prism/json';
 import markdown from 'react-syntax-highlighter/dist/esm/languages/prism/markdown';
@@ -22,6 +24,8 @@ import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typesc
 import javascript from 'react-syntax-highlighter/dist/esm/languages/prism/javascript';
 import python from 'react-syntax-highlighter/dist/esm/languages/prism/python';
 import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash';
+import { splitMarkdown } from "@/utils/markdown-splitter";
+import MarkdownPreview from "./MarkdownPreview";
 
 if (typeof window !== "undefined") {
   SyntaxHighlighter.registerLanguage('json', json);
@@ -45,6 +49,7 @@ interface EditorProps {
   onToggleFavorite?: (id: string) => void;
   allNotes?: Note[];
   onNavigate?: (id: string) => void;
+  showSidebar?: boolean;
 }
 
 const EditorHeader = ({
@@ -63,77 +68,99 @@ const EditorHeader = ({
   onCopyWikiLink,
   onCommit,
   isRightSidebarOpen,
-  onToggleRightSidebar
-}: any) => (
-  <header className="h-auto md:h-14 border-b border-dotted border-[var(--border)] flex flex-col md:flex-row items-stretch md:items-center justify-between px-4 md:px-6 bg-[var(--background)] py-2 md:py-0 gap-3 md:gap-0">
-    <div className="flex items-center gap-4 md:gap-6 min-w-0">
-      <div className="hidden lg:flex flex-col">
+  onToggleRightSidebar,
+  isSaving
+}: any) => {
+  const { isEnabled } = usePlugins();
+  return (
+  <header className="h-auto md:h-14 border-b border-dotted border-[var(--border)] flex flex-col md:flex-row items-stretch md:items-center justify-between px-4 md:px-6 bg-[var(--background)] py-2 md:py-0 gap-4 md:gap-0">
+    <div className="flex items-center gap-4 md:gap-8 min-w-0 flex-1">
+      <div className="hidden lg:flex flex-col flex-shrink-0">
         <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] mb-0.5">Instance_ID</span>
         <span className="text-[10px] font-mono text-[var(--primary)] font-bold">{id.split('-')[0]}</span>
       </div>
       
-      <div className="h-6 w-px bg-[var(--border)] hidden lg:block" />
+      <div className="h-6 w-px bg-[var(--border)] hidden lg:block opacity-50" />
 
-      <div className="flex flex-col min-w-0">
+      <div className="flex flex-col min-w-0 flex-1 max-w-2xl">
         <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] mb-0.5 hidden md:block">Document_Title</span>
-        <h2 className="text-[10px] md:text-[11px] font-bold text-[var(--foreground)] uppercase tracking-widest truncate max-w-[200px] md:max-w-[300px]">
-          {title || "UNTITLED_CODEX"}
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-[10px] md:text-[12px] font-bold text-[var(--foreground)] uppercase tracking-widest truncate">
+            {String(title || "UNTITLED_CODEX")}
+          </h2>
+          <AnimatePresence>
+            {isSaving && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center gap-1.5 px-2 py-0.5 bg-[var(--primary)]/10 border border-[var(--primary)]/20 rounded-sm shrink-0"
+              >
+                <div className="w-1 h-1 bg-[var(--primary)] animate-pulse" />
+                <span className="text-[7px] font-mono font-bold text-[var(--primary)] uppercase tracking-widest">Syncing</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
 
-    <div className="flex items-center justify-between md:justify-end gap-2 md:gap-4 overflow-x-auto no-scrollbar">
-      <div className="flex items-center gap-1 md:border-r md:border-[var(--border)] md:pr-4 md:mr-2">
-        <Button variant="ghost" size="icon" onClick={onToggleFavorite} className="h-8 w-8 flex-shrink-0">
+    <div className="flex items-center gap-4 md:gap-6 shrink-0">
+      <div className="flex items-center gap-1 border-x border-[var(--border)] border-dotted px-4 h-10 hidden sm:flex">
+        <Button variant="ghost" size="icon" onClick={onToggleFavorite} title="Toggle Favorite" className="h-8 w-8">
           <Star size={14} className={cn(isFavorite ? "fill-[var(--primary)] text-[var(--primary)]" : "text-[var(--muted-foreground)]")} />
         </Button>
-        <Button variant="ghost" size="icon" onClick={onDownload} className="h-8 w-8 flex-shrink-0 hidden sm:flex">
+        <Button variant="ghost" size="icon" onClick={onDownload} title="Download Source" className="h-8 w-8">
           <Download size={14} className="text-[var(--muted-foreground)]" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={onToggleZen} className="h-8 w-8 flex-shrink-0">
-          <Maximize size={14} className="text-[var(--muted-foreground)]" />
-        </Button>
+        {isEnabled("zen-mode") && (
+          <Button variant="ghost" size="icon" onClick={onToggleZen} title="Zen Mode (Cmd+B)" className="h-8 w-8">
+            <Maximize size={14} className="text-[var(--muted-foreground)]" />
+          </Button>
+        )}
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={onToggleRightSidebar} 
-          className={cn("h-8 w-8 flex-shrink-0 transition-colors hidden xl:flex", isRightSidebarOpen && "text-[var(--primary)] bg-[var(--primary)]/10")}
+          className={cn("h-8 w-8 transition-colors hidden xl:flex", isRightSidebarOpen && "text-[var(--primary)] bg-[var(--primary)]/10")}
         >
           <PanelRight size={14} />
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-        <div className="flex bg-[var(--card)] border border-[var(--border)] p-0.5 rounded-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex bg-[var(--card)] border border-[var(--border)] p-0.5 rounded-sm overflow-hidden shadow-inner">
           <button 
             onClick={() => onToggleEdit(true)}
+            title="Switch to Write Mode"
             className={cn(
-              "px-2 md:px-3 py-1 text-[9px] font-bold uppercase transition-all rounded-sm", 
-              isEditing ? "bg-[var(--primary)] text-[var(--background)] shadow-sm" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              "px-3 py-1.5 transition-all rounded-sm flex items-center justify-center", 
+              isEditing ? "bg-[var(--primary)] text-[var(--background)] shadow-md" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--border)]/30"
             )}
           >
-            Write
+            <Edit3 size={14} className={isEditing ? "animate-pulse" : ""} />
           </button>
           <button 
             onClick={() => onToggleEdit(false)}
+            title="Switch to Read Mode"
             className={cn(
-              "px-2 md:px-3 py-1 text-[9px] font-bold uppercase transition-all rounded-sm", 
-              !isEditing ? "bg-[var(--primary)] text-[var(--background)] shadow-sm" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              "px-3 py-1.5 transition-all rounded-sm flex items-center justify-center", 
+              !isEditing ? "bg-[var(--primary)] text-[var(--background)] shadow-md" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--border)]/30"
             )}
           >
-            Read
+            <Eye size={14} className={!isEditing ? "animate-pulse" : ""} />
           </button>
         </div>
 
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => {
-            if (!isEditing) return;
-            const editor = (window as any).editorInstance;
-            if (editor && typeof editor.getModel === 'function') {
-              const model = editor.getModel();
-              if (model) {
+        <div className="hidden sm:flex items-center gap-1.5 border-l border-[var(--border)] border-dotted pl-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => {
+              if (!isEditing) return;
+              const editor = (window as any).editorInstance;
+              if (editor) {
+                const model = editor.getModel();
                 const selection = editor.getSelection();
                 const text = selection ? model.getValueInRange(selection) : "";
                 editor.executeEdits("insert-link", [{
@@ -143,51 +170,77 @@ const EditorHeader = ({
                 }]);
                 editor.focus();
               }
-            }
-          }} 
-          className={cn("h-8 w-8 flex-shrink-0", !isEditing && "opacity-30 pointer-events-none")}
-          title="Insert Note Link (Wiki Link)"
-        >
-          <Link size={14} className="text-[var(--muted-foreground)]" />
-        </Button>
-        
-        <Button variant="ghost" size="icon" onClick={onCopy} className="h-8 w-8 flex-shrink-0">
-          {copiedContent ? <Check size={14} className="text-[var(--accent)]" /> : <Copy size={14} className="text-[var(--muted-foreground)]" />}
-        </Button>
+            }} 
+            className={cn("h-8 w-8", !isEditing && "opacity-30 pointer-events-none")}
+            title="Insert Wiki Link"
+          >
+            <Link size={14} className="text-[var(--muted-foreground)]" />
+          </Button>
+          
+          <Button variant="ghost" size="icon" onClick={onCopy} className="h-8 w-8" title="Copy Content">
+            {copiedContent ? <Check size={14} className="text-[var(--accent)]" /> : <Copy size={14} className="text-[var(--muted-foreground)]" />}
+          </Button>
 
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => {
-            const link = `[[${title || "Untitled Note"}]]`;
-            navigator.clipboard.writeText(link);
-            onCopyWikiLink();
-          }} 
-          className="h-8 w-8 flex-shrink-0"
-          title="Copy Wiki Link to Clipboard"
-        >
-          {copiedLink ? <Check size={14} className="text-[var(--accent)]" /> : <Hash size={14} className="text-[var(--muted-foreground)]" />}
-        </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => {
+              const link = `[[${title || "Untitled Note"}]]`;
+              navigator.clipboard.writeText(link);
+              onCopyWikiLink();
+            }} 
+            className="h-8 w-8"
+            title="Copy Wiki Link"
+          >
+            {copiedLink ? <Check size={14} className="text-[var(--accent)]" /> : <Hash size={14} className="text-[var(--muted-foreground)]" />}
+          </Button>
+        </div>
 
-        <Button variant="primary" onClick={onCommit} size="sm" className="h-8 px-3 md:px-5 ml-1">
+        <Button variant="primary" onClick={onCommit} size="sm" className="h-8 px-5 ml-1 font-bold">
           Commit
         </Button>
       </div>
     </div>
   </header>
-);
+  );
+};
 
-const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes = [], onNavigate }: EditorProps) => {
+
+
+const MONACO_THEMES: Record<string, string> = {
+  dark: "gruvbox",
+  light: "gruvbox-light",
+  nord: "nord",
+  monokai: "monokai",
+  cyberpunk: "cyberpunk",
+  solarized: "solarized",
+  dracula: "dracula",
+  onedark: "onedark",
+  github: "github",
+  catppuccin: "catppuccin",
+  "rose-pine": "rose-pine",
+  everforest: "everforest",
+  "tokyo-night": "tokyo-night",
+};
+
+const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes = [], onNavigate, showSidebar = true }: EditorProps) => {
   const { theme } = useTheme();
+  const { isEnabled, availablePlugins } = usePlugins();
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(true);
   const [content, setContent] = useState(note.content);
   const [title, setTitle] = useState(note.title);
   const [tagInput, setTagInput] = useState("");
   const [isZenMode, setIsZenMode] = useState(false);
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(showSidebar);
   const [copiedContent, setCopiedContent] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
+  useEffect(() => {
+    setIsRightSidebarOpen(showSidebar);
+  }, [showSidebar]);
+
   const backlinks = useMemo(() => {
     if (!note.title) return [];
     const wikiLink = `[[${note.title}]]`;
@@ -197,11 +250,6 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
       (n.content?.includes(wikiLink) || n.content?.includes(protocolLink))
     ) || [];
   }, [allNotes, note.title, note.id]);
-
-  const processedContent = useMemo(() => {
-    if (!content) return "";
-    return content.replace(/\[\[(.*?)\]\]/g, (_, title) => `[${title}](note://${encodeURIComponent(title)})`);
-  }, [content]);
   
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -218,10 +266,12 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
   }, [onNavigate]);
 
   const debouncedUpdate = useCallback((id: string, updates: Partial<Note>) => {
+    setIsSaving(true);
     if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
-    updateTimeoutRef.current = setTimeout(() => {
-      onUpdate(id, updates);
-    }, 500);
+    updateTimeoutRef.current = setTimeout(async () => {
+      await onUpdate(id, updates);
+      setIsSaving(false);
+    }, 1000);
   }, [onUpdate]);
 
   useEffect(() => {
@@ -244,6 +294,30 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isModifier = isMac ? e.metaKey : e.ctrlKey;
+      
+      // Use Cmd+B (or Ctrl+B) - Industrial/Technical feel
+      if (isModifier && e.key.toLowerCase() === 'b' && !e.shiftKey) {
+        e.preventDefault();
+        if (isEnabled("zen-mode")) {
+          setIsZenMode(prev => !prev);
+          window.dispatchEvent(new CustomEvent("abyssal-log", {
+            detail: { message: `ZEN_MODE_${!isZenMode ? 'ACTIVATED' : 'DEACTIVATED'}`, type: "system" }
+          }));
+        } else {
+          window.dispatchEvent(new CustomEvent("abyssal-log", {
+            detail: { message: "ZEN_MODE_ERROR: PLUGIN_NOT_ENABLED_IN_STORE", type: "error" }
+          }));
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isEnabled, isZenMode]);
+
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
@@ -264,6 +338,12 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
         "editor.foreground": "#ebdbb2",
         "editor.lineHighlightBackground": "#3c3836",
         "editorCursor.foreground": "#fabd2f",
+        "menu.background": "#181818",
+        "menu.foreground": "#ebdbb2",
+        "menu.selectionBackground": "#3c3836",
+        "menu.selectionForeground": "#fabd2f",
+        "menu.separatorBackground": "#3c3836",
+        "menu.border": "#282828",
       },
     });
     
@@ -282,126 +362,368 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
         "editor.foreground": "#3c3836",
         "editor.lineHighlightBackground": "#ebdbb2",
         "editorCursor.foreground": "#b57614",
+        "menu.background": "#ebdbb2",
+        "menu.foreground": "#3c3836",
+        "menu.selectionBackground": "#d5c4a1",
+        "menu.selectionForeground": "#b57614",
+        "menu.separatorBackground": "#d5c4a1",
+        "menu.border": "#d5c4a1",
       },
     });
     
-    monaco.editor.setTheme(theme === "dark" ? "gruvbox" : "gruvbox-light");
+    monaco.editor.defineTheme("nord", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "eceff4", background: "2e3440" },
+        { token: "comment", foreground: "616e88" },
+        { token: "keyword", foreground: "81a1c1" },
+        { token: "string", foreground: "a3be8c" },
+        { token: "number", foreground: "b48ead" },
+      ],
+      colors: {
+        "editor.background": "#2e3440",
+        "editor.foreground": "#eceff4",
+        "editor.lineHighlightBackground": "#3b4252",
+        "editorCursor.foreground": "#88c0d0",
+      },
+    });
 
-    // Register Wiki Link Completion Provider once
-    if (!monaco.languages.wikiLinkRegistered) {
-      monaco.languages.wikiLinkRegistered = true;
-      
-      // Completion Provider
-      monaco.languages.registerCompletionItemProvider('markdown', {
-        triggerCharacters: ['['],
-        provideCompletionItems: (model: any, position: any) => {
-          const textUntilPosition = model.getValueInRange({
-            startLineNumber: position.lineNumber,
-            startColumn: position.column - 2,
-            endLineNumber: position.lineNumber,
-            endColumn: position.column
+    monaco.editor.defineTheme("monokai", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "f8f8f2", background: "272822" },
+        { token: "comment", foreground: "75715e" },
+        { token: "keyword", foreground: "f92672" },
+        { token: "string", foreground: "e6db74" },
+        { token: "number", foreground: "ae81ff" },
+      ],
+      colors: {
+        "editor.background": "#272822",
+        "editor.foreground": "#f8f8f2",
+        "editor.lineHighlightBackground": "#3e3d32",
+        "editorCursor.foreground": "#f8f8f0",
+      },
+    });
+
+    monaco.editor.defineTheme("cyberpunk", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "00ff9f", background: "0d0221" },
+        { token: "comment", foreground: "bc00dd" },
+        { token: "keyword", foreground: "f00699" },
+        { token: "string", foreground: "ff0055" },
+        { token: "number", foreground: "00ff9f" },
+      ],
+      colors: {
+        "editor.background": "#0d0221",
+        "editor.foreground": "#00ff9f",
+        "editor.lineHighlightBackground": "#120438",
+        "editorCursor.foreground": "#f00699",
+      },
+    });
+    
+    monaco.editor.defineTheme("solarized", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "839496", background: "002b36" },
+        { token: "comment", foreground: "586e75" },
+        { token: "keyword", foreground: "b58900" },
+        { token: "string", foreground: "2aa198" },
+        { token: "number", foreground: "d33682" },
+      ],
+      colors: {
+        "editor.background": "#002b36",
+        "editor.foreground": "#839496",
+        "editor.lineHighlightBackground": "#073642",
+        "editorCursor.foreground": "#268bd2",
+      },
+    });
+
+    monaco.editor.defineTheme("dracula", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "f8f8f2", background: "282a36" },
+        { token: "comment", foreground: "6272a4" },
+        { token: "keyword", foreground: "ff79c6" },
+        { token: "string", foreground: "f1fa8c" },
+        { token: "number", foreground: "bd93f9" },
+      ],
+      colors: {
+        "editor.background": "#282a36",
+        "editor.foreground": "#f8f8f2",
+        "editor.lineHighlightBackground": "#44475a",
+        "editorCursor.foreground": "#f8f8f0",
+      },
+    });
+
+    monaco.editor.defineTheme("onedark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "abb2bf", background: "282c34" },
+        { token: "comment", foreground: "5c6370" },
+        { token: "keyword", foreground: "c678dd" },
+        { token: "string", foreground: "98c379" },
+        { token: "number", foreground: "d19a66" },
+      ],
+      colors: {
+        "editor.background": "#282c34",
+        "editor.foreground": "#abb2bf",
+        "editor.lineHighlightBackground": "#2c313a",
+        "editorCursor.foreground": "#528bff",
+      },
+    });
+
+    monaco.editor.defineTheme("github", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "c9d1d9", background: "0d1117" },
+        { token: "comment", foreground: "8b949e" },
+        { token: "keyword", foreground: "ff7b72" },
+        { token: "string", foreground: "a5d6ff" },
+        { token: "number", foreground: "79c0ff" },
+      ],
+      colors: {
+        "editor.background": "#0d1117",
+        "editor.foreground": "#c9d1d9",
+        "editor.lineHighlightBackground": "#161b22",
+        "editorCursor.foreground": "#58a6ff",
+      },
+    });
+
+    monaco.editor.defineTheme("catppuccin", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "cdd6f4", background: "1e1e2e" },
+        { token: "comment", foreground: "6c7086" },
+        { token: "keyword", foreground: "cba6f7" },
+        { token: "string", foreground: "a6e3a1" },
+        { token: "number", foreground: "fab387" },
+      ],
+      colors: {
+        "editor.background": "#1e1e2e",
+        "editor.foreground": "#cdd6f4",
+        "editor.lineHighlightBackground": "#313244",
+        "editorCursor.foreground": "#cba6f7",
+      },
+    });
+
+    monaco.editor.defineTheme("rose-pine", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "e0def4", background: "191724" },
+        { token: "comment", foreground: "6e6a86" },
+        { token: "keyword", foreground: "ebbcba" },
+        { token: "string", foreground: "f6c177" },
+        { token: "number", foreground: "9ccfd8" },
+      ],
+      colors: {
+        "editor.background": "#191724",
+        "editor.foreground": "#e0def4",
+        "editor.lineHighlightBackground": "#1f1d2e",
+        "editorCursor.foreground": "#ebbcba",
+      },
+    });
+
+    monaco.editor.defineTheme("everforest", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "d3c6aa", background: "2d353b" },
+        { token: "comment", foreground: "7a8478" },
+        { token: "keyword", foreground: "a7c080" },
+        { token: "string", foreground: "e67e80" },
+        { token: "number", foreground: "d699b6" },
+      ],
+      colors: {
+        "editor.background": "#2d353b",
+        "editor.foreground": "#d3c6aa",
+        "editor.lineHighlightBackground": "#343f44",
+        "editorCursor.foreground": "#a7c080",
+      },
+    });
+
+    monaco.editor.defineTheme("tokyo-night", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "a9b1d6", background: "1a1b26" },
+        { token: "comment", foreground: "565f89" },
+        { token: "keyword", foreground: "bb9af7" },
+        { token: "string", foreground: "9ece6a" },
+        { token: "number", foreground: "ff9e64" },
+      ],
+      colors: {
+        "editor.background": "#1a1b26",
+        "editor.foreground": "#a9b1d6",
+        "editor.lineHighlightBackground": "#24283b",
+        "editorCursor.foreground": "#bb9af7",
+      },
+    });
+    
+    monaco.editor.setTheme(MONACO_THEMES[theme] || theme);
+
+      // Register Wiki Link Completion Provider once
+      try {
+        if (!monaco.languages.wikiLinkRegistered) {
+          monaco.languages.wikiLinkRegistered = true;
+          
+          monaco.languages.registerCompletionItemProvider('markdown', {
+            triggerCharacters: ['['],
+            provideCompletionItems: (model: any, position: any) => {
+              const lineContent = model.getLineContent(position.lineNumber);
+              const textBeforeCursor = lineContent.substring(0, position.column - 1);
+              
+              if (textBeforeCursor.endsWith('[[')) {
+                const suggestions = (notesRef.current || []).map(n => ({
+                  label: n.title || "UNTITLED",
+                  kind: monaco.languages.CompletionItemKind.Reference,
+                  insertText: n.title || "UNTITLED",
+                  detail: `Note ID: ${n.id?.split('-')[0] || '?'}`,
+                  range: {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: position.column,
+                    endColumn: position.column
+                  }
+                }));
+
+                return { suggestions };
+              }
+              return { suggestions: [] };
+            }
           });
 
-          if (textUntilPosition === '[[') {
-            const suggestions = notesRef.current.map(n => ({
-              label: n.title || "UNTITLED",
-              kind: monaco.languages.CompletionItemKind.Reference,
-              insertText: n.title || "UNTITLED",
-              detail: n.id.split('-')[0],
-              range: {
-                startLineNumber: position.lineNumber,
-                endLineNumber: position.lineNumber,
-                startColumn: position.column,
-                endColumn: position.column
+          // Link Provider (Clickable links in editor)
+          monaco.languages.registerLinkProvider('markdown', {
+            provideLinks: (model: any) => {
+              const links: any[] = [];
+              const text = model.getValue();
+              if (!text) return { links: [] };
+              
+              // Wiki links: [[Note Title]]
+              const wikiRegex = /\[\[(.*?)\]\]/g;
+              let match;
+              while ((match = wikiRegex.exec(text)) !== null) {
+                const startPos = model.getPositionAt(match.index);
+                const endPos = model.getPositionAt(match.index + match[0].length);
+                const title = match[1];
+                
+                const targetNote = (notesRef.current || []).find(n => 
+                  n.title?.toLowerCase().trim() === title.toLowerCase().trim()
+                );
+                
+                if (targetNote) {
+                  links.push({
+                    range: {
+                      startLineNumber: startPos.lineNumber,
+                      startColumn: startPos.column,
+                      endLineNumber: endPos.lineNumber,
+                      endColumn: endPos.column
+                    },
+                    url: `note://${encodeURIComponent(title)}`,
+                    tooltip: `Cmd/Ctrl + Click to follow: ${title}`
+                  });
+                }
               }
-            }));
 
-            return { suggestions };
-          }
-          return { suggestions: [] };
-        }
-      });
+              // Markdown note links: [Text](note://Title)
+              const mdRegex = /\[.*?\]\(note:\/\/(.*?)\)/g;
+              while ((match = mdRegex.exec(text)) !== null) {
+                const startPos = model.getPositionAt(match.index);
+                const endPos = model.getPositionAt(match.index + match[0].length);
+                const titleMatch = match[1];
+                const title = titleMatch ? decodeURIComponent(titleMatch) : "";
+                
+                const targetNote = (notesRef.current || []).find(n => 
+                  n.title?.toLowerCase().trim() === title.toLowerCase().trim()
+                );
 
-      // Link Provider (Clickable links in editor)
-      monaco.languages.registerLinkProvider('markdown', {
-        provideLinks: (model: any) => {
-          const links: any[] = [];
-          const text = model.getValue();
-          
-          // Wiki links: [[Note Title]]
-          const wikiRegex = /\[\[(.*?)\]\]/g;
-          let match;
-          while ((match = wikiRegex.exec(text)) !== null) {
-            const startPos = model.getPositionAt(match.index);
-            const endPos = model.getPositionAt(match.index + match[0].length);
-            const title = match[1];
-            const targetNote = notesRef.current.find(n => n.title === title);
-            
-            if (targetNote) {
-              links.push({
-                range: {
-                  startLineNumber: startPos.lineNumber,
-                  startColumn: startPos.column,
-                  endLineNumber: endPos.lineNumber,
-                  endColumn: endPos.column
-                },
-                url: `note://${encodeURIComponent(title)}`,
-                tooltip: `Follow link to: ${title}`
-              });
+                if (targetNote) {
+                  links.push({
+                    range: {
+                      startLineNumber: startPos.lineNumber,
+                      startColumn: startPos.column,
+                      endLineNumber: endPos.lineNumber,
+                      endColumn: endPos.column
+                    },
+                    url: `note://${titleMatch}`,
+                    tooltip: `Cmd/Ctrl + Click to follow: ${title}`
+                  });
+                }
+              }
+
+              return { links };
             }
-          }
-
-          // Markdown note links: [Text](note://Title)
-          const mdRegex = /\[.*?\]\(note:\/\/(.*?)\)/g;
-          while ((match = mdRegex.exec(text)) !== null) {
-            const startPos = model.getPositionAt(match.index);
-            const endPos = model.getPositionAt(match.index + match[0].length);
-            const title = decodeURIComponent(match[1]);
-            const targetNote = notesRef.current.find(n => n.title === title);
-
-            if (targetNote) {
-              links.push({
-                range: {
-                  startLineNumber: startPos.lineNumber,
-                  startColumn: startPos.column,
-                  endLineNumber: endPos.lineNumber,
-                  endColumn: endPos.column
-                },
-                url: `note://${match[1]}`,
-                tooltip: `Follow link to: ${title}`
-              });
-            }
-          }
-
-          return { links };
+          });
         }
-      });
+      } catch (err) {
+        console.error("LinkProvider registration failed:", err);
+      }
 
       // Intercept link clicks in the editor
-      editor.onMouseDown((e: any) => {
-        // Check if Cmd/Ctrl is pressed AND it's a link
-        if ((e.event.metaKey || e.event.ctrlKey) && e.target.type === 10 /* Link */) {
-          const url = e.target.element?.href || e.target.element?.getAttribute('data-href') || e.target.detail?.url?.toString();
-          if (url?.startsWith('note://')) {
-            e.event.preventDefault();
-            e.event.stopPropagation();
-            const title = decodeURIComponent(url.replace('note://', ''));
-            const targetNote = notesRef.current.find(n => n.title === title);
-            if (targetNote) {
-              window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                detail: { message: `NAVIGATING_TO: [[${title}]] (ID: ${targetNote.id.split('-')[0]})`, type: 'system' } 
-              }));
-              navigateRef.current?.(targetNote.id);
+      try {
+        if (editor && typeof editor.onDidClickLink === 'function') {
+          editor.onDidClickLink((e: any) => {
+            const url = e?.url?.toString();
+            if (url && url.includes('note:')) {
+              const parts = url.split("note:");
+              const titlePart = parts[parts.length - 1];
+              if (!titlePart) return;
+              
+              const title = decodeURIComponent(titlePart.replace(/^\/\//, ""));
+              
+              const targetNote = (notesRef.current || []).find(n => 
+                n.title?.toLowerCase().trim() === title.toLowerCase().trim()
+              );
+
+              if (targetNote) {
+                window.dispatchEvent(new CustomEvent('abyssal-log', { 
+                  detail: { message: `NAVIGATING_TO: [[${title}]]`, type: 'system' } 
+                }));
+                navigateRef.current?.(targetNote.id);
+              }
             }
-          }
+          });
         }
-      });
-    }
+
+        if (editor && typeof editor.onMouseDown === 'function') {
+          editor.onMouseDown((e: any) => {
+            const isLink = e?.target?.type === 10; /* Link */
+            if (!isLink) return;
+
+            const url = e.target.url?.toString() || e.target.element?.href || e.target.element?.getAttribute('data-href');
+            const isNoteLink = url && url.includes('note:');
+            
+            if (isNoteLink) {
+              const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+              const modifierPressed = e.event?.metaKey || e.event?.ctrlKey;
+
+              if (!modifierPressed) {
+                window.dispatchEvent(new CustomEvent('abyssal-log', { 
+                  detail: { message: `HINT: USE ${isMac ? 'CMD' : 'CTRL'}+CLICK TO FOLLOW LINK`, type: 'system' } 
+                }));
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Editor link interception failed:", err);
+      }
   };
 
   useEffect(() => {
     if ((window as any).monaco) {
-      (window as any).monaco.editor.setTheme(theme === "dark" ? "gruvbox" : "gruvbox-light");
+      const monacoTheme = MONACO_THEMES[theme] || theme;
+      (window as any).monaco.editor.setTheme(monacoTheme);
     }
   }, [theme]);
 
@@ -443,9 +765,18 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
             setCopiedLink(true);
             setTimeout(() => setCopiedLink(false), 2000);
           }}
-          onCommit={() => onUpdate(note.id, { title, content })}
+          onCommit={() => {
+            setIsSaving(true);
+            onUpdate(note.id, { title, content });
+            // Simulate a brief commit process for better UX/Technical feel
+            setTimeout(() => {
+              setIsSaving(false);
+              toast("DOCUMENT_COMMITTED_TO_STORAGE", "success");
+            }, 800);
+          }}
           isRightSidebarOpen={isRightSidebarOpen}
           onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+          isSaving={isSaving}
         />
       )}
 
@@ -492,7 +823,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
                       height="100%"
                       defaultLanguage="markdown"
                       defaultValue={content}
-                      theme={theme === "dark" ? "gruvbox" : "gruvbox-light"}
+                      theme={MONACO_THEMES[theme] || theme}
                       onChange={(val) => {
                         setContent(val || "");
                         debouncedUpdate(note.id, { content: val || "" });
@@ -504,7 +835,10 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
                         fontFamily: "var(--font-jetbrains-mono)", 
                         padding: { top: 20 },
                         automaticLayout: true,
-                        wordWrap: "on"
+                        wordWrap: "on",
+                        contextmenu: false,
+                        quickSuggestions: true,
+                        suggestOnTriggerCharacters: true
                       }}
                     />
                   </motion.div>
@@ -514,141 +848,16 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
                     initial={{ opacity: 0 }} 
                     animate={{ opacity: 1 }} 
                     exit={{ opacity: 0 }} 
-                    className="flex-1 h-full w-full overflow-y-auto custom-scrollbar relative bg-[var(--card)]/50 tech-grid selection:bg-[var(--primary)] selection:text-[var(--background)]"
+                    className="flex-1 h-full w-full overflow-hidden"
                   >
-                    {/* Atmospheric Accents */}
-                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-20">
-                      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,var(--primary)_0%,transparent_70%)] opacity-[0.03]" />
-                      <div className="absolute top-4 left-4 w-24 h-24 border-l border-t border-[var(--primary)]/30" />
-                      <div className="absolute bottom-4 right-4 w-24 h-24 border-r border-b border-[var(--primary)]/30" />
-                    </div>
-
-                    <div className="prose px-8 lg:px-16 py-16 max-w-4xl mx-auto relative z-10">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          h1: ({ children }) => <h1 className="group">{children}</h1>,
-                          h2: ({ children }) => <h2 className="group">{children}</h2>,
-                          h3: ({ children }) => <h3 className="group">{children}</h3>,
-                          a: ({ href, children, ...props }: any) => {
-                            if (href?.startsWith("note://")) {
-                              const targetTitle = decodeURIComponent(href.replace("note://", ""));
-                              const targetNote = allNotes.find(n => 
-                                n.title?.toLowerCase().trim() === targetTitle.toLowerCase().trim()
-                              );
-                              return (
-                                <button 
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (targetNote) {
-                                      window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                                        detail: { message: `REDIRECTION_PROCEDURE_INITIATED: [[${targetTitle}]]`, type: 'success' } 
-                                      }));
-                                      onNavigate?.(targetNote.id);
-                                    }
-                                  }}
-                                  className={cn(
-                                    "text-[var(--accent)] hover:text-[var(--primary)] border-b border-dashed border-[var(--accent)] hover:border-solid hover:border-[var(--primary)] transition-all font-mono", 
-                                    !targetNote && "opacity-50 line-through cursor-not-allowed"
-                                  )}
-                                  title={targetNote ? `Navigate to ${targetTitle}` : `Note "${targetTitle}" not found`}
-                                >
-                                  {children}
-                                </button>
-                              );
-                            }
-                            return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
-                          },
-                          li: ({ children, checked, ...props }: any) => {
-                            if (checked !== null && checked !== undefined) {
-                              return (
-                                <li className="list-none flex items-start gap-4 -ml-2 group py-1">
-                                  <div className="relative mt-1">
-                                    <input 
-                                      type="checkbox" 
-                                      checked={checked} 
-                                      readOnly
-                                      className="h-4 w-4 rounded-none border-2 border-[var(--border)] bg-transparent text-[var(--primary)] focus:ring-0 cursor-pointer appearance-none checked:bg-[var(--primary)] checked:border-[var(--primary)] transition-all"
-                                    />
-                                    {checked && <Check size={10} className="absolute top-0.5 left-0.5 text-[var(--background)]" />}
-                                  </div>
-                                  <span className={cn("flex-1 transition-all font-medium", checked && "opacity-40 line-through text-[var(--muted-foreground)]")}>{children}</span>
-                                </li>
-                              );
-                            }
-                            return <li {...props}>{children}</li>;
-                          },
-                          code({ node, inline, className, children, ...props }: any) {
-                            const match = /language-(\w+)/.exec(className || "");
-                            const codeString = String(children).replace(/\n$/, "");
-                            
-                            if (!inline && match) {
-                              return (
-                                <div className="my-10 rounded-sm overflow-hidden border border-[var(--border)] bg-[var(--background)] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group/code relative">
-                                  {/* Code Block Header */}
-                                  <div className="flex items-center justify-between px-5 py-2.5 bg-[#282828] border-b border-dotted border-[var(--border)]">
-                                    <div className="flex items-center gap-3">
-                                      <div className="flex gap-1.5">
-                                        <div className="w-1.5 h-1.5 bg-[#fb4934]" />
-                                        <div className="w-1.5 h-1.5 bg-[#fabd2f]" />
-                                        <div className="w-1.5 h-1.5 bg-[#b8bb26]" />
-                                      </div>
-                                      <span className="text-[10px] font-mono font-bold text-[var(--muted-foreground)] uppercase tracking-[0.25em] ml-2 flex items-center gap-2">
-                                        <FileCode size={12} className="text-[var(--primary)]/50" />
-                                        {match[1]}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                      <button 
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(codeString);
-                                          const btn = document.activeElement as HTMLButtonElement;
-                                          if (btn) btn.innerHTML = "COPIED";
-                                          setTimeout(() => { if (btn) btn.innerHTML = "COPY"; }, 2000);
-                                        }}
-                                        className="text-[9px] font-mono font-bold text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-all uppercase tracking-widest bg-[var(--background)] px-2 py-1 border border-[var(--border)] hover:border-[var(--primary)]/30"
-                                      >
-                                        COPY
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div className="relative">
-                                    {/* Line Number Decoration */}
-                                    <div className="absolute top-0 left-0 w-8 h-full bg-[#282828]/30 border-r border-dotted border-[var(--border)] pointer-events-none" />
-                                    <SyntaxHighlighter 
-                                      style={gruvboxDark} 
-                                      language={match[1]} 
-                                      PreTag="div" 
-                                      customStyle={{ 
-                                        margin: 0, 
-                                        padding: '1.5rem 1.5rem 1.5rem 2.5rem',
-                                        background: 'transparent',
-                                        fontSize: '13px',
-                                        lineHeight: '1.6',
-                                        fontFamily: 'var(--font-mono)'
-                                      }}
-                                      codeTagProps={{
-                                        style: { background: 'transparent' }
-                                      }}
-                                      {...props}
-                                    >
-                                      {codeString}
-                                    </SyntaxHighlighter>
-                                  </div>
-                                  {/* Corner Accents */}
-                                  <div className="corner-accent corner-tl opacity-20" />
-                                  <div className="corner-accent corner-br opacity-20" />
-                                </div>
-                              );
-                            }
-                            return <code className={cn(className)} {...props}>{children}</code>;
-                          }
-                        }}
-                      >
-                        {processedContent || "*_NO_CONTENT_INITIALIZED_*"}
-                      </ReactMarkdown>
-                    </div>
+                    <MarkdownPreview 
+                      content={content} 
+                      allNotes={allNotes}
+                      onNavigate={onNavigate}
+                      theme={theme}
+                      isEnabled={isEnabled}
+                      availablePlugins={availablePlugins}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -664,58 +873,60 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
                 animate={{ width: 360, opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="bg-[var(--background)] overflow-y-auto hidden xl:block border-l border-dotted border-[var(--border)] shrink-0 custom-scrollbar"
+                className="bg-[var(--background)] overflow-y-auto overflow-x-hidden hidden xl:block border-l border-dotted border-[var(--border)] shrink-0 custom-scrollbar"
               >
                 <div className="w-[360px] p-8 h-full flex flex-col">
                   <section className="space-y-12">
                     {/* Stats Module */}
-                    <div className="relative">
-                      <div className="flex items-center justify-between border-b border-dotted border-[var(--border)] pb-2 mb-6">
-                        <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] flex items-center gap-2">
-                          <Activity size={12} className="text-[var(--primary)]" /> System_Analysis
-                        </span>
-                        <div className="flex gap-1">
-                          <div className="w-1 h-1 bg-[var(--primary)] animate-pulse" />
-                          <div className="w-4 h-1 bg-[var(--primary)]/20" />
+                    {isEnabled("stats-plugin") && (
+                      <div className="relative">
+                        <div className="flex items-center justify-between border-b border-dotted border-[var(--border)] pb-2 mb-6">
+                          <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] flex items-center gap-2">
+                            <Activity size={12} className="text-[var(--primary)]" /> System_Analysis
+                          </span>
+                          <div className="flex gap-1">
+                            <div className="w-1 h-1 bg-[var(--primary)] animate-pulse" />
+                            <div className="w-4 h-1 bg-[var(--primary)]/20" />
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        {[
-                          { label: "Words_Vol", value: content.split(/\s+/).filter(Boolean).length, unit: "WDS", icon: FileText, progress: 65 },
-                          { label: "Char_Stream", value: content.length, unit: "CHR", icon: Hash, progress: 40 },
-                          { label: "Read_Latency", value: Math.ceil(content.split(/\s+/).length / 200), unit: "MIN", icon: Clock, progress: 25 },
-                          { label: "Encryption", value: "MD_CODEX", unit: "", icon: Database, progress: 100 },
-                        ].map((stat, idx) => (
-                          <div key={idx} className="bg-[var(--card)]/30 border border-[var(--border)] p-3 relative group overflow-hidden transition-all hover:border-[var(--primary)]/30">
-                            <div className="corner-accent corner-tl opacity-20" />
-                            <div className="corner-accent corner-br opacity-20" />
-                            
-                            <div className="flex flex-col gap-2 relative z-10">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[7px] text-[var(--muted-foreground)] font-mono uppercase tracking-widest">{stat.label}</span>
-                                <stat.icon size={8} className="text-[var(--primary)] opacity-40" />
-                              </div>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="text-sm text-[var(--primary)] font-mono font-bold leading-none tabular-nums tracking-tighter">
-                                  {stat.value}
-                                </span>
-                                {stat.unit && <span className="text-[7px] text-[var(--muted-foreground)] font-mono uppercase">{stat.unit}</span>}
-                              </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          {[
+                            { label: "Words_Vol", value: content.split(/\s+/).filter(Boolean).length, unit: "WDS", icon: FileText, progress: 65 },
+                            { label: "Char_Stream", value: content.length, unit: "CHR", icon: Hash, progress: 40 },
+                            { label: "Read_Latency", value: Math.ceil(content.split(/\s+/).length / 200), unit: "MIN", icon: Clock, progress: 25 },
+                            { label: "Encryption", value: "MD_CODEX", unit: "", icon: Database, progress: 100 },
+                          ].map((stat, idx) => (
+                            <div key={idx} className="bg-[var(--card)]/30 border border-[var(--border)] p-3 relative group overflow-hidden transition-all hover:border-[var(--primary)]/30">
+                              <div className="corner-accent corner-tl opacity-20" />
+                              <div className="corner-accent corner-br opacity-20" />
                               
-                              {/* Micro Progress Bar */}
-                              <div className="h-[2px] w-full bg-[var(--border)] mt-1 overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${stat.progress}%` }}
-                                  className="h-full bg-[var(--primary)]/40"
-                                />
+                              <div className="flex flex-col gap-2 relative z-10">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[7px] text-[var(--muted-foreground)] font-mono uppercase tracking-widest">{stat.label}</span>
+                                  <stat.icon size={8} className="text-[var(--primary)] opacity-40" />
+                                </div>
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="text-sm text-[var(--primary)] font-mono font-bold leading-none tabular-nums tracking-tighter">
+                                    {stat.value}
+                                  </span>
+                                  {stat.unit && <span className="text-[7px] text-[var(--muted-foreground)] font-mono uppercase">{stat.unit}</span>}
+                                </div>
+                                
+                                {/* Micro Progress Bar */}
+                                <div className="h-[2px] w-full bg-[var(--border)] mt-1 overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${stat.progress}%` }}
+                                    className="h-full bg-[var(--primary)]/40"
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Timeline */}
                     <div>
@@ -780,34 +991,35 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, allNotes
 
 
                     {/* Inbound References */}
-                    <div>
-                      <div className="flex items-center justify-between border-b border-dotted border-[var(--border)] pb-2 mb-6">
-                        <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] flex items-center gap-2">
-                          <Link size={12} className="text-[var(--accent)]" /> Inbound_References
-                        </span>
-                        <span className="text-[8px] font-mono text-[var(--muted-foreground)] bg-[var(--card)] px-1 border border-[var(--border)]">{backlinks.length}</span>
+                    {isEnabled("backlinks") && (
+                      <div>
+                        <div className="flex items-center justify-between border-b border-dotted border-[var(--border)] pb-2 mb-6">
+                          <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] flex items-center gap-2">
+                            <Link size={12} className="text-[var(--accent)]" /> Inbound_References
+                          </span>
+                          <span className="text-[8px] font-mono text-[var(--muted-foreground)] bg-[var(--card)] px-1 border border-[var(--border)]">{backlinks.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {backlinks.length === 0 ? (
+                            <div className="text-[9px] font-mono text-[var(--muted-foreground)] italic opacity-50 px-2">NO_INBOUND_LINKS_DETECTED</div>
+                          ) : (
+                            backlinks.map(linkNote => (
+                              <button
+                                key={linkNote.id}
+                                onClick={() => onNavigate?.(linkNote.id)}
+                                className="w-full text-left bg-[var(--card)]/30 border border-[var(--border)] p-2 hover:border-[var(--primary)]/50 hover:bg-[var(--card)] transition-all group relative overflow-hidden"
+                              >
+                                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[10px] font-bold text-[var(--foreground)] uppercase truncate group-hover:text-[var(--primary)]">{linkNote.title || "UNTITLED"}</span>
+                                  <span className="text-[8px] font-mono text-[var(--muted-foreground)] truncate opacity-60">{linkNote.content?.substring(0, 40)}...</span>
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        {backlinks.length === 0 ? (
-                          <div className="text-[9px] font-mono text-[var(--muted-foreground)] italic opacity-50 px-2">NO_INBOUND_LINKS_DETECTED</div>
-                        ) : (
-                          backlinks.map(linkNote => (
-                            <button
-                              key={linkNote.id}
-                              onClick={() => onNavigate?.(linkNote.id)}
-                              className="w-full text-left bg-[var(--card)]/30 border border-[var(--border)] p-2 hover:border-[var(--primary)]/50 hover:bg-[var(--card)] transition-all group relative overflow-hidden"
-                            >
-                              <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                              <div className="flex items-center gap-2 mb-1">
-                                <FileText size={10} className="text-[var(--muted-foreground)] group-hover:text-[var(--accent)] transition-colors" />
-                                <span className="text-[10px] font-mono font-bold text-[var(--foreground)] truncate">{linkNote.title || "UNTITLED"}</span>
-                              </div>
-                              <span className="text-[8px] font-mono text-[var(--muted-foreground)] opacity-50 line-clamp-1 break-all">ID:{linkNote.id.split('-')[0]}</span>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </div>
+                    )}
 
                     {/* Actions */}
                     <div className="pt-4">

@@ -1,0 +1,17 @@
+{
+  "name": "Abyssal Codex",
+  "short_name": "Codex",
+  "description": "Industrial-grade technical knowledge management.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#fabd2f",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { spring, softSpring, microSpring } from "@/lib/transitions";
 import { useEffect, useState } from "react";
 import { Hash, Terminal, Cpu, ShieldCheck, Database } from "lucide-react";
 
@@ -42,10 +43,16 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
   return (
     <motion.div
       initial={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
-      transition={{ duration: 0.8, ease: "easeInOut" }}
-      className="fixed inset-0 z-[20000] bg-[var(--background)] flex flex-col items-center justify-center font-mono p-8"
+      exit={{ 
+        opacity: 0, 
+        scale: 1.05, 
+        filter: "blur(10px) brightness(1.5)",
+        transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } 
+      }}
+      className="fixed inset-0 z-[20000] bg-[var(--background)] flex flex-col items-center justify-center font-mono p-8 overflow-hidden"
     >
+      {/* Scanline Effect */}
+      <div className="absolute inset-0 pointer-events-none z-50 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.01),rgba(0,0,255,0.02))] bg-[length:100%_2px,3px_100%]" />
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
            style={{ backgroundImage: "radial-gradient(var(--primary) 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
       
@@ -78,18 +85,38 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
 
           <div className="w-full space-y-4">
             <div className="flex justify-between items-end text-[10px] font-bold">
-               <div className="flex items-center gap-2">
-                 <Terminal size={12} className="text-[var(--primary)]" />
-                 <span className="text-[var(--foreground)]">{statusMessages[statusIndex]}</span>
-               </div>
-               <span className="text-[var(--primary)]">{progress}%</span>
+                <div className="flex items-center gap-2 h-4 relative">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={statusIndex}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      transition={microSpring}
+                      className="flex items-center gap-2"
+                    >
+                      <Terminal size={12} className="text-[var(--primary)]" />
+                      <span className="text-[var(--foreground)]">{statusMessages[statusIndex]}</span>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+                <motion.span 
+                  key={progress}
+                  initial={{ opacity: 0.5 }}
+                  animate={{ opacity: 1 }}
+                  className="text-[var(--primary)]"
+                >
+                  {progress}%
+                </motion.span>
             </div>
             
             <div className="h-1 w-full bg-[var(--border)] overflow-hidden">
-               <motion.div 
-                 className="h-full bg-[var(--primary)]" 
-                 style={{ width: `${progress}%` }}
-               />
+                <motion.div 
+                  className="h-full bg-[var(--primary)]" 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={softSpring}
+                />
             </div>
 
             <div className="flex justify-between items-center opacity-30 text-[8px] uppercase tracking-widest pt-2">

@@ -1,0 +1,28 @@
+
+> docs@0.1.0 build
+> next build
+
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+   ▲ Next.js 15.1.0
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/5) ...
+Error occurred prerendering page "/_not-found". Read more: https://nextjs.org/docs/messages/prerender-error
+TypeError: Cannot read properties of null (reading 'useContext')
+    at t.useContext (/Users/apple/projects/docs/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:68:6274)
+    at O (/Users/apple/projects/docs/.next/server/chunks/483.js:1:15738)
+    at react-stack-bottom-frame (/Users/apple/projects/docs/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:25:229305)
+    at renderWithHooks (/Users/apple/projects/docs/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:25:66965)
+    at renderElement (/Users/apple/projects/docs/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:25:81693)
+    at renderElement (/Users/apple/projects/docs/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:25:135151)
+    at retryNode (/Users/apple/projects/docs/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:25:140140)
+    at renderNodeDestructive (/Users/apple/projects/docs/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:25:136545)
+    at renderNode (/Users/apple/projects/docs/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:25:149261)
+    at renderElement (/Users/apple/projects/docs/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:25:127450)
+Export encountered an error on /_not-found/page: /_not-found, exiting the build.
+ ⨯ Static worker exited with code: 1 and signal: null
