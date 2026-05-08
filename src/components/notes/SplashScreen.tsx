@@ -51,8 +51,7 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
       }}
       className="fixed inset-0 z-[20000] bg-[var(--background)] flex flex-col items-center justify-center font-mono p-8 overflow-hidden"
     >
-      {/* Scanline Effect */}
-      <div className="absolute inset-0 pointer-events-none z-50 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.01),rgba(0,0,255,0.02))] bg-[length:100%_2px,3px_100%]" />
+
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
            style={{ backgroundImage: "radial-gradient(var(--primary) 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
       

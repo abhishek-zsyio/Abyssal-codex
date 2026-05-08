@@ -48,7 +48,7 @@ export default function SharedNoteClient({ params }: { params: { id: string } })
             className="w-12 h-12 border-2 border-[#fabd2f]/20 border-t-[#fabd2f] rounded-full"
           />
           <div className="flex flex-col items-center">
-            <span className="text-[#fabd2f] text-[10px] tracking-[0.4em] uppercase animate-pulse">Initializing_Handshake</span>
+            <span className="text-[#fabd2f] text-[10px] tracking-[0.4em] uppercase">Initializing_Handshake</span>
             <span className="text-[#928374] text-[8px] tracking-[0.2em] mt-2 font-mono">SECURE_LINK_V4.0.1</span>
           </div>
         </div>
@@ -82,12 +82,7 @@ export default function SharedNoteClient({ params }: { params: { id: string } })
       <div className="fixed inset-0 pointer-events-none opacity-[0.04]" 
            style={{ backgroundImage: 'radial-gradient(var(--primary) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       
-      {/* Scanning Line */}
-      <motion.div 
-        animate={{ top: ["0%", "100%", "0%"] }}
-        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-        className="fixed left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#fabd2f]/20 to-transparent z-[100] pointer-events-none"
-      />
+
 
       {/* Side HUD Info (Left) */}
       <div className="fixed left-6 bottom-24 hidden xl:flex flex-col gap-8 pointer-events-none z-50">
@@ -118,19 +113,17 @@ export default function SharedNoteClient({ params }: { params: { id: string } })
       </div>
 
       {/* Header HUD */}
-      <header className="sticky top-0 z-50 border-b border-[#282828] bg-[#0a0a0a]/90 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-50 border-b border-[#282828] bg-[#0a0a0a]/95 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
+          <div 
             className="w-10 h-10 bg-[#fabd2f] flex items-center justify-center rounded-sm relative group cursor-pointer"
           >
-            <div className="absolute inset-0 border border-[#fabd2f] animate-ping opacity-20 group-hover:opacity-40" />
             <Terminal size={20} className="text-[#0a0a0a]" />
-          </motion.div>
+          </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono text-[#fabd2f] uppercase tracking-[0.25em] font-bold">Public_Fragment</span>
-              <div className="h-1.5 w-1.5 rounded-full bg-[#fabd2f] animate-pulse shadow-[0_0_8px_#fabd2f]" />
+              <div className="h-1.5 w-1.5 rounded-full bg-[#fabd2f] shadow-[0_0_8px_#fabd2f]" />
             </div>
             <h1 className="text-xs font-mono text-[#928374] uppercase tracking-wider truncate max-w-[150px] md:max-w-none">
               ID_{note.id.split('-')[0]} // SECURE_ACCESS
@@ -234,8 +227,7 @@ export default function SharedNoteClient({ params }: { params: { id: string } })
         </footer>
       </main>
 
-      {/* CRT Scanline Effect Overlay */}
-      <div className="fixed inset-0 pointer-events-none z-[1000] opacity-[0.03] scanline" />
+
 
       {/* Global CSS for Markdown in Fragment */}
       <style dangerouslySetInnerHTML={{ __html: `

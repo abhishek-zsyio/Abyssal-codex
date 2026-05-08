@@ -73,7 +73,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[300] bg-black/85 backdrop-blur-sm"
+            className="fixed inset-0 z-[300] bg-black/95"
           />
 
           <div className="fixed inset-0 z-[301] flex items-center justify-center p-4 pointer-events-none">

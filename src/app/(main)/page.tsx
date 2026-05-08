@@ -21,6 +21,7 @@ const Terminal = dynamic(() => import("@/components/notes/Terminal").then(m => m
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Feedback";
 
+
 // Hooks & Lib
 import { useNotes } from "@/hooks/use-notes";
 import { useAuth } from "@/hooks/use-auth";
@@ -120,77 +121,6 @@ function HomeContent() {
   const [isPending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
 
-  // Sync URL ID to state
-  useEffect(() => {
-    if (urlNoteId && urlNoteId !== activeNoteId) {
-      setActiveNoteId(urlNoteId);
-      setOpenNoteIds(prev => Array.from(new Set([...prev, urlNoteId])));
-      setMainView("editor");
-    }
-  }, [urlNoteId]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const deferredSearchQuery = useDeferredValue(searchQuery);
-
-  // Keyboard Shortcuts
-  useEffect(() => {
-    if (!mounted) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setIsCommandPaletteOpen(prev => !prev);
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n") {
-        e.preventDefault();
-        handleAddNote();
-      }
-      if (e.key === "?" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
-        setSidebarView("help");
-        setIsSidebarOpen(true);
-      }
-      if (e.key === "`" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
-        e.preventDefault();
-        setIsTerminalOpen(prev => !prev);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    
-    // Suppress ResizeObserver loop limit exceeded errors (common with Monaco Editor)
-    const handleResizeError = (e: ErrorEvent) => {
-      if (e.message === "ResizeObserver loop completed with undelivered notifications." || 
-          e.message === "ResizeObserver loop limit exceeded") {
-        e.stopImmediatePropagation();
-      }
-    };
-    window.addEventListener("error", handleResizeError);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("error", handleResizeError);
-    };
-  }, [notes, openNoteIds]);
-
-  // Search Logic
-  const fuse = useMemo(() => new Fuse(notes, {
-    keys: ["title", "content"],
-    threshold: 0.4,
-  }), [notes]);
-
-  const filteredNotes = useMemo(() => {
-    if (!deferredSearchQuery) return notes;
-    return fuse.search(deferredSearchQuery).map(result => result.item);
-  }, [notes, deferredSearchQuery, fuse]);
-
-  // Computed State
-  const activeNote = useMemo(() => notes.find(n => n.id === activeNoteId) || null, [notes, activeNoteId]);
-  const secondaryNote = useMemo(() => {
-    const id = openNoteIds.find(id => id !== activeNoteId);
-    return notes.find(n => n.id === id) || null;
-  }, [notes, openNoteIds, activeNoteId]);
-
   // Handlers
   const handleAddNote = useCallback((title?: string) => {
     startTransition(() => {
@@ -244,6 +174,77 @@ function HomeContent() {
     }
   }, [activeNoteId, openNoteIds, router]);
 
+  // Sync URL ID to state
+  useEffect(() => {
+    if (urlNoteId && urlNoteId !== activeNoteId) {
+      setActiveNoteId(urlNoteId);
+      setOpenNoteIds(prev => Array.from(new Set([...prev, urlNoteId])));
+      setMainView("editor");
+    }
+  }, [urlNoteId, activeNoteId]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    if (!mounted) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        handleAddNote();
+      }
+      if (e.key === "?" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        setSidebarView("help");
+        setIsSidebarOpen(true);
+      }
+      if (e.key === "`" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setIsTerminalOpen(prev => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    
+    // Suppress ResizeObserver loop limit exceeded errors (common with Monaco Editor)
+    const handleResizeError = (e: ErrorEvent) => {
+      if (e.message === "ResizeObserver loop completed with undelivered notifications." || 
+          e.message === "ResizeObserver loop limit exceeded") {
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener("error", handleResizeError);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("error", handleResizeError);
+    };
+  }, [mounted, handleAddNote]);
+
+  // Search Logic
+  const fuse = useMemo(() => new Fuse(notes, {
+    keys: ["title", "content"],
+    threshold: 0.4,
+  }), [notes]);
+
+  const filteredNotes = useMemo(() => {
+    if (!deferredSearchQuery) return notes;
+    return fuse.search(deferredSearchQuery).map(result => result.item);
+  }, [notes, deferredSearchQuery, fuse]);
+
+  // Computed State
+  const activeNote = useMemo(() => notes.find(n => n.id === activeNoteId) || null, [notes, activeNoteId]);
+  const secondaryNote = useMemo(() => {
+    const id = openNoteIds.find(id => id !== activeNoteId);
+    return notes.find(n => n.id === id) || null;
+  }, [notes, openNoteIds, activeNoteId]);
+
   if (isLoading || !mounted) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[var(--background)]">
@@ -267,7 +268,7 @@ function HomeContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsSidebarOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+              className="fixed inset-0 bg-black/80 z-40 lg:hidden"
             />
           )}
         </AnimatePresence>
@@ -370,7 +371,7 @@ function HomeContent() {
                 </Button>
               )}
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]" />
                 <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-tighter">System_Live</span>
               </div>
             </div>
@@ -381,10 +382,10 @@ function HomeContent() {
               {mainView === "graph" ? (
                 <motion.div
                   key="graph-view"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.02 }}
+                  transition={{ duration: 0.3, ease: "circOut" }}
                   className="absolute inset-0"
                 >
                   <GraphView 

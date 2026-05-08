@@ -135,7 +135,7 @@ export default function ThemeModal({ isOpen, onClose }: ThemeModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-xl"
+            className="fixed inset-0 z-[200] bg-black/90"
           />
 
           {/* Modal Container */}

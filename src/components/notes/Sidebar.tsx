@@ -5,7 +5,7 @@ import { Note } from "@/types/note";
 import { cn } from "../../lib/utils";
 import { Plus, Search, Trash2, X, Star, Upload, Download, Hash, Tag, HelpCircle, Terminal as TerminalIcon, Package, ShieldCheck, FileText, Calendar, Palette, Share2 } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { spring, softSpring, microSpring, staggerContainer, slideInLeft } from "@/lib/transitions";
+import { spring, microSpring, staggerContainer, slideInLeft } from "@/lib/transitions";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/DataDisplay";
 import { useTheme } from "@/hooks/use-theme";
@@ -38,9 +38,9 @@ interface SidebarProps {
 }
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, x: -10 },
-  show: { opacity: 1, x: 0, transition: spring },
-  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } }
+  hidden: { opacity: 0 },
+  show: { opacity: 1 },
+  exit: { opacity: 0 }
 };
 
 const SidebarItem = memo(({ 
@@ -54,18 +54,11 @@ const SidebarItem = memo(({
   onSelect: (id: string) => void; 
   onDelete: (id: string) => void;
 }) => (
-  <motion.div
-    layout
-    variants={itemVariants}
-    initial="hidden"
-    animate="show"
-    exit="exit"
-    whileHover={{ x: 4, backgroundColor: "var(--card)" }}
-    whileTap={{ scale: 0.98 }}
+  <div
     className={cn(
       "group relative px-6 py-4 cursor-pointer border-b border-dotted border-[var(--border)]/50 transition-colors",
       isActive 
-        ? "bg-[var(--card)] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-[var(--primary)] shadow-[inset_4px_0_0_rgba(250,189,47,0.1)]" 
+        ? "bg-[var(--card)] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-[var(--primary)]" 
         : "hover:bg-[var(--card)]/40"
     )}
     onClick={() => onSelect(note.id)}
@@ -109,13 +102,13 @@ const SidebarItem = memo(({
         ))}
       </div>
     )}
-  </motion.div>
+  </div>
 ));
 
 SidebarItem.displayName = "SidebarItem";
 
 const SidebarSkeleton = () => (
-  <div className="space-y-0 animate-pulse">
+  <div className="space-y-0">
     {[1, 2, 3, 4, 5].map(i => (
       <div key={i} className="px-6 py-4 border-b border-dotted border-[var(--border)]/50">
         <div className="flex justify-between mb-2">
@@ -196,16 +189,14 @@ const Sidebar = memo(({
 
   return (
     <aside className="w-80 h-full flex border-r border-dotted border-[var(--border)] bg-[var(--background)]">
-      {/* Activity Bar (VS Code Style) */}
       <div className="w-14 h-full border-r border-dotted border-[var(--border)] flex flex-col items-center py-6 gap-4 bg-[var(--card)]/30">
         <div className="flex-1 flex flex-col items-center gap-4">
-          {/* Explorer Tab */}
           <Button
             onClick={() => setActiveView("explorer")}
             variant="ghost"
             size="icon"
             className={cn(
-              "w-10 h-10 transition-all relative",
+              "w-10 h-10 transition-all",
               activeView === "explorer" ? "text-[var(--primary)] bg-[var(--primary)]/10" : "text-[var(--muted-foreground)] hover:text-[var(--primary)]"
             )}
             title="Explorer (Notes)"
@@ -215,25 +206,28 @@ const Sidebar = memo(({
               <motion.div 
                 layoutId="active-indicator" 
                 transition={microSpring}
-                className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--primary)] rounded-full" 
+                className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--primary)] rounded-full shadow-[0_0_8px_var(--primary)]" 
               />
             )}
           </Button>
 
-          {/* Plugins Tab */}
           <Button
             onClick={() => setActiveView("plugins")}
             variant="ghost"
             size="icon"
             className={cn(
-              "w-10 h-10 transition-all relative",
+              "w-10 h-10 transition-all",
               activeView === "plugins" ? "text-[var(--primary)] bg-[var(--primary)]/10" : "text-[var(--muted-foreground)] hover:text-[var(--primary)]"
             )}
             title="Marketplace (Plugins)"
           >
             <Package size={18} />
             {activeView === "plugins" && (
-              <motion.div layoutId="active-indicator" className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--primary)] rounded-full" />
+              <motion.div 
+                layoutId="active-indicator" 
+                transition={microSpring}
+                className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--primary)] rounded-full shadow-[0_0_8px_var(--primary)]" 
+              />
             )}
           </Button>
 
@@ -241,16 +235,14 @@ const Sidebar = memo(({
             onClick={onOpenGraph}
             variant="ghost"
             size="icon"
-            className="w-10 h-10 transition-all relative text-[var(--muted-foreground)] hover:text-[var(--primary)]"
+            className="w-10 h-10 transition-all text-[var(--muted-foreground)] hover:text-[var(--primary)]"
             title="Nexus Graph (Visualizer)"
           >
             <Share2 size={18} />
           </Button>
 
-
-
           <div className="w-8 h-px bg-[var(--border)] my-2 opacity-50" />
-
+          
           <Button 
             onClick={onOpenThemes} 
             variant="ghost" 
@@ -286,7 +278,7 @@ const Sidebar = memo(({
             <div className="relative">
               <ShieldCheck size={16} />
               {isLoggedIn && (
-                <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[var(--primary)] rounded-full animate-pulse shadow-[0_0_8px_var(--primary)]" />
+                <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[var(--primary)] rounded-full shadow-[0_0_8px_var(--primary)]" />
               )}
             </div>
           </Button>
@@ -296,21 +288,34 @@ const Sidebar = memo(({
             variant="ghost"
             size="icon"
             className={cn(
-              "w-10 h-10 transition-all relative",
+              "w-10 h-10 transition-all",
               activeView === "help" ? "text-[var(--primary)] bg-[var(--primary)]/10" : "text-[var(--muted-foreground)] hover:text-[var(--primary)]"
             )}
             title="System Manual (Help)"
           >
             <HelpCircle size={18} />
             {activeView === "help" && (
-              <motion.div layoutId="active-indicator" className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--primary)] rounded-full" />
+              <motion.div 
+                layoutId="active-indicator" 
+                transition={microSpring}
+                className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--primary)] rounded-full shadow-[0_0_8px_var(--primary)]" 
+              />
             )}
           </Button>
+        </div>
 
+        {/* Live Status Indicator */}
+        <div className="flex flex-col items-center gap-2 mb-4">
+           <div className="flex flex-col items-center gap-1 group cursor-help" title="SYSTEM_STATUS: OPERATIONAL">
+              <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest opacity-60">Status</span>
+              <div className="relative">
+                 <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+              </div>
+              <span className="text-[8px] font-mono text-[var(--accent)] font-bold uppercase tracking-tighter">Live</span>
+           </div>
         </div>
       </div>
 
-      {/* Main Sidebar Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <AnimatePresence mode="wait">
           {activeView === "explorer" ? (
@@ -320,15 +325,13 @@ const Sidebar = memo(({
               animate="show"
               exit="exit"
               variants={slideInLeft}
-              className="flex-1 flex flex-col overflow-hidden"
+              className="flex-1 flex flex-col overflow-hidden relative"
             >
-              {/* explorer content ... */}
-              {/* Note: I need to be careful not to lose the explorer content */}
               <div className="p-6 border-b border-dotted border-[var(--border)]">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex flex-col">
                     <span className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] mb-1">Directory</span>
-                    <h1 className="text-lg font-bold text-[var(--foreground)] tracking-tight text-glow">EXPLORER</h1>
+                    <h1 className="text-lg font-bold text-[var(--foreground)] tracking-tight">EXPLORER</h1>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="icon" onClick={onClose} variant="ghost" className="lg:hidden">
@@ -338,7 +341,7 @@ const Sidebar = memo(({
                 </div>
 
                 <div className="flex items-center justify-between w-full mb-6 gap-2">
-                  <Button onClick={() => onAddNote()} variant="primary" className="flex-1 flex items-center justify-center gap-2 font-mono h-10 shadow-[4px_4px_0px_rgba(250,189,47,0.2)]">
+                  <Button onClick={() => onAddNote()} variant="primary" className="flex-1 flex items-center justify-center gap-2 font-mono h-10">
                     <Plus size={16} /> <span>NEW_DOC</span>
                   </Button>
                   {isEnabled("daily-notes") && (

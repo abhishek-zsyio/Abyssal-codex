@@ -189,8 +189,7 @@ export const Terminal = ({ isOpen, onClose, notes, onSelectNote, onAddNote, onDe
           transition={spring}
           className="fixed bottom-0 left-0 lg:left-80 right-0 z-40 h-[280px] bg-[var(--background)] border-t border-[var(--border)] shadow-[0_-10px_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden font-mono"
         >
-          {/* Scanline Effect */}
-          <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-10 scanline" />
+
           
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-[var(--card)] shrink-0">
@@ -266,7 +265,7 @@ export const Terminal = ({ isOpen, onClose, notes, onSelectNote, onAddNote, onDe
             />
             <div className="flex items-center gap-2">
               <span className="text-[8px] text-[var(--muted-foreground)] uppercase font-bold opacity-30">Prompt_Ready</span>
-              <div className="w-1.5 h-3 bg-[var(--primary)] animate-pulse" />
+              <div className="w-1.5 h-3 bg-[var(--primary)]" />
             </div>
           </form>
         </motion.div>

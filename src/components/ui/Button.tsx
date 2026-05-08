@@ -36,11 +36,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           backgroundColor: variant === "ghost" ? "var(--card)" : undefined,
           borderColor: (variant === "outline" || variant === "ghost") ? "var(--primary)" : undefined,
           color: (variant === "outline" || variant === "ghost") ? "var(--primary)" : undefined,
+          boxShadow: variant === "primary" ? "0 0 20px rgba(250, 189, 47, 0.4)" : "0 0 10px rgba(250, 189, 47, 0.1)",
         }}
         whileTap={{ scale: 0.96 }}
         transition={microSpring}
         className={cn(
-          "inline-flex items-center justify-center font-mono font-bold uppercase tracking-[0.1em] border transition-colors disabled:opacity-50 disabled:pointer-events-none",
+          "inline-flex items-center justify-center font-mono font-bold uppercase tracking-[0.1em] border transition-all disabled:opacity-50 disabled:pointer-events-none relative overflow-hidden",
           variants[variant],
           sizes[size],
           className

@@ -218,7 +218,7 @@ export default function SidebarPlugins({ onClose }: SidebarPluginsProps) {
               <div className="flex items-center justify-between mb-8">
                 <div className="flex flex-col">
                   <span className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] mb-1">Marketplace</span>
-                  <h1 className="text-lg font-bold text-[var(--foreground)] tracking-tight text-glow">MODULE_STORE</h1>
+                  <h1 className="text-lg font-bold text-[var(--foreground)] tracking-tight">MODULE_STORE</h1>
                 </div>
                 {onClose && (
                   <Button size="icon" onClick={onClose} variant="ghost" className="lg:hidden">
@@ -410,7 +410,7 @@ export default function SidebarPlugins({ onClose }: SidebarPluginsProps) {
 
             <div className="p-4 border-t border-dotted border-[var(--border)] bg-[var(--card)]/10">
               <div className="flex items-center gap-2">
-                <Zap size={12} className="text-[var(--primary)] animate-pulse" />
+                <Zap size={12} className="text-[var(--primary)]" />
                 <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em]">
                   System Kernel: 0xAF...STABLE
                 </span>

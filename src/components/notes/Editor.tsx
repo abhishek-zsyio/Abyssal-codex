@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, memo, useDefe
 import { Note } from "@/types/note";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Eye, Edit3, Clock, CornerDownRight, Hash, Copy, Check, Star, Download, X, Maximize, PanelRight, Trash2, Activity, FileCode, ShieldAlert, FileText, Link, Database, Globe, ExternalLink } from "lucide-react";
+import { Eye, Edit3, Clock, CornerDownRight, Hash, Copy, Check, Star, Download, X, Maximize, PanelRight, Trash2, Activity, FileCode, ShieldAlert, FileText, Link, Database, Globe, ExternalLink, Scissors, Clipboard, Type, Command } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -14,9 +14,11 @@ import Editor, { loader } from "@monaco-editor/react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/DataDisplay";
 import { StatusIndicator } from "@/components/ui/Feedback";
+import { ContextMenu, ContextMenuItem } from "@/components/ui/ContextMenu";
 import { useTheme } from "@/hooks/use-theme";
 import { usePlugins } from "@/hooks/use-plugins";
 import { useToast } from "@/hooks/use-toast";
+import { useContextMenu } from "@/hooks/use-context-menu";
 
 import json from 'react-syntax-highlighter/dist/esm/languages/prism/json';
 import markdown from 'react-syntax-highlighter/dist/esm/languages/prism/markdown';
@@ -101,7 +103,7 @@ const EditorHeader = ({
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="flex items-center gap-1.5 px-2 py-0.5 bg-[var(--primary)]/10 border border-[var(--primary)]/20 rounded-sm shrink-0"
               >
-                <div className="w-1 h-1 bg-[var(--primary)] animate-pulse" />
+                <div className="w-1 h-1 bg-[var(--primary)]" />
                 <span className="text-[7px] font-mono font-bold text-[var(--primary)] uppercase tracking-widest">Syncing</span>
               </motion.div>
             )}
@@ -122,7 +124,7 @@ const EditorHeader = ({
           title={isPublic ? "Public Fragment (Click to make Private)" : "Private Fragment (Click to Share & Copy)"} 
           className="h-8 w-8"
         >
-          {copiedShareLink ? <Check size={14} className="text-[var(--accent)] animate-bounce" /> : <Globe size={14} className={cn(isPublic ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]")} />}
+          {copiedShareLink ? <Check size={14} className="text-[var(--accent)]" /> : <Globe size={14} className={cn(isPublic ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]")} />}
         </Button>
         <Button variant="ghost" size="icon" onClick={onDownload} title="Download Source" className="h-8 w-8">
           <Download size={14} className="text-[var(--muted-foreground)]" />
@@ -152,7 +154,7 @@ const EditorHeader = ({
               isEditing ? "bg-[var(--primary)] text-[var(--background)] shadow-md" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--border)]/30"
             )}
           >
-            <Edit3 size={14} className={isEditing ? "animate-pulse" : ""} />
+            <Edit3 size={14} />
           </button>
           <button 
             onClick={() => onToggleEdit(false)}
@@ -162,7 +164,7 @@ const EditorHeader = ({
               !isEditing ? "bg-[var(--primary)] text-[var(--background)] shadow-md" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--border)]/30"
             )}
           >
-            <Eye size={14} className={!isEditing ? "animate-pulse" : ""} />
+            <Eye size={14} />
           </button>
         </div>
 
@@ -251,20 +253,26 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const deferredContent = useDeferredValue(content);
+  const { isOpen, x, y, openMenu, closeMenu } = useContextMenu();
+  const [hasSelection, setHasSelection] = useState(false);
   
   useEffect(() => {
     setIsRightSidebarOpen(showSidebar);
   }, [showSidebar]);
 
+  const deferredAllNotes = useDeferredValue(allNotes);
+  const deferredTitle = useDeferredValue(note.title);
+
   const backlinks = useMemo(() => {
-    if (!note.title) return [];
-    const wikiLink = `[[${note.title}]]`;
-    const protocolLink = `(note://${encodeURIComponent(note.title)})`;
-    return allNotes?.filter(n => 
+    if (!deferredTitle || !deferredAllNotes) return [];
+    const wikiLink = `[[${deferredTitle}]]`;
+    const protocolLink = `(note://${encodeURIComponent(deferredTitle)})`;
+    return deferredAllNotes.filter(n => 
       n.id !== note.id && 
       (n.content?.includes(wikiLink) || n.content?.includes(protocolLink))
-    ) || [];
-  }, [allNotes, note.title, note.id]);
+    );
+  }, [deferredAllNotes, deferredTitle, note.id]);
   
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -339,65 +347,65 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
     (window as any).monaco = monaco;
     (window as any).editorInstance = editor;
     monaco.editor.defineTheme("gruvbox", {
-      base: "vs-dark",
-      inherit: true,
-      rules: [
-        { token: "", foreground: "ebdbb2", background: "111111" },
-        { token: "comment", foreground: "928374" },
-        { token: "keyword", foreground: "fb4934" },
-        { token: "string", foreground: "b8bb26" },
-        { token: "number", foreground: "d3869b" },
-      ],
-      colors: {
-        "editor.background": "#111111",
-        "editor.foreground": "#ebdbb2",
-        "editor.lineHighlightBackground": "#3c3836",
-        "editorCursor.foreground": "#fabd2f",
-        "menu.background": "#181818",
-        "menu.foreground": "#ebdbb2",
-        "menu.selectionBackground": "#3c3836",
-        "menu.selectionForeground": "#fabd2f",
-        "menu.separatorBackground": "#3c3836",
-        "menu.border": "#282828",
-      },
-    });
-    
-    monaco.editor.defineTheme("gruvbox-light", {
-      base: "vs",
-      inherit: true,
-      rules: [
-        { token: "", foreground: "3c3836", background: "fbf1c7" },
-        { token: "comment", foreground: "7c6f64" },
-        { token: "keyword", foreground: "9d0006" },
-        { token: "string", foreground: "79740e" },
-        { token: "number", foreground: "8f3f71" },
-      ],
-      colors: {
-        "editor.background": "#fbf1c7",
-        "editor.foreground": "#3c3836",
-        "editor.lineHighlightBackground": "#ebdbb2",
-        "editorCursor.foreground": "#b57614",
-        "menu.background": "#ebdbb2",
-        "menu.foreground": "#3c3836",
-        "menu.selectionBackground": "#d5c4a1",
-        "menu.selectionForeground": "#b57614",
-        "menu.separatorBackground": "#d5c4a1",
-        "menu.border": "#d5c4a1",
-      },
-    });
-    
-    monaco.editor.defineTheme("nord", {
-      base: "vs-dark",
-      inherit: true,
-      rules: [
-        { token: "", foreground: "eceff4", background: "2e3440" },
-        { token: "comment", foreground: "616e88" },
-        { token: "keyword", foreground: "81a1c1" },
-        { token: "string", foreground: "a3be8c" },
-        { token: "number", foreground: "b48ead" },
-      ],
-      colors: {
-        "editor.background": "#2e3440",
+        base: "vs-dark",
+        inherit: true,
+        rules: [
+          { token: "", foreground: "ebdbb2", background: "111111" },
+          { token: "comment", foreground: "928374" },
+          { token: "keyword", foreground: "fb4934" },
+          { token: "string", foreground: "b8bb26" },
+          { token: "number", foreground: "d3869b" },
+        ],
+        colors: {
+          "editor.background": "#111111",
+          "editor.foreground": "#ebdbb2",
+          "editor.lineHighlightBackground": "#3c3836",
+          "editorCursor.foreground": "#fabd2f",
+          "menu.background": "#181818",
+          "menu.foreground": "#ebdbb2",
+          "menu.selectionBackground": "#3c3836",
+          "menu.selectionForeground": "#fabd2f",
+          "menu.separatorBackground": "#3c3836",
+          "menu.border": "#282828",
+        },
+      });
+      
+      monaco.editor.defineTheme("gruvbox-light", {
+        base: "vs",
+        inherit: true,
+        rules: [
+          { token: "", foreground: "3c3836", background: "fbf1c7" },
+          { token: "comment", foreground: "7c6f64" },
+          { token: "keyword", foreground: "9d0006" },
+          { token: "string", foreground: "79740e" },
+          { token: "number", foreground: "8f3f71" },
+        ],
+        colors: {
+          "editor.background": "#fbf1c7",
+          "editor.foreground": "#3c3836",
+          "editor.lineHighlightBackground": "#ebdbb2",
+          "editorCursor.foreground": "#b57614",
+          "menu.background": "#ebdbb2",
+          "menu.foreground": "#3c3836",
+          "menu.selectionBackground": "#d5c4a1",
+          "menu.selectionForeground": "#b57614",
+          "menu.separatorBackground": "#d5c4a1",
+          "menu.border": "#d5c4a1",
+        },
+      });
+      
+      monaco.editor.defineTheme("nord", {
+        base: "vs-dark",
+        inherit: true,
+        rules: [
+          { token: "", foreground: "eceff4", background: "2e3440" },
+          { token: "comment", foreground: "616e88" },
+          { token: "keyword", foreground: "81a1c1" },
+          { token: "string", foreground: "a3be8c" },
+          { token: "number", foreground: "b48ead" },
+        ],
+        colors: {
+          "editor.background": "#2e3440",
         "editor.foreground": "#eceff4",
         "editor.lineHighlightBackground": "#3b4252",
         "editorCursor.foreground": "#88c0d0",
@@ -580,7 +588,6 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
         "editor.background": "#1a1b26",
         "editor.foreground": "#a9b1d6",
         "editor.lineHighlightBackground": "#24283b",
-        "editorCursor.foreground": "#bb9af7",
       },
     });
     
@@ -733,6 +740,22 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
       } catch (err) {
         console.error("Editor link interception failed:", err);
       }
+
+      // Context Menu Interception
+      if (editor) {
+        editor.onContextMenu((e: any) => {
+          // Check for selection
+          const selection = editor.getSelection();
+          setHasSelection(selection && !selection.isEmpty());
+          
+          openMenu(e.event.browserEvent);
+        });
+
+        editor.onDidChangeCursorSelection(() => {
+          const selection = editor.getSelection();
+          setHasSelection(selection && !selection.isEmpty());
+        });
+      }
   };
 
   useEffect(() => {
@@ -745,7 +768,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
 
   return (
     <div className={cn(
-      "flex flex-col overflow-hidden bg-[var(--background)]",
+      "flex flex-col overflow-hidden bg-[var(--background)] relative",
       isZenMode ? "fixed inset-0 z-[100]" : "flex-1 h-full"
     )}>
       {isZenMode && (
@@ -884,7 +907,9 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
                     className="flex-1 h-full w-full overflow-hidden"
                   >
                     <MarkdownPreview 
-                      content={content} 
+                      content={deferredContent} 
+                      title={deferredTitle}
+                      note={note}
                       allNotes={allNotes}
                       onNavigate={onNavigate}
                       theme={theme}
@@ -906,7 +931,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
                 animate={{ width: 360, opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="bg-[var(--background)] overflow-y-auto overflow-x-hidden hidden xl:block border-l border-dotted border-[var(--border)] shrink-0 custom-scrollbar"
+                className="bg-[var(--background)] overflow-y-auto overflow-x-hidden hidden xl:block border-l border-dotted border-[var(--border)] shrink-0 custom-scrollbar relative"
               >
                 <div className="w-[360px] p-8 h-full flex flex-col">
                   <section className="space-y-12">
@@ -918,7 +943,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
                             <Activity size={12} className="text-[var(--primary)]" /> System_Analysis
                           </span>
                           <div className="flex gap-1">
-                            <div className="w-1 h-1 bg-[var(--primary)] animate-pulse" />
+                            <div className="w-1 h-1 bg-[var(--primary)]" />
                             <div className="w-4 h-1 bg-[var(--primary)]/20" />
                           </div>
                         </div>
@@ -985,7 +1010,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
                               <span className="text-[10px] text-[var(--foreground)] font-mono font-bold bg-[var(--card)] px-2 py-0.5 rounded-sm border border-[var(--border)]/50">
                                 {note.createdAt ? new Date(note.createdAt).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' }) : "GENESIS_UNKNOWN"}
                               </span>
-                              {!note.createdAt && <span className="text-[8px] text-[var(--destructive)] font-mono animate-pulse">LEGACY_SYNC</span>}
+                              {!note.createdAt && <span className="text-[8px] text-[var(--destructive)] font-mono">LEGACY_SYNC</span>}
                             </div>
                             <span className="text-[7px] text-[var(--muted-foreground)] font-mono opacity-40">ID: {note.id.split('-')[0]}...0x01</span>
                           </div>
@@ -1004,7 +1029,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
                                 {new Date(note.updatedAt).toLocaleString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
                               </span>
                               <div className="flex gap-0.5">
-                                <div className="w-1 h-1 bg-[var(--primary)] rounded-full animate-ping" />
+                                <div className="w-1 h-1 bg-[var(--primary)] rounded-full" />
                                 <span className="text-[7px] text-[var(--primary)] font-mono uppercase">Live</span>
                               </div>
                             </div>
@@ -1092,6 +1117,117 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
           <StatusIndicator />
         </footer>
       )}
+
+      <ContextMenu 
+        isOpen={isOpen}
+        x={x}
+        y={y}
+        onClose={closeMenu}
+        items={[
+          {
+            label: "Cut Selection",
+            icon: Scissors,
+            shortcut: "Cmd+X",
+            disabled: !hasSelection || !isEditing,
+            onClick: () => {
+              editorRef.current?.focus();
+              document.execCommand('cut');
+              toast("SELECTION_CUT_TO_BUFFER", "system");
+            }
+          },
+          {
+            label: "Copy Selection",
+            icon: Copy,
+            shortcut: "Cmd+C",
+            disabled: !hasSelection,
+            onClick: () => {
+              editorRef.current?.focus();
+              document.execCommand('copy');
+              toast("SELECTION_COPIED_TO_BUFFER", "system");
+            }
+          },
+          {
+            label: "Paste Buffer",
+            icon: Clipboard,
+            shortcut: "Cmd+V",
+            disabled: !isEditing,
+            onClick: async () => {
+              try {
+                const text = await navigator.clipboard.readText();
+                const selection = editorRef.current?.getSelection();
+                editorRef.current?.executeEdits("paste", [{
+                  range: selection,
+                  text: text,
+                  forceMoveMarkers: true
+                }]);
+                editorRef.current?.focus();
+                toast("BUFFER_PASTED_TO_EDITOR", "system");
+              } catch (err) {
+                toast("PASTE_FAILED_PERMISSION_DENIED", "error");
+              }
+            }
+          },
+          {
+            label: "Insert Wiki Link",
+            icon: Link,
+            shortcut: "[[ ]]",
+            divider: true,
+            disabled: !isEditing,
+            onClick: () => {
+              const editor = editorRef.current;
+              if (editor) {
+                const model = editor.getModel();
+                const selection = editor.getSelection();
+                const text = selection ? model.getValueInRange(selection) : "";
+                editor.executeEdits("insert-link", [{
+                  range: selection || new (window as any).monaco.Range(1, 1, 1, 1),
+                  text: `[[${text}]]`,
+                  forceMoveMarkers: true
+                }]);
+                editor.focus();
+              }
+            }
+          },
+          {
+            label: isEditing ? "Switch to Read Mode" : "Switch to Edit Mode",
+            icon: isEditing ? Eye : Edit3,
+            shortcut: "Toggle View",
+            divider: true,
+            onClick: () => setIsEditing(!isEditing)
+          },
+          {
+            label: "Format Document",
+            icon: FileCode,
+            shortcut: "Shift+Alt+F",
+            disabled: !isEditing,
+            onClick: () => {
+              editorRef.current?.getAction('editor.action.formatDocument')?.run();
+              toast("DOCUMENT_FORMATTED", "success");
+            }
+          },
+          {
+            label: "Command Palette",
+            icon: Command,
+            shortcut: "F1",
+            divider: true,
+            onClick: () => {
+              editorRef.current?.focus();
+              editorRef.current?.trigger('anyString', 'editor.action.quickCommand');
+            }
+          },
+          {
+            label: "Purge Document",
+            icon: Trash2,
+            variant: "danger",
+            divider: true,
+            onClick: () => {
+              if (confirm("Are you sure you want to permanently purge this data stream?")) {
+                onDelete(note.id);
+              }
+            }
+          }
+        ]}
+      />
     </div>
   );
 });

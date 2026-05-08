@@ -11,14 +11,7 @@ export default function NotFound() {
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
            style={{ backgroundImage: "radial-gradient(#fb4934 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
       
-      <motion.div 
-        animate={{ 
-          opacity: [0.1, 0.3, 0.1],
-          x: [-2, 2, -1]
-        }}
-        transition={{ duration: 0.1, repeat: Infinity }}
-        className="absolute inset-0 bg-[#fb4934]/5 pointer-events-none"
-      />
+
 
       <div className="z-10 flex flex-col items-center max-w-lg text-center">
         <motion.div 
@@ -28,7 +21,7 @@ export default function NotFound() {
         >
           <div className="absolute -top-1 -left-1 w-2 h-2 bg-[#fb4934]" />
           <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-[#fb4934]" />
-          <ShieldAlert size={48} className="text-[#fb4934] animate-pulse" />
+          <ShieldAlert size={48} className="text-[#fb4934]" />
         </motion.div>
 
         <div className="space-y-2 mb-12">
@@ -76,8 +69,7 @@ export default function NotFound() {
         </div>
       </div>
 
-      {/* CRT Scanline */}
-      <div className="fixed inset-0 pointer-events-none z-50 scanline opacity-10" />
+
     </div>
   );
 }

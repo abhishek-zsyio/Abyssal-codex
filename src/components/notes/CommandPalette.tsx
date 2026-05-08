@@ -10,6 +10,7 @@ import Fuse from "fuse.js";
 import { Kbd } from "@/components/ui/DataDisplay";
 import { useTheme } from "@/hooks/use-theme";
 import { usePlugins } from "@/hooks/use-plugins";
+import { CornerAccents } from "@/components/ui/Effects";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -74,7 +75,7 @@ const CommandPalette = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/80"
           />
           <motion.div
             variants={fadeInScale}
@@ -83,6 +84,7 @@ const CommandPalette = ({
             exit="exit"
             className="relative w-full max-w-xl bg-[var(--background)] border border-[var(--border)] shadow-2xl shadow-black/50 overflow-hidden flex flex-col max-h-[80vh]"
           >
+            <CornerAccents />
             <div className="flex items-center px-4 py-3 border-b border-[var(--border)] bg-[var(--card)]">
               <Search size={16} className="text-[var(--muted-foreground)] mr-3" />
               <input

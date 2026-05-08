@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { X, Minus, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { GlitchText } from "./Effects";
+
 const TitleBar = () => {
   const [appWindow, setAppWindow] = useState<any>(null);
 
