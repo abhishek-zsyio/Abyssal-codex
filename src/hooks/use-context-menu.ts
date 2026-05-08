@@ -14,6 +14,7 @@ export function useContextMenu() {
 
   const openMenu = useCallback((e: React.MouseEvent | MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setMenu({
       isOpen: true,
       x: e.clientX,
@@ -32,12 +33,10 @@ export function useContextMenu() {
 
     if (menu.isOpen) {
       window.addEventListener('click', handleGlobalClick);
-      window.addEventListener('contextmenu', handleGlobalClick);
     }
 
     return () => {
       window.removeEventListener('click', handleGlobalClick);
-      window.removeEventListener('contextmenu', handleGlobalClick);
     };
   }, [menu.isOpen, closeMenu]);
 

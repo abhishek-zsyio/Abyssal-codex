@@ -3,15 +3,17 @@
 import React, { useRef, memo, useState, useMemo } from "react";
 import { Note } from "@/types/note";
 import { cn } from "../../lib/utils";
-import { Plus, Search, Trash2, X, Star, Upload, Download, Hash, Tag, HelpCircle, Terminal as TerminalIcon, Package, ShieldCheck, FileText, Calendar, Palette, Share2 } from "lucide-react";
-import { motion, AnimatePresence, Variants } from "framer-motion";
-import { spring, microSpring, staggerContainer, slideInLeft } from "@/lib/transitions";
+import { Plus, Search, X, Hash, Tag, Calendar, Download, Upload } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { staggerContainer, slideInLeft } from "@/lib/transitions";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/DataDisplay";
-import { useTheme } from "@/hooks/use-theme";
 import { usePlugins } from "@/hooks/use-plugins";
 import SidebarPlugins from "./SidebarPlugins";
 import SidebarHelp from "./SidebarHelp";
+import { SidebarItem } from "./sidebar/SidebarItem";
+import { SidebarSkeleton } from "./sidebar/SidebarSkeleton";
+import { SidebarNavigation } from "./sidebar/SidebarNavigation";
 
 interface SidebarProps {
   notes: Note[];
@@ -37,94 +39,6 @@ interface SidebarProps {
   onOpenGraph?: () => void;
 }
 
-const itemVariants: Variants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1 },
-  exit: { opacity: 0 }
-};
-
-const SidebarItem = memo(({ 
-  note, 
-  isActive, 
-  onSelect, 
-  onDelete 
-}: { 
-  note: Note; 
-  isActive: boolean; 
-  onSelect: (id: string) => void; 
-  onDelete: (id: string) => void;
-}) => (
-  <div
-    className={cn(
-      "group relative px-6 py-4 cursor-pointer border-b border-dotted border-[var(--border)]/50 transition-colors",
-      isActive 
-        ? "bg-[var(--card)] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-[var(--primary)]" 
-        : "hover:bg-[var(--card)]/40"
-    )}
-    onClick={() => onSelect(note.id)}
-  >
-    <div className="flex items-center justify-between mb-1.5">
-      <div className="flex items-center gap-2 overflow-hidden">
-        {note.isFavorite && <Star size={10} className="text-[var(--primary)] fill-[var(--primary)] flex-shrink-0" />}
-        <span className={cn(
-          "text-[11px] font-bold uppercase tracking-wider truncate",
-          isActive ? "text-[var(--primary)]" : "text-[var(--foreground)]"
-        )}>
-          {String(note.title || "UNTITLED_DOC")}
-        </span>
-      </div>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(note.id);
-        }}
-        className="opacity-0 group-hover:opacity-100 p-1 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all"
-      >
-        <Trash2 size={12} />
-      </button>
-    </div>
-    
-    <div className="flex items-center justify-between mb-2">
-      <span className="text-[9px] font-mono text-[var(--muted-foreground)] truncate max-w-[80%]">
-        {String(note.content || "").substring(0, 40) || "NO_CONTENT..."}
-      </span>
-      <span className="text-[8px] font-mono text-[var(--muted-foreground)] opacity-50">
-        {new Date(note.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-      </span>
-    </div>
-
-    {(note.tags || []).length > 0 && (
-      <div className="flex gap-1 overflow-hidden">
-        {note.tags?.slice(0, 3).map(tag => (
-          <span key={tag} className="text-[8px] font-mono px-1.5 py-0.5 bg-[var(--card)] border border-[var(--border)] text-[var(--muted-foreground)] uppercase">
-            {tag}
-          </span>
-        ))}
-      </div>
-    )}
-  </div>
-));
-
-SidebarItem.displayName = "SidebarItem";
-
-const SidebarSkeleton = () => (
-  <div className="space-y-0">
-    {[1, 2, 3, 4, 5].map(i => (
-      <div key={i} className="px-6 py-4 border-b border-dotted border-[var(--border)]/50">
-        <div className="flex justify-between mb-2">
-          <div className="h-3 w-2/3 bg-[var(--border)] rounded-sm opacity-50" />
-          <div className="h-3 w-4 bg-[var(--border)] rounded-sm opacity-30" />
-        </div>
-        <div className="h-2 w-full bg-[var(--border)] rounded-sm opacity-20 mb-2" />
-        <div className="flex gap-1">
-          <div className="h-3 w-10 bg-[var(--border)] rounded-sm opacity-10" />
-          <div className="h-3 w-12 bg-[var(--border)] rounded-sm opacity-10" />
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
 const Sidebar = memo(({
   notes,
   activeNoteId,
@@ -136,11 +50,8 @@ const Sidebar = memo(({
   onClose,
   exportAllNotes,
   importNotes,
-  onOpenHelp,
   onOpenThemes,
-
   onToggleTerminal,
-  onOpenPlugins,
   onOpenAuth,
   isLoggedIn,
   isLoading,
@@ -148,7 +59,6 @@ const Sidebar = memo(({
   onViewChange,
   onOpenGraph,
 }: SidebarProps) => {
-  const { theme, setTheme } = useTheme();
   const { isEnabled } = usePlugins();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -165,9 +75,18 @@ const Sidebar = memo(({
   }, [notes]);
 
   const displayNotes = useMemo(() => {
-    if (!activeTag) return notes;
-    return notes.filter(n => (n.tags || []).includes(activeTag));
-  }, [notes, activeTag]);
+    let filtered = notes;
+    if (searchQuery) {
+      filtered = filtered.filter(n => 
+        n.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        n.content?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    if (activeTag) {
+      filtered = filtered.filter(n => (n.tags || []).includes(activeTag));
+    }
+    return filtered;
+  }, [notes, searchQuery, activeTag]);
 
   const pinnedNotes = useMemo(() => displayNotes.filter(n => n.isFavorite), [displayNotes]);
   const regularNotes = useMemo(() => displayNotes.filter(n => !n.isFavorite), [displayNotes]);
@@ -189,132 +108,15 @@ const Sidebar = memo(({
 
   return (
     <aside className="w-80 h-full flex border-r border-dotted border-[var(--border)] bg-[var(--background)]">
-      <div className="w-14 h-full border-r border-dotted border-[var(--border)] flex flex-col items-center py-6 gap-4 bg-[var(--card)]/30">
-        <div className="flex-1 flex flex-col items-center gap-4">
-          <Button
-            onClick={() => setActiveView("explorer")}
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "w-10 h-10 transition-all",
-              activeView === "explorer" ? "text-[var(--primary)] bg-[var(--primary)]/10" : "text-[var(--muted-foreground)] hover:text-[var(--primary)]"
-            )}
-            title="Explorer (Notes)"
-          >
-            <FileText size={18} />
-            {activeView === "explorer" && (
-              <motion.div 
-                layoutId="active-indicator" 
-                transition={microSpring}
-                className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--primary)] rounded-full shadow-[0_0_8px_var(--primary)]" 
-              />
-            )}
-          </Button>
-
-          <Button
-            onClick={() => setActiveView("plugins")}
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "w-10 h-10 transition-all",
-              activeView === "plugins" ? "text-[var(--primary)] bg-[var(--primary)]/10" : "text-[var(--muted-foreground)] hover:text-[var(--primary)]"
-            )}
-            title="Marketplace (Plugins)"
-          >
-            <Package size={18} />
-            {activeView === "plugins" && (
-              <motion.div 
-                layoutId="active-indicator" 
-                transition={microSpring}
-                className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--primary)] rounded-full shadow-[0_0_8px_var(--primary)]" 
-              />
-            )}
-          </Button>
-
-          <Button
-            onClick={onOpenGraph}
-            variant="ghost"
-            size="icon"
-            className="w-10 h-10 transition-all text-[var(--muted-foreground)] hover:text-[var(--primary)]"
-            title="Nexus Graph (Visualizer)"
-          >
-            <Share2 size={18} />
-          </Button>
-
-          <div className="w-8 h-px bg-[var(--border)] my-2 opacity-50" />
-          
-          <Button 
-            onClick={onOpenThemes} 
-            variant="ghost" 
-            size="icon" 
-            className="w-10 h-10 text-[var(--muted-foreground)] hover:text-[var(--primary)]"
-            title="Select Visual Interface Theme"
-          >
-            <Palette size={18} />
-          </Button>
-          
-          <Button
-            onClick={onToggleTerminal}
-            variant="ghost"
-            size="icon"
-            className="w-10 h-10 text-[var(--muted-foreground)] hover:text-[var(--primary)]"
-            title="Toggle Terminal Kernel (`)"
-          >
-            <TerminalIcon size={16} />
-          </Button>
-        </div>
-
-        <div className="mt-auto flex flex-col items-center gap-4">
-          <Button
-            onClick={onOpenAuth}
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "w-10 h-10 transition-all",
-              isLoggedIn ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--primary)]"
-            )}
-            title={isLoggedIn ? "Identity Synchronized" : "Initialize Identity (Login)"}
-          >
-            <div className="relative">
-              <ShieldCheck size={16} />
-              {isLoggedIn && (
-                <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[var(--primary)] rounded-full shadow-[0_0_8px_var(--primary)]" />
-              )}
-            </div>
-          </Button>
-
-          <Button
-            onClick={() => setActiveView("help")}
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "w-10 h-10 transition-all",
-              activeView === "help" ? "text-[var(--primary)] bg-[var(--primary)]/10" : "text-[var(--muted-foreground)] hover:text-[var(--primary)]"
-            )}
-            title="System Manual (Help)"
-          >
-            <HelpCircle size={18} />
-            {activeView === "help" && (
-              <motion.div 
-                layoutId="active-indicator" 
-                transition={microSpring}
-                className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--primary)] rounded-full shadow-[0_0_8px_var(--primary)]" 
-              />
-            )}
-          </Button>
-        </div>
-
-        {/* Live Status Indicator */}
-        <div className="flex flex-col items-center gap-2 mb-4">
-           <div className="flex flex-col items-center gap-1 group cursor-help" title="SYSTEM_STATUS: OPERATIONAL">
-              <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest opacity-60">Status</span>
-              <div className="relative">
-                 <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-              </div>
-              <span className="text-[8px] font-mono text-[var(--accent)] font-bold uppercase tracking-tighter">Live</span>
-           </div>
-        </div>
-      </div>
+      <SidebarNavigation 
+        activeView={activeView}
+        setActiveView={setActiveView}
+        onOpenGraph={onOpenGraph}
+        onOpenThemes={onOpenThemes}
+        onToggleTerminal={onToggleTerminal}
+        onOpenAuth={onOpenAuth}
+        isLoggedIn={isLoggedIn}
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <AnimatePresence mode="wait">
@@ -436,20 +238,10 @@ const Sidebar = memo(({
                            <span>Pinned Notes</span>
                            <Badge variant="warning">{pinnedNotes.length}</Badge>
                         </div>
-                        <motion.div 
-                          variants={staggerContainer}
-                          initial="hidden"
-                          animate="show"
-                        >
+                        <motion.div variants={staggerContainer} initial="hidden" animate="show">
                           <AnimatePresence mode="popLayout">
                             {pinnedNotes.map(note => (
-                              <SidebarItem
-                                key={note.id}
-                                note={note}
-                                isActive={activeNoteId === note.id}
-                                onSelect={onSelectNote}
-                                onDelete={onDeleteNote}
-                              />
+                              <SidebarItem key={note.id} note={note} isActive={activeNoteId === note.id} onSelect={onSelectNote} onDelete={onDeleteNote} />
                             ))}
                           </AnimatePresence>
                         </motion.div>
@@ -460,20 +252,10 @@ const Sidebar = memo(({
                          <span>All Notes</span>
                          <Badge>{regularNotes.length}</Badge>
                       </div>
-                      <motion.div 
-                        variants={staggerContainer}
-                        initial="hidden"
-                        animate="show"
-                      >
+                      <motion.div variants={staggerContainer} initial="hidden" animate="show">
                         <AnimatePresence mode="popLayout">
                           {regularNotes.map(note => (
-                            <SidebarItem
-                              key={note.id}
-                              note={note}
-                              isActive={activeNoteId === note.id}
-                              onSelect={onSelectNote}
-                              onDelete={onDeleteNote}
-                            />
+                            <SidebarItem key={note.id} note={note} isActive={activeNoteId === note.id} onSelect={onSelectNote} onDelete={onDeleteNote} />
                           ))}
                         </AnimatePresence>
                       </motion.div>
@@ -484,42 +266,18 @@ const Sidebar = memo(({
 
               <div className="p-4 border-t border-dotted border-[var(--border)] bg-[var(--background)]">
                 <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={exportAllNotes} size="sm">
-                    <Download size={12} className="mr-2" /> Export
-                  </Button>
-                  <Button onClick={() => fileInputRef.current?.click()} size="sm">
-                    <Upload size={12} className="mr-2" /> Import
-                  </Button>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileChange} 
-                    accept=".json" 
-                    className="hidden" 
-                  />
+                  <Button onClick={exportAllNotes} size="sm"><Download size={12} className="mr-2" /> Export</Button>
+                  <Button onClick={() => fileInputRef.current?.click()} size="sm"><Upload size={12} className="mr-2" /> Import</Button>
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                 </div>
               </div>
             </motion.div>
           ) : activeView === "plugins" ? (
-            <motion.div 
-              key="plugins"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              transition={{ duration: 0.15 }}
-              className="flex-1 flex flex-col overflow-hidden"
-            >
+            <motion.div key="plugins" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.15 }} className="flex-1 flex flex-col overflow-hidden">
               <SidebarPlugins onClose={onClose} />
             </motion.div>
           ) : (
-            <motion.div 
-              key="help"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              transition={{ duration: 0.15 }}
-              className="flex-1 flex flex-col overflow-hidden"
-            >
+            <motion.div key="help" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.15 }} className="flex-1 flex flex-col overflow-hidden">
               <SidebarHelp onClose={onClose} />
             </motion.div>
           )}

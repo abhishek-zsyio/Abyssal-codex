@@ -23,6 +23,7 @@ interface MarkdownPreviewProps {
   theme: string;
   isEnabled: (id: string) => boolean;
   availablePlugins: PluginMetadata[];
+  onContextMenu?: (e: React.MouseEvent) => void;
 }
 
 const MarkdownPreview = memo(({ 
@@ -33,7 +34,8 @@ const MarkdownPreview = memo(({
   onNavigate, 
   theme, 
   isEnabled, 
-  availablePlugins 
+  availablePlugins,
+  onContextMenu
 }: MarkdownPreviewProps) => {
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
   const [showAllChunks, setShowAllChunks] = useState(false);
@@ -65,6 +67,7 @@ const MarkdownPreview = memo(({
   return (
     <div 
       ref={containerRef}
+      onContextMenu={onContextMenu}
       className="flex-1 h-full w-full overflow-y-auto custom-scrollbar relative bg-[var(--card)]/50 tech-grid selection:bg-[var(--primary)] selection:text-[var(--background)]"
     >
       {/* Atmospheric Accents */}

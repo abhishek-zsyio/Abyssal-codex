@@ -11,16 +11,11 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-      e.stopPropagation();
-      return false;
     };
     
-    // Most aggressive suppression possible
-    window.addEventListener("contextmenu", handleContextMenu, { capture: true });
     window.oncontextmenu = handleContextMenu as any;
     
     return () => {
-      window.removeEventListener("contextmenu", handleContextMenu, { capture: true });
       window.oncontextmenu = null;
     };
   }, []);
