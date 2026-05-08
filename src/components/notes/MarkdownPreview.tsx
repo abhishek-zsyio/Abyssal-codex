@@ -10,17 +10,25 @@ import { gruvboxDark, nord, dracula, oneDark } from "react-syntax-highlighter/di
 import { Button } from "@/components/ui/Button";
 import { splitMarkdown } from "@/utils/markdown-splitter";
 
+import { Note } from "@/types/note";
+
+import { PluginMetadata } from "@/types/plugin";
+
 interface MarkdownPreviewProps {
   content: string;
-  allNotes: any[];
+  title?: string;
+  note?: Note;
+  allNotes: Note[];
   onNavigate?: (id: string) => void;
   theme: string;
   isEnabled: (id: string) => boolean;
-  availablePlugins: any[];
+  availablePlugins: PluginMetadata[];
 }
 
 const MarkdownPreview = memo(({ 
   content, 
+  title,
+  note,
   allNotes, 
   onNavigate, 
   theme, 

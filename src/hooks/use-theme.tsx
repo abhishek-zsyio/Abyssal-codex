@@ -14,23 +14,13 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("dark");
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("abyssal-theme") as Theme | null;
-    if (savedTheme) {
-      setThemeState(savedTheme);
-      applyTheme(savedTheme);
-    } else {
-      applyTheme("dark");
-    }
-  }, []);
+  const [mounted, setMounted] = useState(false);
 
   const applyTheme = (newTheme: Theme) => {
+    if (typeof window === "undefined") return;
     const root = document.documentElement;
-    // Remove all possible theme classes if we use classes, or just use data-theme
     root.setAttribute("data-theme", newTheme);
     
-    // For backwards compatibility with .light/.dark classes
     if (newTheme === "light") {
       root.classList.add("light");
       root.classList.remove("dark");
@@ -39,6 +29,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.classList.remove("light");
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+    const savedTheme = localStorage.getItem("abyssal-theme") as Theme | null;
+    if (savedTheme) {
+      setThemeState(savedTheme);
+      applyTheme(savedTheme);
+    } else {
+      applyTheme("dark");
+    }
+  }, []);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
@@ -50,6 +51,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const newTheme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
   };
+
+  if (!mounted) {
+    return <>{children}</>;
+  }
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>

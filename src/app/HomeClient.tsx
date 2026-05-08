@@ -408,31 +408,22 @@ function HomeContent() {
                 >
                   {/* Internal Editor Tabs (Subtle) */}
                   {openNoteIds.length > 0 && (
-                    <div className="flex bg-[var(--background)] border-b border-[var(--border)] overflow-x-auto no-scrollbar min-h-[32px]">
+                    <div className="flex bg-[var(--background)] border-b border-[var(--border)] overflow-x-auto no-scrollbar min-h-[40px]">
                       {openNoteIds.map(id => {
                         const note = notes.find(n => n.id === id);
                         if (!note) return null;
                         return (
-                          <button 
+                          <Tab 
                             key={id}
-                            onClick={() => handleSelectNote(id)}
-                            className={cn(
-                              "px-4 h-8 flex items-center gap-2 border-r border-[var(--border)] text-[9px] font-mono uppercase tracking-widest transition-all",
-                              activeNoteId === id ? "bg-[var(--card)] text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:bg-[var(--card)]/50"
-                            )}
-                          >
-                            <FileText size={10} />
-                            {note.title || "UNTITLED"}
-                            <div 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCloseNote(id);
-                              }}
-                              className="ml-2 hover:text-[var(--destructive)]"
-                            >
-                              <X size={10} />
-                            </div>
-                          </button>
+                            id={id}
+                            title={note.title || "UNTITLED"}
+                            isActive={activeNoteId === id}
+                            onSelect={() => handleSelectNote(id)}
+                            onClose={(e) => {
+                              e.stopPropagation();
+                              handleCloseNote(id);
+                            }}
+                          />
                         );
                       })}
                     </div>
@@ -511,14 +502,6 @@ function HomeContent() {
   );
 }
 
-export default function Home() {
-  return (
-    <Suspense fallback={
-      <div className="h-screen w-full flex items-center justify-center bg-[var(--background)]">
-        <Spinner className="w-12 h-12" />
-      </div>
-    }>
-      <HomeContent />
-    </Suspense>
-  );
+export default function HomeClient() {
+  return <HomeContent />;
 }

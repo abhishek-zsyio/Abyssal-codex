@@ -22,7 +22,7 @@ export function splitMarkdown(content: string, maxChunkSize: number = 8000): str
 
   // Phase 2: Refine chunks that are still too large
   const refinedChunks: string[] = [];
-  for (let chunk of chunks) {
+  for (const chunk of chunks) {
     if (!chunk) continue;
 
     if (chunk.length > maxChunkSize * 1.5) {

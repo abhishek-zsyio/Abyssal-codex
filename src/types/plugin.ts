@@ -13,9 +13,9 @@ export interface PluginMetadata {
   guide?: string; // Markdown documentation for the plugin
   // Dynamic hooks for injection
   hooks?: {
-    editorHeaderRight?: React.ComponentType<any>;
+    editorHeaderRight?: React.ComponentType<unknown>;
     codeBlockHeader?: React.ComponentType<{ language: string; code: string }>;
-    editorSidebar?: React.ComponentType<any>;
+    editorSidebar?: React.ComponentType<unknown>;
   };
 }
 

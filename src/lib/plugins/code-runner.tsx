@@ -25,9 +25,10 @@ export const CodeBlockHeader = ({ language, code }: { language: string; code: st
         window.dispatchEvent(new CustomEvent('abyssal-log', { 
           detail: { message: output || "EXECUTION_SUCCESSFUL: (NO_OUTPUT)", type: 'success' } 
         }));
-      } catch (err: any) {
+      } catch (err) {
+        const error = err as Error;
         window.dispatchEvent(new CustomEvent('abyssal-log', { 
-          detail: { message: `RUNTIME_ERROR: ${err.message}`, type: 'error' } 
+          detail: { message: `RUNTIME_ERROR: ${error.message}`, type: 'error' } 
         }));
       }
     } else {

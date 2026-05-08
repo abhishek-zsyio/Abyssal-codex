@@ -22,39 +22,35 @@ export function PluginProvider({ children }: { children: ReactNode }) {
   const [pluginStates, setPluginStates] = useState<Record<PluginId, PluginState>>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadPlugins = useCallback(async () => {
-    const saved = await storage.getPlugins<Record<PluginId, PluginState>>();
-    const initial: Record<PluginId, PluginState> = {};
-    
-    // Always start with all plugins from registry as disabled/uninstalled
-    AVAILABLE_PLUGINS.forEach(p => {
-      initial[p.id] = {
-        id: p.id,
-        enabled: false,
-        installed: false
-      };
-    });
-
-    // Merge saved data over initial states
-    if (saved) {
-      Object.keys(saved).forEach(id => {
-        if (initial[id]) {
-          initial[id] = { ...initial[id], ...saved[id] };
-        }
-      });
-    }
-    
-    setPluginStates(initial);
-    setIsLoading(false);
-  }, []);
-
   useEffect(() => {
-    loadPlugins();
-  }, [loadPlugins]);
+    let isMounted = true;
+    const init = async () => {
+      const saved = await storage.getPlugins<Record<PluginId, PluginState>>();
+      if (!isMounted) return;
 
-  const saveState = useCallback(async (newState: Record<PluginId, PluginState>) => {
-    setPluginStates(newState);
-    await storage.savePlugins(newState);
+      const initial: Record<PluginId, PluginState> = {};
+      AVAILABLE_PLUGINS.forEach(p => {
+        initial[p.id] = {
+          id: p.id,
+          enabled: false,
+          installed: false
+        };
+      });
+
+      if (saved) {
+        Object.keys(saved).forEach(id => {
+          if (initial[id as PluginId]) {
+            initial[id as PluginId] = { ...initial[id as PluginId], ...saved[id as PluginId] };
+          }
+        });
+      }
+      
+      setPluginStates(initial);
+      setIsLoading(false);
+    };
+
+    init();
+    return () => { isMounted = false; };
   }, []);
 
   const togglePlugin = useCallback(async (id: PluginId) => {

@@ -9,8 +9,10 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 
+import { Note } from "@/types/note";
+
 export default function SharedNoteClient({ params }: { params: { id: string } }) {
-  const [note, setNote] = useState<any>(null);
+  const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +29,17 @@ export default function SharedNoteClient({ params }: { params: { id: string } })
         if (error || !data || !data.is_public) {
           setError("DATA_SEGMENT_NOT_FOUND");
         } else {
-          setNote(data);
+          const mappedNote: Note = {
+            id: data.id,
+            title: data.title,
+            content: data.content,
+            isFavorite: data.is_favorite,
+            isPublic: data.is_public,
+            tags: data.tags || [],
+            updatedAt: new Date(data.updated_at).getTime(),
+            createdAt: new Date(data.created_at).getTime(),
+          };
+          setNote(mappedNote);
         }
       } catch (err) {
         setError("CONNECTION_INTERRUPTED");
@@ -183,7 +195,7 @@ export default function SharedNoteClient({ params }: { params: { id: string } })
               {note.id.split('-')[0]}
             </div>
             <div className="px-4 py-2 border border-[#282828] bg-[#111] text-[10px] font-mono text-[#928374] uppercase tracking-[0.2em]">
-              MODIFIED_{new Date(note.updated_at).toLocaleDateString()}
+              MODIFIED_{new Date(note.updatedAt).toLocaleDateString()}
             </div>
             {note.tags?.map((tag: string) => (
               <div key={tag} className="px-4 py-2 border border-[#fabd2f]/30 bg-[#fabd2f]/5 text-[10px] font-mono text-[#fabd2f] uppercase tracking-[0.2em] font-bold">

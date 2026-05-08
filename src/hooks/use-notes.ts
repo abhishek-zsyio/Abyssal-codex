@@ -59,7 +59,7 @@ export function useNotes() {
           .order("updated_at", { ascending: false });
 
         if (data && !error) {
-          const remoteNotes: Note[] = data.map((n: any) => ({
+          const remoteNotes: Note[] = (data as any[]).map((n) => ({
             id: n.id,
             title: n.title,
             content: n.content,
@@ -135,11 +135,11 @@ export function useNotes() {
         });
         toast(`Cloud sync failed: ${error.message || "Unknown error"}`, "error");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Cloud Sync Error (Exception):", err);
       toast("Cloud sync failed: Connection error", "error");
     }
-  }, [user, supabase]);
+  }, [user, supabase, toast]);
 
   // Debounced persistence
   useEffect(() => {
@@ -160,7 +160,7 @@ export function useNotes() {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [notes]);
+  }, [notes, syncToCloud, user]);
 
   const addNote = useCallback((title = "Untitled Note", content = "") => {
     const newNote: Note = {
@@ -200,7 +200,7 @@ export function useNotes() {
           toast("Failed to delete note from cloud", "error");
           return;
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Delete Error (Exception):", err);
         toast("Connection error during delete", "error");
         return;

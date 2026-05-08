@@ -1,9 +1,8 @@
 import "./globals.css";
-import TitleBar from "@/components/ui/TitleBar";
-import { AppProviders } from "@/components/providers/AppProviders";
 import { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://abyssal-codex.vercel.app"),
   title: {
     default: "Abyssal Codex",
     template: "%s | Abyssal Codex"
@@ -47,14 +46,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" className="dark">
       <body
         className="antialiased selection:bg-[var(--primary)]/30 bg-[var(--background)] text-[var(--foreground)] h-screen overflow-hidden flex flex-col font-sans"
       >
-        <AppProviders>
-          <TitleBar />
-          {children}
-        </AppProviders>
+        {children}
       </body>
     </html>
   );

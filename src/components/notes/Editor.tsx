@@ -55,6 +55,30 @@ interface EditorProps {
   showSidebar?: boolean;
 }
 
+interface EditorHeaderProps {
+  title: string;
+  id: string;
+  isFavorite: boolean;
+  isPublic: boolean;
+  isEditing: boolean;
+  isZenMode: boolean;
+  copiedContent: boolean;
+  copiedLink: boolean;
+  copiedShareLink: boolean;
+  onToggleFavorite: () => void;
+  onTogglePublic: () => void;
+  onDownload: () => void;
+  onToggleEdit: (editing: boolean) => void;
+  onToggleZen: () => void;
+  onCopy: () => void;
+  onCopyWikiLink: () => void;
+  onCopyShareLink: () => void;
+  onCommit: () => void;
+  isRightSidebarOpen: boolean;
+  onToggleRightSidebar: () => void;
+  isSaving: boolean;
+}
+
 const EditorHeader = ({
   title,
   id,
@@ -77,7 +101,7 @@ const EditorHeader = ({
   isRightSidebarOpen,
   onToggleRightSidebar,
   isSaving
-}: any) => {
+}: EditorHeaderProps) => {
   const { isEnabled } = usePlugins();
   return (
   <header className="h-auto md:h-14 border-b border-dotted border-[var(--border)] flex flex-col md:flex-row items-stretch md:items-center justify-between px-4 md:px-6 bg-[var(--background)] py-2 md:py-0 gap-4 md:gap-0">
@@ -277,7 +301,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
   const notesRef = useRef<Note[]>(allNotes || []);
-  const navigateRef = useRef(onNavigate);
+  const navigateRef = useRef<(id: string) => void>(onNavigate || (() => {}));
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
