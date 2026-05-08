@@ -115,13 +115,8 @@ export function useNotes() {
       .upsert(upsertData, { onConflict: "id" });
 
     if (error) {
-      toast(`Cloud sync failed: ${error.message}`, "error");
-      console.error("Cloud Sync Error Details:", {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
+      toast(`Cloud sync failed: ${error.message || "Unknown error"}`, "error");
+      console.error("Cloud Sync Error Details:", error);
     }
   }, [user, supabase]);
 

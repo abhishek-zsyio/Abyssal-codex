@@ -394,6 +394,7 @@ function HomeContent() {
                     notes={notes} 
                     variant="tab"
                     onSelectNote={handleSelectNote}
+                    onUpdateNote={updateNote}
                   />
                 </motion.div>
               ) : (

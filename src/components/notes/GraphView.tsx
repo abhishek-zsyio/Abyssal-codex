@@ -16,6 +16,7 @@ interface GraphViewProps {
   notes: Note[];
   variant?: "modal" | "tab";
   onSelectNote?: (id: string) => void;
+  onUpdateNote?: (id: string, updates: Partial<Note>) => void;
 }
 
 interface Node extends d3.SimulationNodeDatum {
@@ -24,6 +25,7 @@ interface Node extends d3.SimulationNodeDatum {
   content: string;
   size: number;
   color: string;
+  isGhost?: boolean;
 }
 
 interface Link extends d3.SimulationLinkDatum<Node> {
@@ -39,7 +41,7 @@ interface Particle {
   size: number;
 }
 
-export default function GraphView({ isOpen, onClose, notes, variant = "modal", onSelectNote }: GraphViewProps) {
+export default function GraphView({ isOpen, onClose, notes, variant = "modal", onSelectNote, onUpdateNote }: GraphViewProps) {
   const { theme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,10 +54,15 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
   const [searchQuery, setSearchQuery] = useState("");
   const [showHUD, setShowHUD] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [isLinkMode, setIsLinkMode] = useState(false);
+  const [linkSource, setLinkSource] = useState<Node | null>(null);
   
   const searchQueryRef = useRef("");
   const isPausedRef = useRef(false);
   const showHUDRef = useRef(true);
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [activeHoveredNode, setActiveHoveredNode] = useState<Node | null>(null);
 
   useEffect(() => {
     searchQueryRef.current = searchQuery;
@@ -130,24 +137,49 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
 
     const links: Link[] = [];
     const connectedPairs = new Set<string>();
+    const ghostNodesMap = new Map<string, Node>();
 
     notes.forEach(sourceNote => {
       const wikiLinks = sourceNote.content?.match(/\[\[(.*?)\]\]/g) || [];
-      const uniqueTargets = new Set(wikiLinks.map(l => l.slice(2, -2).toLowerCase().trim()));
+      const uniqueTargets = new Set(wikiLinks.map(l => l.slice(2, -2).trim()));
 
       uniqueTargets.forEach(targetTitle => {
-        const targetNode = nodes.find(n => n.title.toLowerCase().trim() === targetTitle);
+        if (!targetTitle) return;
+        let targetNode = nodes.find(n => n.title.toLowerCase() === targetTitle.toLowerCase());
+        
+        if (!targetNode) {
+          const ghostId = `ghost-${targetTitle.toLowerCase()}`;
+          if (ghostNodesMap.has(ghostId)) {
+            targetNode = ghostNodesMap.get(ghostId)!;
+          } else {
+            targetNode = {
+              id: ghostId,
+              title: targetTitle,
+              content: "",
+              size: 5,
+              color: themeColors.current.muted,
+              isGhost: true,
+              x: (Math.random() - 0.5) * 100,
+              y: (Math.random() - 0.5) * 100,
+            };
+            ghostNodesMap.set(ghostId, targetNode);
+          }
+        }
+
         if (targetNode && targetNode.id !== sourceNote.id) {
-          const pairKey = [sourceNote.id, targetNode.id].sort().join("---");
-          if (!connectedPairs.has(pairKey)) {
+          const pairId = [sourceNote.id, targetNode.id].sort().join("-");
+          if (!connectedPairs.has(pairId)) {
             links.push({ source: sourceNote.id, target: targetNode.id });
-            connectedPairs.add(pairKey);
+            connectedPairs.add(pairId);
           }
         }
       });
     });
 
-    return { initialNodes: nodes, initialLinks: links };
+    return { 
+      initialNodes: [...nodes, ...Array.from(ghostNodesMap.values())], 
+      initialLinks: links 
+    };
   }, [notes]);
 
   useEffect(() => {
@@ -301,40 +333,61 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
         }
 
         // Core Ring
+        const isLinkSrc = linkSource?.id === node.id;
         ctx.beginPath();
-        ctx.arc(node.x!, node.y!, size + (isHovered ? 2 : 1), 0, Math.PI * 2);
-        ctx.strokeStyle = node.color;
-        ctx.lineWidth = 1 / k;
+        if (node.isGhost) {
+          ctx.setLineDash([5 / k, 3 / k]);
+        }
+        ctx.arc(node.x!, node.y!, size + (isHovered || isLinkSrc ? 2 : 1), 0, Math.PI * 2);
+        ctx.strokeStyle = isLinkSrc ? themeColors.current.primary : (node.isGhost ? themeColors.current.muted : node.color);
+        ctx.lineWidth = (isHovered || isLinkSrc ? 2 : 1) / k;
         ctx.stroke();
+        ctx.setLineDash([]); // Reset dash
 
         // Solid Core
         ctx.beginPath();
         ctx.arc(node.x!, node.y!, size * 0.6, 0, Math.PI * 2);
-        ctx.fillStyle = node.color;
-        ctx.fill();
+        ctx.fillStyle = isLinkSrc ? themeColors.current.primary : (node.isGhost ? "transparent" : node.color);
+        if (node.isGhost) {
+          ctx.strokeStyle = themeColors.current.muted;
+          ctx.lineWidth = 1 / k;
+          ctx.stroke();
+        } else {
+          ctx.fill();
+        }
 
         // Data Label
-        if (isHovered && k > 0.6) {
+        if ((isHovered || isLinkSrc) && k > 0.6) {
           ctx.fillStyle = themeColors.current.foreground;
           ctx.font = `bold ${9 / k}px JetBrains Mono, monospace`;
           ctx.fillText(node.title.toUpperCase(), node.x! + size + 8, node.y! + 3);
           
-          ctx.font = `${7 / k}px JetBrains Mono, monospace`;
-          ctx.fillStyle = themeColors.current.primary;
-          ctx.fillText(`ID: ${node.id.substring(0, 8)}`, node.x! + size + 8, node.y! + 12);
+          if (isLinkSrc) {
+            ctx.font = `italic ${7 / k}px JetBrains Mono, monospace`;
+            ctx.fillStyle = themeColors.current.primary;
+            ctx.fillText("SOURCE_NODE", node.x! + size + 8, node.y! + 12);
+          } else if (node.isGhost) {
+            ctx.font = `bold ${7 / k}px JetBrains Mono, monospace`;
+            ctx.fillStyle = themeColors.current.destructive;
+            ctx.fillText("STATUS: BROKEN_LINK", node.x! + size + 8, node.y! + 12);
+          } else {
+            ctx.font = `${7 / k}px JetBrains Mono, monospace`;
+            ctx.fillStyle = themeColors.current.primary;
+            ctx.fillText(`ID: ${node.id.substring(0, 8)}`, node.x! + size + 8, node.y! + 12);
+          }
         }
       });
 
       // 5. Active Sector Scan
-      if (currentHoverId) {
-        const hoverNodeObj = initialNodes.find(n => n.id === currentHoverId);
+      if (currentHoverId || linkSource) {
+        const hoverNodeObj = initialNodes.find(n => n.id === (currentHoverId || linkSource?.id));
         if (hoverNodeObj) {
-          const scanRadius = (time * 120) % 200;
+          const scanRadius = (time * (currentHoverId ? 120 : 60)) % (currentHoverId ? 200 : 100);
           ctx.beginPath();
           ctx.arc(hoverNodeObj.x!, hoverNodeObj.y!, scanRadius, 0, Math.PI * 2);
           ctx.strokeStyle = hoverNodeObj.color;
           ctx.lineWidth = 0.5 / k;
-          ctx.globalAlpha = Math.max(0, 0.4 * (1 - scanRadius / 200));
+          ctx.globalAlpha = Math.max(0, 0.4 * (1 - scanRadius / (currentHoverId ? 200 : 100)));
           ctx.stroke();
           
           // Crosshair
@@ -348,6 +401,13 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
           ctx.globalAlpha = 0.8;
           ctx.stroke();
         }
+      }
+      
+      // 6. Link Preview Line
+      if (isLinkMode && linkSource && !currentHoverId) {
+        const rect = canvasRef.current!.getBoundingClientRect();
+        // We need mouse pos, but we don't have it in render easily without another ref
+        // Let's skip the line for now or add mouseRef
       }
 
       ctx.restore();
@@ -383,6 +443,16 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
     if (foundId !== hoveredNodeRef.current) {
       hoveredNodeRef.current = foundId;
       setHoveredNode(found);
+      
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+      
+      if (found) {
+        hoverTimerRef.current = setTimeout(() => {
+          setActiveHoveredNode(found);
+        }, 300); // 300ms delay to prevent flickering
+      } else {
+        setActiveHoveredNode(null);
+      }
     }
   }, [initialNodes]);
 
@@ -397,7 +467,7 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
         const onMove = (moveEvent: MouseEvent) => {
           const dx = (moveEvent.clientX - startX) / transformRef.current.k;
           const dy = (moveEvent.clientY - startY) / transformRef.current.k;
-          if (Math.abs(dx) > 2 || Math.abs(dy) > 2) hasMoved = true;
+          if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
           
           node.fx = nodeStartX + dx;
           node.fy = nodeStartY + dy;
@@ -408,8 +478,30 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
         const nodeStartY = node.y!;
 
         const onUp = () => {
-          if (!hasMoved && onSelectNote) {
-            onSelectNote(node.id);
+          if (!hasMoved) {
+            if (isLinkMode) {
+              if (!linkSource) {
+                setLinkSource(node);
+              } else if (linkSource.id !== node.id) {
+                // CREATE LINK
+                if (onUpdateNote) {
+                  const sourceNote = notes.find(n => n.id === linkSource.id);
+                  if (sourceNote) {
+                    const linkText = `\n\n[[${node.title}]]`;
+                    onUpdateNote(sourceNote.id, {
+                      content: (sourceNote.content || "") + linkText
+                    });
+                    // Feedback effect could be added here
+                  }
+                }
+                setLinkSource(null);
+                setIsLinkMode(false);
+              } else {
+                setLinkSource(null);
+              }
+            } else if (onSelectNote) {
+              onSelectNote(node.id);
+            }
           }
           isDraggingNodeRef.current = false;
           node.fx = null;
@@ -444,7 +536,7 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  }, [initialNodes, onSelectNote]);
+  }, [initialNodes, onSelectNote, isLinkMode, linkSource, notes, onUpdateNote]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (e.ctrlKey) return;
@@ -499,12 +591,22 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
 
                   <div className="flex bg-[var(--background)] border border-[var(--border)] p-1 rounded-lg">
                      <button 
-                       onClick={() => setShowHUD(!showHUD)} 
-                       className={cn("p-2 transition-all", showHUD ? "text-[var(--primary)]" : "text-[var(--muted-foreground)]")}
-                       title="Toggle HUD Overlay"
-                     >
-                        <Activity size={16} />
-                     </button>
+                        onClick={() => {
+                          setIsLinkMode(!isLinkMode);
+                          setLinkSource(null);
+                        }} 
+                        className={cn("p-2 transition-all", isLinkMode ? "text-[var(--primary)] bg-[var(--primary)]/10" : "text-[var(--muted-foreground)]")}
+                        title="Neural Linkage Protocol (Connect Notes)"
+                      >
+                         <Hash size={16} />
+                      </button>
+                      <button 
+                        onClick={() => setShowHUD(!showHUD)} 
+                        className={cn("p-2 transition-all", showHUD ? "text-[var(--primary)]" : "text-[var(--muted-foreground)]")}
+                        title="Toggle HUD Overlay"
+                      >
+                         <Activity size={16} />
+                      </button>
                      <button 
                        onClick={() => setIsPaused(!isPaused)} 
                        className={cn("p-2 transition-all", isPaused ? "text-[var(--destructive)]" : "text-[var(--muted-foreground)]")}
@@ -577,92 +679,52 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
                        <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                        <span className="text-[9px] font-mono text-[var(--foreground)] uppercase tracking-tighter">Topology_Synchronized</span>
                     </div>
+
+                    {isLinkMode && (
+                      <div className="bg-[var(--primary)]/10 border border-[var(--primary)]/30 p-4 flex flex-col gap-2 min-w-[180px] animate-pulse pointer-events-none">
+                         <span className="text-[8px] font-mono text-[var(--primary)] uppercase tracking-widest font-bold">Linkage_Protocol_Active</span>
+                         <span className="text-[9px] font-mono text-[var(--foreground)] leading-tight">
+                           {!linkSource ? "SELECT_SOURCE_NODE..." : "SELECT_TARGET_NODE..."}
+                         </span>
+                      </div>
+                    )}
                  </div>
                )}
 
 
                <AnimatePresence>
-                 {hoveredNode && (
+                 {activeHoveredNode && (
                    <motion.div 
-                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                     exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                     className="absolute bottom-12 left-1/2 -translate-x-1/2 pointer-events-none z-30 min-w-[500px]"
+                     initial={{ opacity: 0, y: 10, x: "-50%", scale: 0.98 }}
+                     animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
+                     exit={{ opacity: 0, y: 10, x: "-50%", scale: 0.98 }}
+                     transition={{ duration: 0.2 }}
+                     className="absolute bottom-10 left-1/2 pointer-events-none z-30 w-[400px]"
                    >
-                      <div className="relative group">
-                         {/* Bracket Corners */}
-                         <div className="absolute -top-2 -left-2 w-6 h-6 border-t-2 border-l-2" style={{ borderColor: hoveredNode.color }} />
-                         <div className="absolute -top-2 -right-2 w-6 h-6 border-t-2 border-r-2" style={{ borderColor: hoveredNode.color }} />
-                         <div className="absolute -bottom-2 -left-2 w-6 h-6 border-b-2 border-l-2" style={{ borderColor: hoveredNode.color }} />
-                         <div className="absolute -bottom-2 -right-2 w-6 h-6 border-b-2 border-r-2" style={{ borderColor: hoveredNode.color }} />
-
-                         {/* Main Content Card */}
-                         <div className="relative bg-[var(--card)]/95 border border-[var(--border)] p-6 shadow-2xl flex flex-col gap-4 overflow-hidden">
-
-
-                            <div className="flex justify-between items-start">
-                               <div className="flex flex-col gap-1">
-                                  <div className="flex items-center gap-3">
-                                     <div className="relative flex items-center justify-center">
-                                        <Target size={20} style={{ color: hoveredNode.color }} className="relative z-10" />
-                                        <div className="absolute inset-0 blur-lg scale-150 opacity-40" style={{ backgroundColor: hoveredNode.color }} />
-                                     </div>
-                                     <h3 className="text-2xl font-bold font-mono tracking-tighter text-[var(--foreground)] uppercase leading-none">
-                                        {hoveredNode.title}
-                                     </h3>
-                                  </div>
-                                  <span className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] pl-8">
-                                     Sector_Index: 0x{hoveredNode.id.substring(0, 8)} // Coord: {Math.floor(hoveredNode.x!)},{Math.floor(hoveredNode.y!)}
-                                  </span>
-                               </div>
-                               
-                               <div className="flex flex-col items-end gap-1">
-                                  <span className="text-[8px] font-mono text-[var(--primary)] uppercase font-bold tracking-widest">Target_Acquired</span>
-                                  <div className="flex gap-1">
-                                     {[1, 2, 3, 4, 5].map(i => (
-                                        <div key={i} className="w-2 h-1 bg-[var(--accent)] opacity-30" />
-                                     ))}
-                                  </div>
-                               </div>
+                      <div className="relative bg-[var(--card)]/90 backdrop-blur-md border border-[var(--border)] p-4 shadow-2xl flex flex-col gap-2 overflow-hidden rounded-lg">
+                         <div className="flex justify-between items-center border-b border-[var(--border)] pb-2">
+                            <div className="flex items-center gap-2">
+                               <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: activeHoveredNode.color }} />
+                               <h3 className="text-sm font-bold font-mono tracking-tight text-[var(--foreground)] uppercase truncate max-w-[200px]">
+                                  {activeHoveredNode.title}
+                               </h3>
                             </div>
+                            <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase">
+                              ID: {activeHoveredNode.id.substring(0, 6)}
+                            </span>
+                         </div>
+                         
+                         <div className="text-[10px] font-mono text-[var(--muted-foreground)] line-clamp-2 leading-relaxed italic opacity-80">
+                            {activeHoveredNode.content || "NO_DATA_STREAM_DETECTED"}
+                          </div>
 
-                            <div className="grid grid-cols-12 gap-4 border-t border-[var(--border)] pt-4">
-                               <div className="col-span-8 flex flex-col gap-2">
-                                  <div className="flex items-center gap-2">
-                                     <Activity size={10} className="text-[var(--muted-foreground)]" />
-                                     <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">Neural_Payload_Dump</span>
-                                  </div>
-                                  <div className="bg-[var(--background)] p-3 border border-[var(--border)] relative overflow-hidden group">
-                                     <p className="text-[10px] font-mono text-[var(--foreground)] line-clamp-3 leading-relaxed relative z-10 italic opacity-80">
-                                        {hoveredNode.content || "NO_READABLE_DATA_STREAM_FOUND_IN_THIS_SECTOR"}
-                                     </p>
-                                     <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[repeating-linear-gradient(transparent,transparent_2px,#fff_2px,#fff_4px)]" />
-                                  </div>
-                                </div>
-
-                                <div className="col-span-4 flex flex-col gap-3">
-                                   <div className="bg-[var(--background)] border border-[var(--border)] p-3 flex flex-col justify-center gap-1">
-                                      <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase">Logic_Mass</span>
-                                      <div className="flex items-end gap-2">
-                                         <span className="text-xl font-bold font-mono text-[var(--foreground)] leading-none">{hoveredNode.content.length}</span>
-                                         <span className="text-[8px] font-mono text-[var(--muted-foreground)] mb-0.5">BITS</span>
-                                      </div>
-                                   </div>
-                                   <div className="bg-[var(--background)] border border-[var(--border)] p-3 flex flex-col justify-center gap-1">
-                                      <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase">Encryption</span>
-                                      <div className="flex items-center gap-2">
-                                         <Cpu size={12} className="text-[var(--accent)]" />
-                                         <span className="text-[9px] font-mono font-bold text-[var(--accent)]">VERIFIED</span>
-                                      </div>
-                                   </div>
-                                </div>
+                         <div className="flex items-center justify-between pt-1">
+                            <div className="flex gap-1">
+                               {[1, 2, 3].map(i => (
+                                  <div key={i} className="w-4 h-0.5 bg-[var(--primary)] opacity-20" />
+                               ))}
                             </div>
-
-                            {/* Footer HUD elements */}
-                            <div className="flex justify-between items-center text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] mt-1 opacity-50">
-                               <span>Secure_Neural_Link_Protocol_v4.2</span>
-                               <span>Sector_Safety_Status: [CLEAR]</span>
-                            </div>
+                            <span className="text-[8px] font-mono text-[var(--primary)] font-bold animate-pulse">LOCKED</span>
                          </div>
                       </div>
                    </motion.div>
