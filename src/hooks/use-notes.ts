@@ -63,8 +63,8 @@ export function useNotes() {
             id: n.id,
             title: n.title,
             content: n.content,
-            isFavorite: n.is_favorite,
-            isPublic: n.is_public,
+            isFavorite: n.is_favorite ?? false,
+            isPublic: n.is_public ?? false,
             tags: n.tags || [],
             updatedAt: n.updated_at ? new Date(n.updated_at).getTime() : Date.now(),
             createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
@@ -76,6 +76,14 @@ export function useNotes() {
             return [...remoteNotes, ...localOnly];
           });
         } else {
+          if (error) {
+            console.error("Initial Sync Error:", {
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+              code: error.code
+            });
+          }
           setNotes(currentNotes);
         }
       } else {
@@ -101,22 +109,35 @@ export function useNotes() {
         user_id: user.id,
         title: n.title,
         content: n.content,
-        is_favorite: n.isFavorite,
-        is_public: n.isPublic,
-        tags: n.tags,
+        is_favorite: !!n.isFavorite,
+        is_public: !!n.isPublic,
+        tags: n.tags || [],
         updated_at: new Date(n.updatedAt || Date.now()).toISOString(),
         created_at: new Date(n.createdAt || Date.now()).toISOString(),
       }));
 
     if (upsertData.length === 0) return;
 
-    const { error } = await supabase
-      .from("notes")
-      .upsert(upsertData, { onConflict: "id" });
+    console.log("Syncing to cloud, data sample:", upsertData.slice(0, 1));
 
-    if (error) {
-      toast(`Cloud sync failed: ${error.message || "Unknown error"}`, "error");
-      console.error("Cloud Sync Error Details:", error);
+    try {
+      const { error } = await supabase
+        .from("notes")
+        .upsert(upsertData, { onConflict: "id" });
+
+      if (error) {
+        console.error("Cloud Sync Error Details (Supabase):", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          errorObject: error
+        });
+        toast(`Cloud sync failed: ${error.message || "Unknown error"}`, "error");
+      }
+    } catch (err: any) {
+      console.error("Cloud Sync Error (Exception):", err);
+      toast("Cloud sync failed: Connection error", "error");
     }
   }, [user, supabase]);
 
@@ -166,7 +187,24 @@ export function useNotes() {
   const deleteNote = useCallback(async (id: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== id));
     if (user) {
-      await supabase.from("notes").delete().eq("id", id);
+      try {
+        const { error } = await supabase.from("notes").delete().eq("id", id);
+        if (error) {
+          console.error("Delete Error (Supabase):", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            errorObject: error
+          });
+          toast("Failed to delete note from cloud", "error");
+          return;
+        }
+      } catch (err: any) {
+        console.error("Delete Error (Exception):", err);
+        toast("Connection error during delete", "error");
+        return;
+      }
     }
     toast("Note deleted successfully", "system");
   }, [user, supabase, toast]);

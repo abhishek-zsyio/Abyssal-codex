@@ -1,4 +1,7 @@
+"use client";
+
 import { get, set, del } from "idb-keyval";
+
 
 const DB_KEY = "abyssal-codex-notes-v1";
 const PLUGINS_KEY = "abyssal-codex-plugins-v1";
