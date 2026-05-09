@@ -6,7 +6,37 @@ import remarkGfm from "remark-gfm";
 import { Check, FileCode, CornerDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
-import { gruvboxDark, nord, dracula, oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { 
+  gruvboxDark, 
+  nord, 
+  dracula, 
+  oneDark, 
+  oneLight, 
+  xonokai, 
+  synthwave84, 
+  atomDark, 
+  solarizedDarkAtom,
+  vscDarkPlus
+} from "react-syntax-highlighter/dist/esm/styles/prism";
+
+const getHighlightStyle = (theme: string) => {
+  switch (theme) {
+    case "nord": return nord;
+    case "monokai": return xonokai;
+    case "dracula": return dracula;
+    case "cyberpunk": return synthwave84;
+    case "light": return oneLight;
+    case "onedark": return oneDark;
+    case "tokyo-night": return vscDarkPlus;
+    case "catppuccin": return atomDark;
+    case "solarized": return solarizedDarkAtom;
+    case "github": return atomDark; // closest match
+    case "rose-pine": return dracula; // fallback
+    case "everforest": return gruvboxDark; // fallback
+    default: return gruvboxDark;
+  }
+};
+
 import { Button } from "@/components/ui/Button";
 import { splitMarkdown } from "@/utils/markdown-splitter";
 
@@ -208,12 +238,7 @@ const MarkdownPreview = memo(({
                     <div className="relative">
                       <div className="absolute top-0 left-0 w-8 h-full bg-[#282828]/30 border-r border-dotted border-[var(--border)] pointer-events-none" />
                       <SyntaxHighlighter 
-                        style={
-                          theme === "nord" ? nord :
-                          theme === "dracula" ? dracula :
-                          theme === "onedark" ? oneDark :
-                          gruvboxDark
-                        } 
+                        style={getHighlightStyle(theme)} 
                         language={match[1]} 
                         PreTag="div" 
                         customStyle={{ margin: 0, padding: '1.5rem 1.5rem 1.5rem 2.5rem', background: 'transparent', fontSize: '13px', lineHeight: '1.6', fontFamily: 'var(--font-mono)' }}
