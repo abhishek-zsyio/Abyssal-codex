@@ -4,6 +4,7 @@ import { get, set, del } from "idb-keyval";
 
 
 const DB_KEY = "abyssal-codex-notes-v1";
+const FOLDERS_KEY = "abyssal-codex-folders-v1";
 const PLUGINS_KEY = "abyssal-codex-plugins-v1";
 
 export const storage = {
@@ -24,6 +25,26 @@ export const storage = {
       await set(key, notes);
     } catch (error) {
       console.error("Storage Error (SET):", error);
+    }
+  },
+
+  async getFolders<T>(userId?: string): Promise<T | null> {
+    try {
+      const key = userId ? `${FOLDERS_KEY}-${userId}` : FOLDERS_KEY;
+      const data = await get<T>(key);
+      return data ?? null;
+    } catch (error) {
+      console.error("Folder Storage Error (GET):", error);
+      return null;
+    }
+  },
+
+  async saveFolders<T>(folders: T, userId?: string): Promise<void> {
+    try {
+      const key = userId ? `${FOLDERS_KEY}-${userId}` : FOLDERS_KEY;
+      await set(key, folders);
+    } catch (error) {
+      console.error("Folder Storage Error (SET):", error);
     }
   },
 

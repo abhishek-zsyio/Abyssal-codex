@@ -16,6 +16,8 @@ interface NestedExplorerProps {
   level?: number;
   parentPath?: string;
   collapseTrigger?: number;
+  selectedFolderPath?: string | null;
+  onSelectFolder?: (path: string | null) => void;
 }
 
 const getFileIcon = (name: string, isActive: boolean) => {
@@ -37,7 +39,9 @@ const FolderItem = ({
   onMoveFolder,
   level,
   parentPath,
-  collapseTrigger
+  collapseTrigger,
+  selectedFolderPath,
+  onSelectFolder
 }: { 
   folder: TreeFolder; 
   activeNoteId: string | null;
@@ -48,12 +52,14 @@ const FolderItem = ({
   level: number;
   parentPath: string;
   collapseTrigger?: number;
+  selectedFolderPath?: string | null;
+  onSelectFolder?: (path: string | null) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
   const [isDragOver, setIsDragOver] = useState(false);
   const currentPath = parentPath ? `${parentPath}/${folder.name}` : folder.name;
+  const isSelected = selectedFolderPath === currentPath;
 
-  // Handle Collapse All trigger
   useEffect(() => {
     if (collapseTrigger && collapseTrigger > 0) {
       setIsOpen(false);
@@ -96,12 +102,16 @@ const FolderItem = ({
       <div 
         draggable="true"
         onDragStart={handleDragStart}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          onSelectFolder?.(currentPath);
+        }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1 cursor-pointer transition-colors group relative border-l-2 border-transparent",
+          "flex items-center gap-1.5 px-3 py-1 cursor-pointer transition-colors group relative border-l-2",
+          isSelected ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-transparent",
           isDragOver && "bg-[var(--primary)]/10 border-l-[var(--primary)]",
           "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--card)]/30"
         )}
@@ -111,7 +121,7 @@ const FolderItem = ({
           {isOpen ? <ChevronDown size={12} className="opacity-50 group-hover:opacity-100 transition-opacity" /> : <ChevronRight size={12} className="opacity-50 group-hover:opacity-100 transition-opacity" />}
         </div>
         <Folder size={14} className={cn("text-[var(--accent)] fill-[var(--accent)]/5", isOpen ? "opacity-90" : "opacity-60")} />
-        <span className="text-[11px] font-mono uppercase tracking-tight truncate flex-1">
+        <span className={cn("text-[11px] font-mono uppercase tracking-tight truncate flex-1", isSelected && "text-[var(--primary)] font-bold")}>
           {folder.name}
         </span>
       </div>
@@ -126,7 +136,7 @@ const FolderItem = ({
             className="overflow-hidden relative"
           >
             <div 
-              className="absolute left-0 top-0 bottom-0 w-[1px] border-l border-dotted border-[var(--border)] opacity-30" 
+              className={cn("absolute left-0 top-0 bottom-0 w-[1px]", isSelected ? "bg-[var(--primary)] opacity-40" : "bg-[var(--border)] opacity-60")} 
               style={{ marginLeft: `${(level * 12) + 15}px` }}
             />
             
@@ -140,6 +150,8 @@ const FolderItem = ({
               level={level + 1}
               parentPath={currentPath}
               collapseTrigger={collapseTrigger}
+              selectedFolderPath={selectedFolderPath}
+              onSelectFolder={onSelectFolder}
             />
           </motion.div>
         )}
@@ -153,14 +165,23 @@ const FileItem = ({
   activeNoteId, 
   onSelectNote, 
   onDeleteNote, 
-  level 
+  onMoveNote,
+  onMoveFolder,
+  level,
+  parentPath,
+  onSelectFolder
 }: { 
   file: TreeFile; 
   activeNoteId: string | null;
   onSelectNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
+  onMoveNote?: (id: string, targetPath: string) => void;
+  onMoveFolder?: (oldPath: string, targetPath: string) => void;
   level: number;
+  parentPath: string;
+  onSelectFolder?: (path: string | null) => void;
 }) => {
+  const [isDragOver, setIsDragOver] = useState(false);
   const isActive = activeNoteId === file.id;
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -168,16 +189,49 @@ const FileItem = ({
     e.dataTransfer.effectAllowed = "move";
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const noteId = e.dataTransfer.getData("noteId");
+    const draggedFolderPath = e.dataTransfer.getData("folderPath");
+    
+    if (noteId && onMoveNote && noteId !== file.id) {
+      onMoveNote(noteId, parentPath);
+    } else if (draggedFolderPath && onMoveFolder) {
+      if (parentPath === draggedFolderPath || parentPath.startsWith(draggedFolderPath + "/")) {
+        return;
+      }
+      onMoveFolder(draggedFolderPath, parentPath);
+    }
+  };
+
   return (
     <div 
       draggable="true"
       onDragStart={handleDragStart}
-      onClick={() => onSelectNote(file.id)}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={() => {
+        onSelectNote(file.id);
+        onSelectFolder?.(parentPath || null);
+      }}
       className={cn(
         "flex items-center gap-1.5 px-3 py-1 cursor-pointer transition-all group relative border-l-2",
         isActive 
           ? "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)] font-bold shadow-[inset_0_0_20px_rgba(var(--primary-rgb),0.05)]" 
-          : "border-transparent text-[var(--foreground)]/70 hover:bg-[var(--card)]/40 hover:text-[var(--foreground)]"
+          : "border-transparent text-[var(--foreground)]/70 hover:bg-[var(--card)]/40 hover:text-[var(--foreground)]",
+        isDragOver && "bg-[var(--primary)]/5 ring-1 ring-inset ring-[var(--primary)]/20"
       )}
       style={{ paddingLeft: `${(level * 12) + 24}px` }}
     >
@@ -212,7 +266,9 @@ const NestedExplorer = memo(({
   onMoveFolder,
   level = 0,
   parentPath = "",
-  collapseTrigger
+  collapseTrigger,
+  selectedFolderPath,
+  onSelectFolder
 }: NestedExplorerProps) => {
   return (
     <div className="flex flex-col w-full">
@@ -229,6 +285,8 @@ const NestedExplorer = memo(({
             level={level}
             parentPath={parentPath}
             collapseTrigger={collapseTrigger}
+            selectedFolderPath={selectedFolderPath}
+            onSelectFolder={onSelectFolder}
           />
         ) : (
           <FileItem 
@@ -237,7 +295,11 @@ const NestedExplorer = memo(({
             activeNoteId={activeNoteId} 
             onSelectNote={onSelectNote} 
             onDeleteNote={onDeleteNote}
+            onMoveNote={onMoveNote}
+            onMoveFolder={onMoveFolder}
             level={level}
+            parentPath={parentPath}
+            onSelectFolder={onSelectFolder}
           />
         )
       ))}

@@ -9,6 +9,7 @@ import { createClient } from "@/utils/supabase/client";
 
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [folders, setFolders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -16,42 +17,35 @@ export function useNotes() {
   const { toast } = useToast();
   const supabase = createClient();
 
-  // Load notes on mount and handle user switching
   const lastUserId = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     async function init() {
-      // Avoid re-running if user hasn't changed
       if (lastUserId.current === (user?.id ?? null)) return;
       
       const isSwitchingUser = lastUserId.current !== undefined && lastUserId.current !== (user?.id ?? null);
       lastUserId.current = user?.id ?? null;
 
-      // 1. If switching accounts, clear current memory state to prevent cross-contamination
       if (isSwitchingUser) {
         setNotes([]);
+        setFolders([]);
         setIsLoading(true);
       }
 
-      // 2. Load from Local Storage (User-Specific)
-      const saved = await storage.getNotes<Note[]>(user?.id);
+      // Load Notes
+      const savedNotes = await storage.getNotes<Note[]>(user?.id);
       let currentNotes: Note[] = [];
-
-      if (saved) {
-        currentNotes = saved;
-      } else {
-        const legacy = storage.getLegacyData("notes-app-data");
-        if (legacy && !user) { // Only migrate legacy data to guest session
-          try {
-            currentNotes = JSON.parse(legacy);
-            await storage.saveNotes(currentNotes);
-          } catch (e) {
-            console.error("Migration failed:", e);
-          }
-        }
+      if (savedNotes) {
+        currentNotes = savedNotes;
       }
 
-      // 3. If logged in, fetch from Supabase and merge
+      // Load Folders
+      const savedFolders = await storage.getFolders<string[]>(user?.id);
+      if (savedFolders) {
+        setFolders(savedFolders);
+      }
+
+      // Supabase Sync (Notes only for now)
       if (user) {
         const { data, error } = await supabase
           .from("notes")
@@ -70,20 +64,11 @@ export function useNotes() {
             createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
           }));
 
-          // Merge: remote wins, but keep local-only notes if they belong to this session
           setNotes(() => {
             const localOnly = currentNotes.filter(ln => !remoteNotes.find(rn => rn.id === ln.id));
             return [...remoteNotes, ...localOnly];
           });
         } else {
-          if (error) {
-            console.error("Initial Sync Error:", {
-              message: error.message,
-              details: error.details,
-              hint: error.hint,
-              code: error.code
-            });
-          }
           setNotes(currentNotes);
         }
       } else {
@@ -95,166 +80,147 @@ export function useNotes() {
     init();
   }, [user, supabase]);
 
-  // Sync to Supabase helper
-  const syncToCloud = useCallback(async (notesToSync: Note[]) => {
-    if (!user) return;
+  const saveToStorage = useCallback(async (notesToSave: Note[], foldersToSave: string[]) => {
+    await storage.saveNotes(notesToSave, user?.id);
+    await storage.saveFolders(foldersToSave, user?.id);
+  }, [user]);
 
-    // Filter for valid UUIDs to prevent Supabase errors with legacy IDs
-    const validUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    
-    const upsertData = notesToSync
-      .filter(n => validUuidRegex.test(n.id))
-      .map(n => ({
-        id: n.id,
-        user_id: user.id,
-        title: n.title,
-        content: n.content,
-        is_favorite: !!n.isFavorite,
-        is_public: !!n.isPublic,
-        tags: n.tags || [],
-        updated_at: new Date(n.updatedAt || Date.now()).toISOString(),
-        created_at: new Date(n.createdAt || Date.now()).toISOString(),
-      }));
-
-    if (upsertData.length === 0) return;
-
-    console.log("Syncing to cloud, data sample:", upsertData.slice(0, 1));
-
-    try {
-      const { error } = await supabase
-        .from("notes")
-        .upsert(upsertData, { onConflict: "id" });
-
-      if (error) {
-        console.error("Cloud Sync Error Details (Supabase):", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          errorObject: error
-        });
-        toast(`Cloud sync failed: ${error.message || "Unknown error"}`, "error");
-      }
-    } catch (err) {
-      console.error("Cloud Sync Error (Exception):", err);
-      toast("Cloud sync failed: Connection error", "error");
-    }
-  }, [user, supabase, toast]);
-
-  // Debounced persistence
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    
-    saveTimeoutRef.current = setTimeout(async () => {
-      await storage.saveNotes(notes, user?.id);
-      if (user) {
-        await syncToCloud(notes);
-      }
-    }, 1000);
-
-    return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    };
-  }, [notes, syncToCloud, user]);
-
-  const addNote = useCallback((title = "Untitled Note", content = "") => {
+  const addNote = useCallback(async (title: string = "Untitled", content: string = "") => {
     const newNote: Note = {
       id: crypto.randomUUID(),
       title,
       content,
+      isFavorite: false,
+      tags: [],
       updatedAt: Date.now(),
       createdAt: Date.now(),
-      tags: [],
     };
-    setNotes((prev) => [newNote, ...prev]);
-    toast(`Note created: ${title}`, "success");
-    return newNote;
-  }, []);
 
-  const updateNote = useCallback((id: string, updates: Partial<Note>) => {
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, ...updates, updatedAt: Date.now() } : n
-      )
+    const updatedNotes = [newNote, ...notes];
+    setNotes(updatedNotes);
+    saveToStorage(updatedNotes, folders);
+
+    if (user) {
+      const { error } = await supabase.from("notes").insert([{
+        id: newNote.id,
+        user_id: user.id,
+        title: newNote.title,
+        content: newNote.content,
+        is_favorite: newNote.isFavorite,
+        tags: newNote.tags,
+        updated_at: new Date(newNote.updatedAt).toISOString(),
+        created_at: new Date(newNote.createdAt).toISOString()
+      }]);
+      if (error) console.error("Cloud Save Error:", error);
+    }
+    
+    return newNote.id;
+  }, [notes, folders, user, supabase, saveToStorage]);
+
+  const addFolder = useCallback((path: string) => {
+    if (!folders.includes(path)) {
+      const updatedFolders = [...folders, path];
+      setFolders(updatedFolders);
+      saveToStorage(notes, updatedFolders);
+    }
+  }, [folders, notes, saveToStorage]);
+
+  const updateNote = useCallback(async (id: string, updates: Partial<Note>) => {
+    const updatedNotes = notes.map((n) => 
+      n.id === id ? { ...n, ...updates, updatedAt: Date.now() } : n
     );
-  }, []);
+    setNotes(updatedNotes);
+    saveToStorage(updatedNotes, folders);
+
+    if (user) {
+      const dbUpdates: any = {};
+      if (updates.title !== undefined) dbUpdates.title = updates.title;
+      if (updates.content !== undefined) dbUpdates.content = updates.content;
+      if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
+      if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+      dbUpdates.updated_at = new Date().toISOString();
+
+      const { error } = await supabase
+        .from("notes")
+        .update(dbUpdates)
+        .eq("id", id);
+      if (error) console.error("Cloud Update Error:", error);
+    }
+  }, [notes, folders, user, supabase, saveToStorage]);
 
   const deleteNote = useCallback(async (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-    if (user) {
-      try {
-        const { error } = await supabase.from("notes").delete().eq("id", id);
-        if (error) {
-          console.error("Delete Error (Supabase):", {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-            errorObject: error
-          });
-          toast("Failed to delete note from cloud", "error");
-          return;
-        }
-      } catch (err) {
-        console.error("Delete Error (Exception):", err);
-        toast("Connection error during delete", "error");
-        return;
-      }
-    }
-    toast("Note deleted successfully", "system");
-  }, [user, supabase, toast]);
+    const updatedNotes = notes.filter((n) => n.id !== id);
+    setNotes(updatedNotes);
+    saveToStorage(updatedNotes, folders);
 
-  const togglePublic = useCallback((id: string) => {
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, isPublic: !n.isPublic, updatedAt: Date.now() } : n
-      )
-    );
-    const note = notes.find(n => n.id === id);
-    if (note) {
-      const newState = !note.isPublic;
-      toast(newState ? "Note is now PUBLIC" : "Note is now PRIVATE", "system");
+    if (user) {
+      const { error } = await supabase.from("notes").delete().eq("id", id);
+      if (error) console.error("Cloud Delete Error:", error);
     }
-  }, [notes, toast]);
+  }, [notes, folders, user, supabase, saveToStorage]);
 
   const toggleFavorite = useCallback((id: string) => {
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, isFavorite: !n.isFavorite, updatedAt: Date.now() } : n
-      )
-    );
-  }, []);
+    const note = notes.find(n => n.id === id);
+    if (note) {
+      updateNote(id, { isFavorite: !note.isFavorite });
+    }
+  }, [notes, updateNote]);
+
+  const togglePublic = useCallback((id: string) => {
+    const note = notes.find(n => n.id === id);
+    if (note) {
+      updateNote(id, { isPublic: !note.isPublic });
+    }
+  }, [notes, updateNote]);
 
   const exportAllNotes = useCallback(() => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes));
-    const link = document.createElement("a");
-    link.href = dataStr;
-    link.download = `abyssal_codex_backup_${Date.now()}.json`;
-    link.click();
-    toast("Backup exported successfully", "success");
+    const data = JSON.stringify(notes, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `abyssal-docs-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("EXPORT_COMPLETE: [JSON_BUFFER]", "system");
   }, [notes, toast]);
 
-  const importNotes = useCallback((importedNotes: Note[]) => {
-    if (Array.isArray(importedNotes)) {
-      setNotes(importedNotes);
-      toast(`Imported ${importedNotes.length} notes`, "success");
-    }
-  }, [toast]);
+  const importNotes = useCallback(async (importedNotes: Note[]) => {
+    const updatedNotes = [...importedNotes, ...notes];
+    const uniqueNotes = Array.from(new Map(updatedNotes.map(n => [n.id, n])).values());
+    setNotes(uniqueNotes);
+    saveToStorage(uniqueNotes, folders);
+    toast(`IMPORT_SUCCESS: [${importedNotes.length}_ENTRIES]`, "system");
+  }, [notes, folders, saveToStorage, toast]);
 
-  return { 
-    notes, 
-    addNote, 
-    updateNote, 
-    deleteNote, 
-    toggleFavorite, 
+  const deleteAllNotes = useCallback(async () => {
+    if (!window.confirm("WIPE_ALL_DATA: [CONFIRM_DESTRUCTION?]")) return;
+    
+    setNotes([]);
+    setFolders([]);
+    await storage.saveNotes([], user?.id);
+    await storage.saveFolders([], user?.id);
+
+    if (user) {
+      const { error } = await supabase.from("notes").delete().eq("user_id", user.id);
+      if (error) console.error("Cloud Wipe Error:", error);
+    }
+    
+    toast("SYSTEM_WIPE_COMPLETE: [BUFFER_CLEARED]", "system");
+  }, [user, supabase, toast]);
+
+  return {
+    notes,
+    folders,
+    isLoading,
+    addNote,
+    addFolder,
+    updateNote,
+    deleteNote,
+    toggleFavorite,
     togglePublic,
-    exportAllNotes, 
-    importNotes, 
-    isLoading 
+    exportAllNotes,
+    importNotes,
+    deleteAllNotes,
   };
 }

@@ -42,7 +42,10 @@ function HomeContent() {
     toggleFavorite, 
     togglePublic,
     exportAllNotes, 
-    importNotes, 
+    importNotes,
+    deleteAllNotes,
+    folders,
+    addFolder,
     isLoading 
   } = useNotes();
   const { user } = useAuth();
@@ -62,12 +65,13 @@ function HomeContent() {
   const [mounted, setMounted] = useState(false);
 
   // Handlers
-  const handleAddNote = useCallback((title?: string) => {
+  const handleAddNote = useCallback(async (title?: string) => {
+    const safeTitle = typeof title === 'string' ? title : undefined;
+    const newNoteId = await addNote(safeTitle);
+    
     startTransition(() => {
-      const safeTitle = typeof title === 'string' ? title : undefined;
-      const newNote = addNote(safeTitle);
-      router.push(`/?id=${newNote.id}`, { scroll: false });
-      setOpenNoteIds(prev => Array.from(new Set([...prev, newNote.id])));
+      router.push(`/?id=${newNoteId}`, { scroll: false });
+      setOpenNoteIds(prev => Array.from(new Set([...prev, newNoteId])));
       setIsSidebarOpen(false);
     });
   }, [addNote, router]);
@@ -220,10 +224,13 @@ function HomeContent() {
             onToggleTerminal={() => setIsOmniConsoleOpen(prev => !prev)}
             exportAllNotes={exportAllNotes}
             importNotes={importNotes}
+            deleteAllNotes={deleteAllNotes}
             activeView={sidebarView}
             onViewChange={setSidebarView}
             onOpenGraph={() => setMainView("graph")}
             onUpdateNote={updateNote}
+            folders={folders}
+            onAddFolder={addFolder}
           />
         </div>
         
@@ -241,9 +248,9 @@ function HomeContent() {
           <div className="flex-1 overflow-hidden relative">
             <AnimatePresence mode="wait">
               {mainView === "graph" ? (
-                <motion.div key="graph-view" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.02 }} transition={{ duration: 0.3, ease: "circOut" }} className="absolute inset-0">
-                  <GraphView isOpen={true} onClose={() => setMainView("editor")} notes={notes} variant="tab" onSelectNote={handleSelectNote} onUpdateNote={updateNote} />
-                </motion.div>
+                <div key="graph-view" className="absolute inset-0">
+                  <GraphView isOpen={true} onClose={() => setMainView("editor")} notes={notes} variant="tab" onSelectNote={handleSelectNote} onUpdateNote={updateNote} folders={folders} />
+                </div>
               ) : (
                 <motion.div key="editor-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="absolute inset-0 flex flex-col">
                   <HomeTabs openNoteIds={openNoteIds} notes={notes} activeNoteId={activeNoteId} handleSelectNote={handleSelectNote} handleCloseNote={handleCloseNote} />

@@ -1,14 +1,14 @@
 import { Note } from "@/types/note";
 
 export interface TreeFolder {
-  id: string; // generated for folders
+  id: string;
   name: string;
   children: (TreeFolder | TreeFile)[];
   type: "folder";
 }
 
 export interface TreeFile {
-  id: string; // note id
+  id: string;
   name: string;
   type: "file";
   note: Note;
@@ -16,11 +16,35 @@ export interface TreeFile {
 
 export type TreeItem = TreeFolder | TreeFile;
 
-export function buildNoteTree(notes: Note[]): TreeItem[] {
+export function buildNoteTree(notes: Note[], emptyFolders: string[] = []): TreeItem[] {
   const root: TreeItem[] = [];
 
+  // 1. Add explicitly created empty folders
+  emptyFolders.forEach((path) => {
+    const parts = path.split("/");
+    let currentLevel = root;
+
+    parts.forEach((part, index) => {
+      let folder = currentLevel.find(
+        (item) => item.type === "folder" && item.name === part
+      ) as TreeFolder;
+
+      if (!folder) {
+        folder = {
+          id: `folder-${part}-${index}-${Math.random()}`,
+          name: part,
+          type: "folder",
+          children: [],
+        };
+        currentLevel.push(folder);
+      }
+      currentLevel = folder.children;
+    });
+  });
+
+  // 2. Add files and the folders derived from their paths
   notes.forEach((note) => {
-    // Ignore folder placeholders
+    // Ignore any remaining .keep files if they somehow got in
     if (note.title.endsWith("/.keep") || note.title === ".keep") return;
 
     const parts = note.title.split("/");
@@ -30,15 +54,16 @@ export function buildNoteTree(notes: Note[]): TreeItem[] {
       const isLast = index === parts.length - 1;
 
       if (isLast) {
-        // It's a file
-        currentLevel.push({
-          id: note.id,
-          name: part,
-          type: "file",
-          note: note,
-        });
+        // Check if file already exists in this level
+        if (!currentLevel.find(item => item.type === "file" && item.id === note.id)) {
+          currentLevel.push({
+            id: note.id,
+            name: part,
+            type: "file",
+            note: note,
+          });
+        }
       } else {
-        // It's a folder
         let folder = currentLevel.find(
           (item) => item.type === "folder" && item.name === part
         ) as TreeFolder;
@@ -57,7 +82,6 @@ export function buildNoteTree(notes: Note[]): TreeItem[] {
     });
   });
 
-  // Sort: Folders first, then alphabetically
   const sortItems = (items: TreeItem[]) => {
     items.sort((a, b) => {
       if (a.type !== b.type) {

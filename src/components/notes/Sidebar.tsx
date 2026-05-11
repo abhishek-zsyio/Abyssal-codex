@@ -3,7 +3,7 @@
 import React, { useRef, memo, useState, useMemo } from "react";
 import { Note } from "@/types/note";
 import { cn } from "../../lib/utils";
-import { Plus, Search, X, Hash, Tag, Calendar, Download, Upload, FolderPlus, FilePlus, ChevronsDownUp } from "lucide-react";
+import { Plus, Search, X, Hash, Tag, Calendar, Download, Upload, FolderPlus, FilePlus, ChevronsDownUp, Star, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, slideInLeft } from "@/lib/transitions";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +28,7 @@ interface SidebarProps {
   onClose?: () => void;
   exportAllNotes?: () => void;
   importNotes?: (notes: Note[]) => void;
+  deleteAllNotes?: () => void;
   onOpenHelp?: () => void;
   onOpenThemes?: () => void;
 
@@ -40,6 +41,8 @@ interface SidebarProps {
   onViewChange?: (view: "explorer" | "plugins" | "help") => void;
   onOpenGraph?: () => void;
   onUpdateNote?: (id: string, updates: Partial<Note>) => void;
+  folders?: string[];
+  onAddFolder?: (path: string) => void;
 }
 
 const Sidebar = memo(({
@@ -53,6 +56,7 @@ const Sidebar = memo(({
   onClose,
   exportAllNotes,
   importNotes,
+  deleteAllNotes,
   onOpenThemes,
   onToggleTerminal,
   onOpenAuth,
@@ -62,6 +66,8 @@ const Sidebar = memo(({
   onViewChange,
   onOpenGraph,
   onUpdateNote,
+  folders = [],
+  onAddFolder,
 }: SidebarProps) => {
   const { isEnabled } = usePlugins();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,9 +101,11 @@ const Sidebar = memo(({
   const pinnedNotes = useMemo(() => displayNotes.filter(n => n.isFavorite), [displayNotes]);
   const regularNotes = useMemo(() => displayNotes.filter(n => !n.isFavorite), [displayNotes]);
 
-  const noteTree = useMemo(() => buildNoteTree(regularNotes), [regularNotes]);
+  const noteTree = useMemo(() => buildNoteTree(displayNotes, folders), [displayNotes, folders]);
+  
   const isFiltering = !!searchQuery || !!activeTag;
   const [collapseTrigger, setCollapseTrigger] = useState(0);
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
 
   const handleMoveNote = (id: string, targetPath: string) => {
     const note = notes.find(n => n.id === id);
@@ -182,17 +190,20 @@ const Sidebar = memo(({
                   </div>
                   <div className="flex items-center gap-0.5 self-end pb-0.5">
                     <button 
-                      onClick={() => onAddNote()} 
+                      onClick={() => {
+                        const title = selectedFolderPath ? `${selectedFolderPath}/Untitled` : "Untitled";
+                        onAddNote(title);
+                      }} 
                       className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
-                      title="New File"
+                      title={selectedFolderPath ? `New File in ${selectedFolderPath}` : "New File"}
                     >
                       <FilePlus size={14} />
                     </button>
                     <button 
                       onClick={() => {
                         const folderName = window.prompt("Enter folder name:");
-                        if (folderName) {
-                          onAddNote(`${folderName}/.keep`);
+                        if (folderName && onAddFolder) {
+                          onAddFolder(folderName);
                         }
                       }} 
                       className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
@@ -295,23 +306,9 @@ const Sidebar = memo(({
                   </div>
                 ) : (
                   <>
-                    {!isFiltering && pinnedNotes.length > 0 && (
-                      <div className="mb-2">
-                        <div className="px-4 py-2 text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest bg-[var(--card)]/50 flex items-center justify-between">
-                           <span>Pinned Notes</span>
-                           <Badge variant="warning">{pinnedNotes.length}</Badge>
-                        </div>
-                        <motion.div variants={staggerContainer} initial="hidden" animate="show">
-                          <AnimatePresence mode="popLayout">
-                            {pinnedNotes.map(note => (
-                              <SidebarItem key={note.id} note={note} isActive={activeNoteId === note.id} onSelect={onSelectNote} onDelete={onDeleteNote} />
-                            ))}
-                          </AnimatePresence>
-                        </motion.div>
-                      </div>
-                    )}
                     <div>
                       <div 
+                        onClick={() => setSelectedFolderPath(null)}
                         onDragOver={(e) => {
                           e.preventDefault();
                           e.currentTarget.classList.add("bg-[var(--primary)]/10");
@@ -355,6 +352,8 @@ const Sidebar = memo(({
                             onMoveNote={handleMoveNote}
                             onMoveFolder={handleMoveFolder}
                             collapseTrigger={collapseTrigger}
+                            selectedFolderPath={selectedFolderPath}
+                            onSelectFolder={setSelectedFolderPath}
                           />
                         </div>
                       )}
@@ -364,11 +363,19 @@ const Sidebar = memo(({
               </div>
 
               <div className="p-4 border-t border-dotted border-[var(--border)] bg-[var(--background)]">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={exportAllNotes} size="sm"><Download size={12} className="mr-2" /> Export</Button>
-                  <Button onClick={() => fileInputRef.current?.click()} size="sm"><Upload size={12} className="mr-2" /> Import</Button>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <Button onClick={exportAllNotes} size="sm" className="bg-[var(--card)]/50 hover:bg-[var(--card)] border-[var(--border)]"><Download size={12} className="mr-2" /> Export</Button>
+                  <Button onClick={() => fileInputRef.current?.click()} size="sm" className="bg-[var(--card)]/50 hover:bg-[var(--card)] border-[var(--border)]"><Upload size={12} className="mr-2" /> Import</Button>
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                 </div>
+                <Button 
+                  onClick={deleteAllNotes} 
+                  variant="destructive" 
+                  size="sm" 
+                  className="w-full bg-[var(--destructive)]/10 hover:bg-[var(--destructive)] text-[var(--destructive)] hover:text-white border-[var(--destructive)]/30 text-[10px] font-mono tracking-widest h-8"
+                >
+                  <Trash2 size={12} className="mr-2" /> WIPE_ALL_BUFFERS
+                </Button>
               </div>
             </motion.div>
           ) : activeView === "plugins" ? (
