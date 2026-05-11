@@ -223,6 +223,7 @@ function HomeContent() {
             activeView={sidebarView}
             onViewChange={setSidebarView}
             onOpenGraph={() => setMainView("graph")}
+            onUpdateNote={updateNote}
           />
         </div>
         

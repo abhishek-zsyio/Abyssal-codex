@@ -99,11 +99,15 @@ const THEMES: { id: Theme; name: string; desc: string; color: string; accent: st
     accent: '#a7c080'
   },
   { 
-    id: 'tokyo-night', 
-    name: 'Tokyo Night', 
-    desc: 'A clean dark theme that celebrates the lights of Tokyo at night.',
     color: '#1a1b26',
     accent: '#bb9af7'
+  },
+  { 
+    id: 'pale-light', 
+    name: 'Pale Porcelain', 
+    desc: 'An ultra-minimal, high-clarity light theme. Soft, professional tones for focus.',
+    color: '#fdfdfd',
+    accent: '#636e72'
   },
 ];
 
@@ -113,7 +117,7 @@ export default function ThemeModal({ isOpen, onClose }: ThemeModalProps) {
   const { toast } = useToast();
 
   const availableThemes = THEMES.filter(t => {
-    if (['dark', 'light', 'catppuccin', 'rose-pine', 'everforest', 'tokyo-night', 'nord'].includes(t.id)) return true;
+    if (['dark', 'light', 'catppuccin', 'rose-pine', 'everforest', 'tokyo-night', 'nord', 'pale-light'].includes(t.id)) return true;
     return isInstalled(`theme-${t.id}`);
   });
 

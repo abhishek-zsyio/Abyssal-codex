@@ -3,7 +3,7 @@
 import React, { useRef, memo, useState, useMemo } from "react";
 import { Note } from "@/types/note";
 import { cn } from "../../lib/utils";
-import { Plus, Search, X, Hash, Tag, Calendar, Download, Upload } from "lucide-react";
+import { Plus, Search, X, Hash, Tag, Calendar, Download, Upload, FolderPlus, FilePlus, ChevronsDownUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, slideInLeft } from "@/lib/transitions";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +14,8 @@ import SidebarHelp from "./SidebarHelp";
 import { SidebarItem } from "./sidebar/SidebarItem";
 import { SidebarSkeleton } from "./sidebar/SidebarSkeleton";
 import { SidebarNavigation } from "./sidebar/SidebarNavigation";
+import NestedExplorer from "./sidebar/NestedExplorer";
+import { buildNoteTree } from "@/utils/tree";
 
 interface SidebarProps {
   notes: Note[];
@@ -37,6 +39,7 @@ interface SidebarProps {
   activeView?: "explorer" | "plugins" | "help";
   onViewChange?: (view: "explorer" | "plugins" | "help") => void;
   onOpenGraph?: () => void;
+  onUpdateNote?: (id: string, updates: Partial<Note>) => void;
 }
 
 const Sidebar = memo(({
@@ -58,6 +61,7 @@ const Sidebar = memo(({
   activeView: externalActiveView = "explorer",
   onViewChange,
   onOpenGraph,
+  onUpdateNote,
 }: SidebarProps) => {
   const { isEnabled } = usePlugins();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,7 +79,7 @@ const Sidebar = memo(({
   }, [notes]);
 
   const displayNotes = useMemo(() => {
-    let filtered = notes;
+    let filtered = notes.filter(n => !n.title.endsWith("/.keep") && n.title !== ".keep");
     if (searchQuery) {
       filtered = filtered.filter(n => 
         n.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -90,6 +94,47 @@ const Sidebar = memo(({
 
   const pinnedNotes = useMemo(() => displayNotes.filter(n => n.isFavorite), [displayNotes]);
   const regularNotes = useMemo(() => displayNotes.filter(n => !n.isFavorite), [displayNotes]);
+
+  const noteTree = useMemo(() => buildNoteTree(regularNotes), [regularNotes]);
+  const isFiltering = !!searchQuery || !!activeTag;
+  const [collapseTrigger, setCollapseTrigger] = useState(0);
+
+  const handleMoveNote = (id: string, targetPath: string) => {
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+    
+    const parts = note.title.split("/");
+    const fileName = parts[parts.length - 1];
+    const newTitle = targetPath ? `${targetPath}/${fileName}` : fileName;
+    
+    if (onUpdateNote) {
+      onUpdateNote(id, { title: newTitle });
+      
+      window.dispatchEvent(new CustomEvent('abyssal-log', { 
+        detail: { message: `REALLOCATING_BUFFER: [${fileName}] -> [${targetPath || 'ROOT'}]`, type: 'system' } 
+      }));
+    }
+  };
+
+  const handleMoveFolder = (oldPath: string, targetParentPath: string) => {
+    const folderParts = oldPath.split("/");
+    const folderName = folderParts[folderParts.length - 1];
+    const newFolderPath = targetParentPath ? `${targetParentPath}/${folderName}` : folderName;
+    
+    const notesToMove = notes.filter(n => n.title === oldPath || n.title.startsWith(oldPath + "/"));
+    
+    if (onUpdateNote) {
+      notesToMove.forEach(note => {
+        const relativePath = note.title.substring(oldPath.length);
+        const newTitle = `${newFolderPath}${relativePath}`;
+        onUpdateNote(note.id, { title: newTitle });
+      });
+
+      window.dispatchEvent(new CustomEvent('abyssal-log', { 
+        detail: { message: `RELOCATING_CLUSTER: [${folderName}] -> [${targetParentPath || 'ROOT'}]`, type: 'system' } 
+      }));
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -132,55 +177,73 @@ const Sidebar = memo(({
               <div className="p-6 border-b border-dotted border-[var(--border)]">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] mb-1">Directory</span>
-                    <h1 className="text-lg font-bold text-[var(--foreground)] tracking-tight">EXPLORER</h1>
+                    <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.4em] mb-0.5 opacity-70">File System</span>
+                    <h1 className="text-sm font-black text-[var(--foreground)] tracking-tighter uppercase">Explorer</h1>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button size="icon" onClick={onClose} variant="ghost" className="lg:hidden">
-                      <X size={18} />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between w-full mb-6 gap-2">
-                  <Button onClick={() => onAddNote()} variant="primary" className="flex-1 flex items-center justify-center gap-2 font-mono h-10">
-                    <Plus size={16} /> <span>NEW_DOC</span>
-                  </Button>
-                  {isEnabled("daily-notes") && (
-                    <Button 
+                  <div className="flex items-center gap-0.5 self-end pb-0.5">
+                    <button 
+                      onClick={() => onAddNote()} 
+                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
+                      title="New File"
+                    >
+                      <FilePlus size={14} />
+                    </button>
+                    <button 
                       onClick={() => {
-                        const today = new Date().toLocaleDateString('en-CA');
-                        const dailyNoteTitle = `Daily_${today}`;
-                        const existing = notes.find(n => n.title === dailyNoteTitle);
-                        
-                        window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                          detail: { message: `INITIALIZING_DAILY_BUFFER: [${today}]`, type: 'system' } 
-                        }));
-
-                        if (existing) {
-                          onSelectNote(existing.id);
-                        } else {
-                          onAddNote(dailyNoteTitle); 
+                        const folderName = window.prompt("Enter folder name:");
+                        if (folderName) {
+                          onAddNote(`${folderName}/.keep`);
                         }
                       }} 
-                      variant="outline" 
-                      size="icon" 
-                      className="w-10 h-10 text-[var(--accent)] hover:text-[var(--primary)] border-[var(--border)]"
-                      title="Create/Open Daily Note"
+                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
+                      title="New Folder"
                     >
-                      <Calendar size={16} />
+                      <FolderPlus size={14} />
+                    </button>
+                    {isEnabled("daily-notes") && (
+                      <button 
+                        onClick={() => {
+                          const today = new Date().toLocaleDateString('en-CA');
+                          const dailyNoteTitle = `Daily_${today}`;
+                          const existing = notes.find(n => n.title === dailyNoteTitle);
+                          
+                          window.dispatchEvent(new CustomEvent('abyssal-log', { 
+                            detail: { message: `INITIALIZING_DAILY_BUFFER: [${today}]`, type: 'system' } 
+                          }));
+
+                          if (existing) {
+                            onSelectNote(existing.id);
+                          } else {
+                            onAddNote(dailyNoteTitle); 
+                          }
+                        }} 
+                        className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
+                        title="Daily Note"
+                      >
+                        <Calendar size={14} />
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => setCollapseTrigger(prev => prev + 1)} 
+                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
+                      title="Collapse All"
+                    >
+                      <ChevronsDownUp size={14} />
+                    </button>
+                    <Button size="icon" onClick={onClose} variant="ghost" className="lg:hidden ml-1 h-8 w-8">
+                      <X size={16} />
                     </Button>
-                  )}
+                  </div>
                 </div>
 
-                <div className="relative group mb-3">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                <div className="relative group mb-4">
+                  <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] opacity-50 group-focus-within:opacity-100 transition-opacity" />
                   <input
                     type="text"
                     placeholder="FILTER_SEARCH..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[var(--card)] border border-[var(--border)] py-2 pl-9 pr-4 text-[11px] font-mono focus:outline-none focus:border-[var(--primary)] transition-all placeholder:text-[var(--muted-foreground)]"
+                    className="w-full bg-[var(--card)]/30 border border-[var(--border)]/50 py-1.5 pl-9 pr-4 text-[10px] font-mono focus:outline-none focus:border-[var(--primary)] focus:bg-[var(--card)]/50 transition-all placeholder:text-[var(--muted-foreground)]/50"
                   />
                 </div>
 
@@ -232,7 +295,7 @@ const Sidebar = memo(({
                   </div>
                 ) : (
                   <>
-                    {pinnedNotes.length > 0 && (
+                    {!isFiltering && pinnedNotes.length > 0 && (
                       <div className="mb-2">
                         <div className="px-4 py-2 text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest bg-[var(--card)]/50 flex items-center justify-between">
                            <span>Pinned Notes</span>
@@ -248,17 +311,53 @@ const Sidebar = memo(({
                       </div>
                     )}
                     <div>
-                      <div className="px-4 py-2 text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest bg-[var(--card)]/50 flex items-center justify-between">
-                         <span>All Notes</span>
-                         <Badge>{regularNotes.length}</Badge>
+                      <div 
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.add("bg-[var(--primary)]/10");
+                        }}
+                        onDragLeave={(e) => {
+                          e.currentTarget.classList.remove("bg-[var(--primary)]/10");
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.remove("bg-[var(--primary)]/10", "border-[var(--primary)]");
+                          const noteId = e.dataTransfer.getData("noteId");
+                          const folderPath = e.dataTransfer.getData("folderPath");
+                          
+                          if (noteId) {
+                            handleMoveNote(noteId, "");
+                          } else if (folderPath) {
+                            handleMoveFolder(folderPath, "");
+                          }
+                        }}
+                        className="px-4 py-1.5 text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] bg-[var(--card)]/30 flex items-center justify-between border-y border-dotted border-[var(--border)]/30 transition-all group"
+                      >
+                         <span className="group-hover:text-[var(--foreground)] transition-colors font-bold">Workspace</span>
+                         <Badge variant="outline" className="text-[8px] h-4 px-1 opacity-50">{isFiltering ? displayNotes.length : regularNotes.length}</Badge>
                       </div>
-                      <motion.div variants={staggerContainer} initial="hidden" animate="show">
-                        <AnimatePresence mode="popLayout">
-                          {regularNotes.map(note => (
-                            <SidebarItem key={note.id} note={note} isActive={activeNoteId === note.id} onSelect={onSelectNote} onDelete={onDeleteNote} />
-                          ))}
-                        </AnimatePresence>
-                      </motion.div>
+                      
+                      {isFiltering ? (
+                        <motion.div variants={staggerContainer} initial="hidden" animate="show">
+                          <AnimatePresence mode="popLayout">
+                            {displayNotes.map(note => (
+                              <SidebarItem key={note.id} note={note} isActive={activeNoteId === note.id} onSelect={onSelectNote} onDelete={onDeleteNote} />
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      ) : (
+                        <div className="py-2">
+                          <NestedExplorer 
+                            items={noteTree} 
+                            activeNoteId={activeNoteId} 
+                            onSelectNote={onSelectNote} 
+                            onDeleteNote={onDeleteNote} 
+                            onMoveNote={handleMoveNote}
+                            onMoveFolder={handleMoveFolder}
+                            collapseTrigger={collapseTrigger}
+                          />
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
