@@ -57,31 +57,29 @@ export const EditorHeader = ({
   const { isEnabled } = usePlugins();
   
   return (
-    <header className="h-auto md:h-14 border-b border-dotted border-[var(--border)] flex flex-col md:flex-row items-stretch md:items-center justify-between px-4 md:px-6 bg-[var(--background)] py-2 md:py-0 gap-4 md:gap-0">
-      <div className="flex items-center gap-4 md:gap-8 min-w-0 flex-1">
-        <div className="hidden lg:flex flex-col flex-shrink-0">
-          <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] mb-0.5">Instance_ID</span>
-          <span className="text-[10px] font-mono text-[var(--primary)] font-bold">{id.split('-')[0]}</span>
-        </div>
-        
-        <div className="h-6 w-px bg-[var(--border)] hidden lg:block opacity-50" />
+    <header className="h-14 border-b border-[var(--border)] flex items-stretch justify-between px-6 bg-[var(--card)]/40 backdrop-blur-xl relative overflow-hidden group">
+      {/* Immersive Accents */}
+      <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--primary)]/10 to-transparent" />
+
+      <div className="flex items-center gap-10 min-w-0 flex-1 relative z-10">
+        {/* Instance ID Removed */}
 
         <div className="flex flex-col min-w-0 flex-1 max-w-2xl">
-          <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] mb-0.5 hidden md:block">Document_Title</span>
           <div className="flex items-center gap-3">
-            <h2 className="text-[10px] md:text-[12px] font-bold text-[var(--foreground)] uppercase tracking-widest truncate">
+            <h2 className="text-[13px] font-black text-[var(--foreground)] uppercase tracking-[0.1em] truncate">
               {String(title || "UNTITLED_CODEX")}
             </h2>
             <AnimatePresence>
               {isSaving && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="flex items-center gap-1.5 px-2 py-0.5 bg-[var(--primary)]/10 border border-[var(--primary)]/20 rounded-sm shrink-0"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="flex items-center gap-2 px-2 py-1 bg-[var(--primary)] text-[var(--background)] rounded-none"
                 >
-                  <div className="w-1 h-1 bg-[var(--primary)]" />
-                  <span className="text-[7px] font-mono font-bold text-[var(--primary)] uppercase tracking-widest">Syncing</span>
+                  <div className="w-1.5 h-1.5 bg-[var(--background)] animate-pulse" />
+                  <span className="text-[8px] font-mono font-black uppercase tracking-[0.2em]">Syncing</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -89,109 +87,86 @@ export const EditorHeader = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 md:gap-6 shrink-0">
-        <div className="flex items-center gap-1 border-x border-[var(--border)] border-dotted px-4 h-10 hidden sm:flex">
-          <Button variant="ghost" size="icon" onClick={onToggleFavorite} title="Toggle Favorite" className="h-8 w-8">
-            <Star size={14} className={cn(isFavorite ? "fill-[var(--primary)] text-[var(--primary)]" : "text-[var(--muted-foreground)]")} />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onTogglePublic} 
-            title={isPublic ? "Public Fragment (Click to make Private)" : "Private Fragment (Click to Share & Copy)"} 
-            className="h-8 w-8"
+      <div className="flex items-center gap-6 shrink-0 relative z-10">
+        {/* Toolset A: Fragment Control */}
+        <div className="flex items-center gap-1.5 border-x border-[var(--border)] px-6 h-full">
+          <button 
+            onClick={onToggleFavorite} 
+            className={cn(
+              "p-2.5 transition-all group/btn relative", 
+              isFavorite ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
           >
-            {copiedShareLink ? <Check size={14} className="text-[var(--accent)]" /> : <Globe size={14} className={cn(isPublic ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]")} />}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={onDownload} title="Download Source" className="h-8 w-8">
-            <Download size={14} className="text-[var(--muted-foreground)]" />
-          </Button>
-          {isEnabled("zen-mode") && (
-            <Button variant="ghost" size="icon" onClick={onToggleZen} title="Zen Mode (Cmd+B)" className="h-8 w-8">
-              <Maximize size={14} className="text-[var(--muted-foreground)]" />
-            </Button>
-          )}
-          <Button 
-            variant="ghost" 
-            size="icon" 
+            <Star size={14} className={cn(isFavorite && "fill-current shadow-[0_0_10px_var(--primary)]")} />
+            {isFavorite && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-[1px] bg-[var(--primary)]" />}
+          </button>
+          
+          <button 
+            onClick={onTogglePublic} 
+            className={cn(
+              "p-2.5 transition-all relative", 
+              isPublic ? "text-[var(--accent)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            {copiedShareLink ? <Check size={14} className="text-[var(--accent)]" /> : <Globe size={14} />}
+            {isPublic && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-[1px] bg-[var(--accent)]" />}
+          </button>
+
+          <button onClick={onDownload} className="p-2.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all">
+            <Download size={14} />
+          </button>
+
+          <button 
             onClick={onToggleRightSidebar} 
-            className={cn("h-8 w-8 transition-colors hidden xl:flex", isRightSidebarOpen && "text-[var(--primary)] bg-[var(--primary)]/10")}
+            className={cn(
+              "p-2.5 transition-all hidden xl:block", 
+              isRightSidebarOpen ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
           >
             <PanelRight size={14} />
-          </Button>
+          </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex bg-[var(--card)] border border-[var(--border)] p-0.5 rounded-sm overflow-hidden shadow-inner">
-            <button 
-              onClick={() => onToggleEdit(true)}
-              title="Switch to Write Mode"
-              className={cn(
-                "px-3 py-1.5 transition-all rounded-sm flex items-center justify-center", 
-                isEditing ? "bg-[var(--primary)] text-[var(--background)] shadow-md" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--border)]/30"
-              )}
-            >
-              <Edit3 size={14} />
-            </button>
-            <button 
-              onClick={() => onToggleEdit(false)}
-              title="Switch to Read Mode"
-              className={cn(
-                "px-3 py-1.5 transition-all rounded-sm flex items-center justify-center", 
-                !isEditing ? "bg-[var(--primary)] text-[var(--background)] shadow-md" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--border)]/30"
-              )}
-            >
-              <Eye size={14} />
-            </button>
-          </div>
+        {/* Toolset B: View Switcher */}
+        <div className="flex items-center p-1 bg-[var(--background)]/50 border border-[var(--border)] gap-0.5">
+          <button 
+            onClick={() => onToggleEdit(true)}
+            className={cn(
+              "px-3 py-1.5 transition-all relative overflow-hidden text-[8px] font-mono font-black uppercase tracking-widest", 
+              isEditing ? "text-[var(--background)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            {isEditing && <motion.div layoutId="editor-mode" className="absolute inset-0 bg-[var(--primary)] -z-10" />}
+            Edit
+          </button>
+          <button 
+            onClick={() => onToggleEdit(false)}
+            className={cn(
+              "px-3 py-1.5 transition-all relative overflow-hidden text-[8px] font-mono font-black uppercase tracking-widest", 
+              !isEditing ? "text-[var(--background)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            {!isEditing && <motion.div layoutId="editor-mode" className="absolute inset-0 bg-[var(--primary)] -z-10" />}
+            Preview
+          </button>
+        </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 border-l border-[var(--border)] border-dotted pl-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => {
-                if (!isEditing) return;
-                const editor = (window as any).editorInstance;
-                if (editor) {
-                  const model = editor.getModel();
-                  const selection = editor.getSelection();
-                  const text = selection ? model.getValueInRange(selection) : "";
-                  editor.executeEdits("insert-link", [{
-                    range: selection || new (window as any).monaco.Range(1, 1, 1, 1),
-                    text: `[[${text}]]`,
-                    forceMoveMarkers: true
-                  }]);
-                  editor.focus();
-                }
-              }} 
-              className={cn("h-8 w-8", !isEditing && "opacity-30 pointer-events-none")}
-              title="Insert Wiki Link"
-            >
-              <Link size={14} className="text-[var(--muted-foreground)]" />
-            </Button>
-            
-            <Button variant="ghost" size="icon" onClick={onCopy} className="h-8 w-8" title="Copy Content">
-              {copiedContent ? <Check size={14} className="text-[var(--accent)]" /> : <Copy size={14} className="text-[var(--muted-foreground)]" />}
-            </Button>
+        {/* Toolset C: Data Operations */}
+        <div className="flex items-center gap-1 border-l border-[var(--border)] pl-6 h-full">
+          <button onClick={onCopy} className="p-2.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all">
+            {copiedContent ? <Check size={14} className="text-[var(--accent)]" /> : <Copy size={14} />}
+          </button>
 
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => {
-                const link = `[[${title || "Untitled Note"}]]`;
-                navigator.clipboard.writeText(link);
-                onCopyWikiLink();
-              }} 
-              className="h-8 w-8"
-              title="Copy Wiki Link"
-            >
-              {copiedLink ? <Check size={14} className="text-[var(--accent)]" /> : <Hash size={14} className="text-[var(--muted-foreground)]" />}
-            </Button>
-          </div>
-
-          <Button variant="primary" onClick={onCommit} size="sm" className="h-8 px-5 ml-1 font-bold">
-            Commit
-          </Button>
+          <button 
+            onClick={onCommit} 
+            className="h-8 px-6 ml-4 bg-[var(--primary)] text-[var(--background)] font-black text-[9px] uppercase tracking-[0.2em] relative group/commit overflow-hidden"
+          >
+             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/commit:translate-y-0 transition-transform duration-300" />
+             <div className="relative z-10 flex items-center gap-2">
+                <Hash size={10} className="opacity-50" />
+                Commit
+             </div>
+          </button>
         </div>
       </div>
     </header>

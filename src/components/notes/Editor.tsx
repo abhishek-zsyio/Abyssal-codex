@@ -212,7 +212,11 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
           className="flex-1 min-w-0 overflow-y-auto custom-scrollbar bg-[var(--card)] border-r border-dotted border-[var(--border)]"
         >
           <div className="h-full flex flex-col">
-            <div className="pt-12 lg:pt-20 px-8 lg:px-12 pb-0">
+            <div className="pt-16 lg:pt-24 px-12 lg:px-20 pb-0">
+               <div className="flex items-center gap-2 mb-4 opacity-40">
+                  <div className="w-1.5 h-1.5 border border-[var(--primary)] rotate-45" />
+                  <span className="text-[8px] font-mono uppercase tracking-[0.4em]">Node_Stream_Primary</span>
+               </div>
                <input
                 type="text"
                 value={title}
@@ -220,10 +224,10 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
                   setTitle(e.target.value);
                   debouncedUpdate(note.id, { title: e.target.value });
                 }}
-                className="w-full bg-transparent text-4xl font-bold mb-3 outline-none placeholder:text-[var(--border)] text-[var(--foreground)] tracking-tighter"
-                placeholder="TITLE..."
+                className="w-full bg-transparent text-5xl font-black mb-6 outline-none placeholder:text-[var(--border)] text-[var(--foreground)] tracking-tighter leading-none"
+                placeholder="UNIDENTIFIED_SEGMENT..."
               />
-              <div className="flex flex-wrap items-center gap-2 border-b border-dotted border-[var(--border)] pb-3 mb-2">
+              <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] pb-6 mb-4">
                 {(note.tags || []).map(tag => (
                   <Badge key={tag} variant="success" className="gap-1">
                     <Hash size={8} /> {tag}
@@ -311,10 +315,27 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
       </div>
       
       {!isZenMode && (
-        <footer className="h-10 border-t border-dotted border-[var(--border)] px-8 flex items-center justify-between text-[10px] font-mono text-[var(--muted-foreground)] bg-[var(--background)]">
-          <div className="flex items-center gap-6">
-            <span className="flex items-center gap-2">OK SYSTEM_OK</span>
-            <span className="text-[var(--accent)] uppercase">Buffer: Markdown</span>
+        <footer className="h-12 border-t border-[var(--border)] px-8 flex items-center justify-between text-[9px] font-mono text-[var(--muted-foreground)] bg-[var(--background)] relative overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+          <div className="flex items-center gap-10 relative z-10">
+            <div className="flex items-center gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse" />
+               <span className="uppercase tracking-[0.2em] font-black text-[var(--foreground)]">System_Live</span>
+            </div>
+            <div className="h-4 w-px bg-[var(--border)] opacity-30" />
+            <span className="uppercase tracking-widest">Buffer: Markdown_Stream_V1</span>
+            <span className="opacity-40 uppercase">0xABYS_CORE_ACTIVE</span>
+          </div>
+          <div className="flex items-center gap-4 relative z-10">
+             <span className="opacity-40 uppercase tracking-tighter">Loc: {note.id.split('-')[0].toUpperCase()}</span>
+             <div className="w-20 h-1 bg-[var(--border)]/20 relative overflow-hidden">
+                <motion.div 
+                   className="absolute inset-y-0 left-0 bg-[var(--primary)]" 
+                   initial={{ width: "0%" }}
+                   animate={{ width: "65%" }}
+                   transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+                />
+             </div>
           </div>
         </footer>
       )}

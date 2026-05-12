@@ -24,7 +24,7 @@ export const WorkspaceHeader = ({
   setIsSidebarOpen
 }: WorkspaceHeaderProps) => {
   return (
-    <div className="h-16 border-b border-[var(--border)] bg-[var(--card)]/30 backdrop-blur-xl flex items-center justify-between px-8 relative overflow-hidden group">
+    <div className="h-14 border-b border-[var(--border)] bg-[var(--card)]/30 backdrop-blur-xl flex items-center justify-between px-6 relative overflow-hidden group">
       {/* Visual Accents */}
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--primary)]/20 to-transparent" />
       <div className="absolute top-0 left-8 w-px h-full bg-[var(--border)] opacity-20" />
@@ -36,11 +36,11 @@ export const WorkspaceHeader = ({
              <div className="w-1 h-1 bg-[var(--primary)] animate-pulse" />
              <span className="text-[7px] font-mono text-[var(--primary)] uppercase tracking-[0.4em] font-black">Workspace_Protocol</span>
           </div>
-          <div className="flex items-center p-1 bg-[var(--background)]/50 border border-[var(--border)] rounded-none gap-1">
+          <div className="flex items-center p-0.5 bg-[var(--background)]/50 border border-[var(--border)] rounded-none gap-0.5">
             <button
               onClick={() => setMainView("editor")}
               className={cn(
-                "text-[9px] font-mono font-bold uppercase tracking-[0.15em] transition-all px-4 py-1.5 relative overflow-hidden",
+                "text-[8px] font-mono font-bold uppercase tracking-[0.15em] transition-all px-3 py-1 relative overflow-hidden",
                 mainView === "editor" 
                   ? "text-[var(--background)] z-10" 
                   : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
@@ -58,7 +58,7 @@ export const WorkspaceHeader = ({
             <button
               onClick={() => setMainView("graph")}
               className={cn(
-                "text-[9px] font-mono font-bold uppercase tracking-[0.15em] transition-all px-4 py-1.5 relative overflow-hidden",
+                "text-[8px] font-mono font-bold uppercase tracking-[0.15em] transition-all px-3 py-1 relative overflow-hidden",
                 mainView === "graph" 
                   ? "text-[var(--background)] z-10" 
                   : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
@@ -76,17 +76,6 @@ export const WorkspaceHeader = ({
           </div>
         </div>
 
-        {mainView === "editor" && activeNoteTitle && (
-          <div className="hidden lg:flex flex-col border-l border-[var(--border)] pl-10 h-10 justify-center">
-            <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] mb-0.5">Uplink_Target</span>
-            <div className="flex items-center gap-2">
-               <div className="w-1.5 h-1.5 border border-[var(--primary)] rotate-45" />
-               <span className="text-[11px] font-mono font-bold text-[var(--foreground)] uppercase tracking-tight">
-                 {activeNoteTitle || "UNTITLED_SEGMENT"}
-               </span>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="flex items-center gap-8 relative z-10">
@@ -98,14 +87,14 @@ export const WorkspaceHeader = ({
               if (nextSplitState) setIsSidebarOpen(false);
             }}
             className={cn(
-              "h-9 px-5 text-[9px] font-mono font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 group/btn",
+              "h-8 px-4 text-[8px] font-mono font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-2 group/btn",
               isSplitPane 
                 ? "bg-[var(--destructive)]/10 border-[var(--destructive)] text-[var(--destructive)]" 
                 : "bg-transparent border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--foreground)]"
             )}
           >
-            <div className={cn("w-2 h-2 border transition-colors", isSplitPane ? "border-[var(--destructive)] bg-[var(--destructive)]" : "border-[var(--muted-foreground)] group-hover/btn:border-[var(--primary)]")} />
-            {isSplitPane ? "TERMINATE_SPLIT" : "INITIATE_SPLIT"}
+            <div className={cn("w-1.5 h-1.5 border transition-colors", isSplitPane ? "border-[var(--destructive)] bg-[var(--destructive)]" : "border-[var(--muted-foreground)] group-hover/btn:border-[var(--primary)]")} />
+            {isSplitPane ? "TERMINATE" : "SPLIT"}
           </button>
         )}
         
