@@ -46,6 +46,8 @@ function HomeContent() {
     deleteAllNotes,
     folders,
     addFolder,
+    renameFolder,
+    deleteFolder,
     isLoading 
   } = useNotes();
   const { user } = useAuth();
@@ -198,6 +200,13 @@ function HomeContent() {
       </AnimatePresence>
 
       <main className="h-full w-full flex overflow-hidden bg-[var(--background)] text-[#ebdbb2] relative">
+        {/* Global Immersive Layer */}
+        <div className="absolute inset-0 pointer-events-none select-none z-0">
+           <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+           <div className="absolute inset-0 opacity-[0.1] bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-[length:32px_32px]" />
+           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--background)]/50 to-[var(--background)]" />
+        </div>
+
         <AnimatePresence>
           {isSidebarOpen && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/80 z-40 lg:hidden" />
@@ -231,6 +240,8 @@ function HomeContent() {
             onUpdateNote={updateNote}
             folders={folders}
             onAddFolder={addFolder}
+            onRenameFolder={renameFolder}
+            onDeleteFolder={deleteFolder}
           />
         </div>
         
@@ -245,7 +256,7 @@ function HomeContent() {
             setIsSidebarOpen={setIsSidebarOpen}
           />
 
-          <div className="flex-1 overflow-hidden relative">
+          <div className="flex-1 overflow-hidden relative z-10">
             <AnimatePresence mode="wait">
               {mainView === "graph" ? (
                 <div key="graph-view" className="absolute inset-0">

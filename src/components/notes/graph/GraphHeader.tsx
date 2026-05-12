@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { Activity, Search, Hash, Zap, ZoomIn, ZoomOut, Maximize2, X } from "lucide-react";
+import { Activity, Search, Hash, Zap, ZoomIn, ZoomOut, Maximize2, X, Play, Pause, Link2, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 interface GraphHeaderProps {
   searchQuery: string;
@@ -65,39 +66,54 @@ export const GraphHeader = ({
         </div>
 
         <div className="flex bg-[var(--background)]/50 backdrop-blur-md border border-[var(--border)] p-1 rounded-sm">
-          <button 
-            onClick={() => setIsLinkMode(!isLinkMode)} 
-            className={cn("p-2.5 transition-all rounded-sm", isLinkMode ? "text-[var(--primary)] bg-[var(--primary)]/10 shadow-[inset_0_0_10px_rgba(var(--primary-rgb),0.1)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
-            title="Neural Linkage Protocol (L)"
-          >
-            <Hash size={18} />
-          </button>
-          <button 
-            onClick={() => setShowHUD(!showHUD)} 
-            className={cn("p-2.5 transition-all rounded-sm", showHUD ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
-            title="Toggle System HUD (H)"
-          >
-            <Activity size={18} />
-          </button>
-          <button 
-            onClick={() => setIsPaused(!isPaused)} 
-            className={cn("p-2.5 transition-all rounded-sm", isPaused ? "text-[var(--destructive)] bg-[var(--destructive)]/10" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
-            title="Toggle Engine State (Space)"
-          >
-            <Zap size={18} />
-          </button>
+          <Tooltip content="Neural Linkage Mode" shortcut="L">
+            <button 
+              onClick={() => setIsLinkMode(!isLinkMode)} 
+              className={cn("p-2.5 transition-all rounded-sm", isLinkMode ? "text-[var(--primary)] bg-[var(--primary)]/10 shadow-[inset_0_0_10px_rgba(var(--primary-rgb),0.1)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
+            >
+              <Link2 size={18} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="System HUD Overlay" shortcut="H">
+            <button 
+              onClick={() => setShowHUD(!showHUD)} 
+              className={cn("p-2.5 transition-all rounded-sm", showHUD ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
+            >
+              <LayoutDashboard size={18} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content={isPaused ? "Resume Engine" : "Pause Engine"} shortcut="Space">
+            <button 
+              onClick={() => setIsPaused(!isPaused)} 
+              className={cn("p-2.5 transition-all rounded-sm", isPaused ? "text-[var(--destructive)] bg-[var(--destructive)]/10" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
+            >
+              {isPaused ? <Play size={18} /> : <Pause size={18} />}
+            </button>
+          </Tooltip>
           
           <div className="w-px h-5 bg-[var(--border)] mx-2 self-center opacity-50" />
           
-          <button onClick={onZoomIn} className="p-2.5 hover:bg-[var(--primary)]/5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all rounded-sm">
-            <ZoomIn size={18} />
-          </button>
-          <button onClick={onZoomOut} className="p-2.5 hover:bg-[var(--primary)]/5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all rounded-sm">
-            <ZoomOut size={18} />
-          </button>
-          <button onClick={onReset} className="p-2.5 hover:bg-[var(--primary)]/5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all border-l border-[var(--border)]/50 rounded-sm ml-1">
-            <Maximize2 size={18} />
-          </button>
+          <Tooltip content="Zoom In" shortcut="+">
+            <button onClick={onZoomIn} className="p-2.5 hover:bg-[var(--primary)]/5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all rounded-sm">
+              <ZoomIn size={18} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Zoom Out" shortcut="-">
+            <button onClick={onZoomOut} className="p-2.5 hover:bg-[var(--primary)]/5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all rounded-sm">
+              <ZoomOut size={18} />
+            </button>
+          </Tooltip>
+
+          <div className="w-px h-5 bg-[var(--border)] mx-2 self-center opacity-50" />
+
+          <Tooltip content="Reset Viewport" shortcut="R">
+            <button onClick={onReset} className="p-2.5 hover:bg-[var(--primary)]/5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all rounded-sm">
+              <Maximize2 size={18} />
+            </button>
+          </Tooltip>
         </div>
 
         {variant === "modal" && (

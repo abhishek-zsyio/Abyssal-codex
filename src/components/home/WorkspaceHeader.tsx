@@ -2,7 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
+import { motion } from "framer-motion";
 
 interface WorkspaceHeaderProps {
   mainView: "editor" | "graph";
@@ -24,68 +24,97 @@ export const WorkspaceHeader = ({
   setIsSidebarOpen
 }: WorkspaceHeaderProps) => {
   return (
-    <div className="h-14 border-b border-[var(--border)] bg-[var(--card)]/10 flex items-center justify-between px-6">
-      <div className="flex items-center gap-6 h-full">
+    <div className="h-16 border-b border-[var(--border)] bg-[var(--card)]/30 backdrop-blur-xl flex items-center justify-between px-8 relative overflow-hidden group">
+      {/* Visual Accents */}
+      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--primary)]/20 to-transparent" />
+      <div className="absolute top-0 left-8 w-px h-full bg-[var(--border)] opacity-20" />
+      <div className="absolute top-0 right-8 w-px h-full bg-[var(--border)] opacity-20" />
+
+      <div className="flex items-center gap-10 h-full relative z-10">
         <div className="flex flex-col">
-          <span className="text-[7px] font-mono text-[var(--primary)] uppercase tracking-[0.4em] mb-0.5">Workspace_Mode</span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 mb-1">
+             <div className="w-1 h-1 bg-[var(--primary)] animate-pulse" />
+             <span className="text-[7px] font-mono text-[var(--primary)] uppercase tracking-[0.4em] font-black">Workspace_Protocol</span>
+          </div>
+          <div className="flex items-center p-1 bg-[var(--background)]/50 border border-[var(--border)] rounded-none gap-1">
             <button
               onClick={() => setMainView("editor")}
               className={cn(
-                "text-[10px] font-mono font-bold uppercase tracking-widest transition-all px-3 py-1 border",
+                "text-[9px] font-mono font-bold uppercase tracking-[0.15em] transition-all px-4 py-1.5 relative overflow-hidden",
                 mainView === "editor" 
-                  ? "bg-[var(--primary)] text-[var(--background)] border-[var(--primary)] shadow-[0_0_15px_rgba(250,189,47,0.3)]" 
-                  : "text-[var(--muted-foreground)] border-[var(--border)] hover:border-[var(--primary)]/50"
+                  ? "text-[var(--background)] z-10" 
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
             >
+              {mainView === "editor" && (
+                <motion.div 
+                  layoutId="active-mode"
+                  className="absolute inset-0 bg-[var(--primary)] -z-10"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
               01 // EDITOR_CORE
             </button>
             <button
               onClick={() => setMainView("graph")}
               className={cn(
-                "text-[10px] font-mono font-bold uppercase tracking-widest transition-all px-3 py-1 border",
+                "text-[9px] font-mono font-bold uppercase tracking-[0.15em] transition-all px-4 py-1.5 relative overflow-hidden",
                 mainView === "graph" 
-                  ? "bg-[var(--primary)] text-[var(--background)] border-[var(--primary)] shadow-[0_0_15px_rgba(250,189,47,0.3)]" 
-                  : "text-[var(--muted-foreground)] border-[var(--border)] hover:border-[var(--primary)]/50"
+                  ? "text-[var(--background)] z-10" 
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               )}
             >
-              02 // NEXUS_GRAPH
+              {mainView === "graph" && (
+                <motion.div 
+                  layoutId="active-mode"
+                  className="absolute inset-0 bg-[var(--primary)] -z-10"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              02 // NEXUS_MAP
             </button>
           </div>
         </div>
 
         {mainView === "editor" && activeNoteTitle && (
-          <div className="h-8 w-px bg-[var(--border)] mx-2 opacity-30" />
-        )}
-
-        {mainView === "editor" && activeNoteTitle && (
-          <div className="hidden md:flex flex-col">
-            <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] mb-0.5">Active_Node</span>
-            <span className="text-[10px] font-mono font-bold text-[var(--foreground)] uppercase truncate max-w-[200px]">
-              {activeNoteTitle || "UNTITLED_SEGMENT"}
-            </span>
+          <div className="hidden lg:flex flex-col border-l border-[var(--border)] pl-10 h-10 justify-center">
+            <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] mb-0.5">Uplink_Target</span>
+            <div className="flex items-center gap-2">
+               <div className="w-1.5 h-1.5 border border-[var(--primary)] rotate-45" />
+               <span className="text-[11px] font-mono font-bold text-[var(--foreground)] uppercase tracking-tight">
+                 {activeNoteTitle || "UNTITLED_SEGMENT"}
+               </span>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-8 relative z-10">
         {mainView === "editor" && hasSecondaryNote && (
-          <Button
-            variant={isSplitPane ? "warning" : "ghost"}
-            size="sm"
+          <button
             onClick={() => {
               const nextSplitState = !isSplitPane;
               setIsSplitPane(nextSplitState);
               if (nextSplitState) setIsSidebarOpen(false);
             }}
-            className="h-8 px-3 text-[9px] font-mono uppercase tracking-widest border border-[var(--border)]"
+            className={cn(
+              "h-9 px-5 text-[9px] font-mono font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 group/btn",
+              isSplitPane 
+                ? "bg-[var(--destructive)]/10 border-[var(--destructive)] text-[var(--destructive)]" 
+                : "bg-transparent border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--foreground)]"
+            )}
           >
-            {isSplitPane ? "MERGE_PANES" : "SPLIT_STREAM"}
-          </Button>
+            <div className={cn("w-2 h-2 border transition-colors", isSplitPane ? "border-[var(--destructive)] bg-[var(--destructive)]" : "border-[var(--muted-foreground)] group-hover/btn:border-[var(--primary)]")} />
+            {isSplitPane ? "TERMINATE_SPLIT" : "INITIATE_SPLIT"}
+          </button>
         )}
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]" />
-          <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-tighter">System_Live</span>
+        
+        <div className="flex flex-col items-end">
+           <div className="flex items-center gap-2">
+              <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">Network_Sync</span>
+              <div className="w-1.5 h-1.5 rounded-none bg-[var(--primary)] animate-pulse shadow-[0_0_8px_var(--primary)]" />
+           </div>
+           <span className="text-[9px] font-mono text-[var(--foreground)] font-bold tracking-tighter uppercase opacity-80 mt-0.5">0x7F_ACTIVE_NODE</span>
         </div>
       </div>
     </div>

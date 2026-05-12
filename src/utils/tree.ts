@@ -31,7 +31,7 @@ export function buildNoteTree(notes: Note[], emptyFolders: string[] = []): TreeI
 
       if (!folder) {
         folder = {
-          id: `folder-${part}-${index}-${Math.random()}`,
+          id: `folder:${parts.slice(0, index + 1).join("/")}`,
           name: part,
           type: "folder",
           children: [],
@@ -70,7 +70,7 @@ export function buildNoteTree(notes: Note[], emptyFolders: string[] = []): TreeI
 
         if (!folder) {
           folder = {
-            id: `folder-${part}-${index}-${Math.random()}`,
+            id: `folder:${parts.slice(0, index + 1).join("/")}`,
             name: part,
             type: "folder",
             children: [],

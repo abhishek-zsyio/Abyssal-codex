@@ -73,7 +73,17 @@ const MarkdownPreview = memo(({
 
   const processedContent = useMemo(() => {
     if (!deferredContent) return "";
-    return deferredContent.replace(/\[\[(.*?)\]\]/g, (_, title) => `[${title}](note://${encodeURIComponent(title)})`);
+    // Support aliases [[Target|Alias]]
+    return deferredContent.replace(/\[\[(.*?)\]\]/g, (match, content) => {
+      let target = content;
+      let alias = content;
+      if (content.includes('|')) {
+        const parts = content.split('|');
+        target = parts[0].trim();
+        alias = parts.slice(1).join('|').trim();
+      }
+      return `[${alias}](note://${encodeURIComponent(target)})`;
+    });
   }, [deferredContent]);
 
   const contentChunks = useMemo(() => {
@@ -140,10 +150,13 @@ const MarkdownPreview = memo(({
                 // Extract title even if prefixed (e.g. http://localhost:3000/note://Title)
                 const parts = href.split("note:");
                 const targetTitle = decodeURIComponent(parts[parts.length - 1].replace(/^\/\//, ""));
+                const targetLower = targetTitle.toLowerCase().trim();
                 
-                const targetNote = allNotes.find((n: any) => 
-                  n.title?.toLowerCase().trim() === targetTitle.toLowerCase().trim()
-                );
+                const targetNote = allNotes.find((n: any) => {
+                  const noteTitle = n.title?.toLowerCase().trim();
+                  const noteId = n.id?.toLowerCase().trim();
+                  return noteId === targetLower || noteTitle === targetLower || noteTitle?.endsWith('/' + targetLower);
+                });
 
                 return (
                   <button 

@@ -45,15 +45,15 @@ export function useNotes() {
         setFolders(savedFolders);
       }
 
-      // Supabase Sync (Notes only for now)
+      // Supabase Sync (Notes & Folders)
       if (user) {
-        const { data, error } = await supabase
-          .from("notes")
-          .select("*")
-          .order("updated_at", { ascending: false });
+        const [notesRes, foldersRes] = await Promise.all([
+          supabase.from("notes").select("*").order("updated_at", { ascending: false }),
+          supabase.from("folders").select("path")
+        ]);
 
-        if (data && !error) {
-          const remoteNotes: Note[] = (data as any[]).map((n) => ({
+        if (notesRes.data && !notesRes.error) {
+          const remoteNotes: Note[] = (notesRes.data as any[]).map((n) => ({
             id: n.id,
             title: n.title,
             content: n.content,
@@ -70,6 +70,13 @@ export function useNotes() {
           });
         } else {
           setNotes(currentNotes);
+        }
+
+        if (foldersRes.data && !foldersRes.error) {
+          const remoteFolders = foldersRes.data.map(f => f.path);
+          setFolders(prev => Array.from(new Set([...prev, ...remoteFolders])));
+        } else if (foldersRes.error) {
+          console.error("Cloud Folder Fetch Error:", foldersRes.error);
         }
       } else {
         setNotes(currentNotes);
@@ -117,13 +124,21 @@ export function useNotes() {
     return newNote.id;
   }, [notes, folders, user, supabase, saveToStorage]);
 
-  const addFolder = useCallback((path: string) => {
+  const addFolder = useCallback(async (path: string) => {
     if (!folders.includes(path)) {
       const updatedFolders = [...folders, path];
       setFolders(updatedFolders);
       saveToStorage(notes, updatedFolders);
+
+      if (user) {
+        const { error } = await supabase.from("folders").insert([{ user_id: user.id, path }]);
+        if (error) {
+          console.error("Cloud Folder Insert Error:", error);
+          toast(`SYNC_ERROR: [FOLDER_CREATION_FAILED]`, "system");
+        }
+      }
     }
-  }, [folders, notes, saveToStorage]);
+  }, [folders, notes, saveToStorage, user, supabase, toast]);
 
   const updateNote = useCallback(async (id: string, updates: Partial<Note>) => {
     const updatedNotes = notes.map((n) => 
@@ -147,6 +162,61 @@ export function useNotes() {
       if (error) console.error("Cloud Update Error:", error);
     }
   }, [notes, folders, user, supabase, saveToStorage]);
+
+  const renameFolder = useCallback(async (oldPath: string, newPath: string) => {
+    const notesToUpdate = notes.filter(n => n.title.startsWith(oldPath + "/") || n.title === oldPath);
+    const updatedNotes = notes.map(n => {
+      if (n.title.startsWith(oldPath + "/") || n.title === oldPath) {
+        const relativePath = n.title.substring(oldPath.length);
+        return { ...n, title: `${newPath}${relativePath}`, updatedAt: Date.now() };
+      }
+      return n;
+    });
+
+    const updatedFolders = folders.map(f => {
+      if (f.startsWith(oldPath + "/") || f === oldPath) {
+        const relativePath = f.substring(oldPath.length);
+        return `${newPath}${relativePath}`;
+      }
+      return f;
+    });
+
+    setNotes(updatedNotes);
+    setFolders(updatedFolders);
+    saveToStorage(updatedNotes, updatedFolders);
+
+    if (user) {
+      // Bulk update in Supabase
+      for (const note of notesToUpdate) {
+        const relativePath = note.title.substring(oldPath.length);
+        const newTitle = `${newPath}${relativePath}`;
+        await supabase.from("notes").update({ title: newTitle, updated_at: new Date().toISOString() }).eq("id", note.id);
+      }
+      // Update folder record
+      const { error } = await supabase.from("folders").update({ path: newPath }).eq("path", oldPath).eq("user_id", user.id);
+      if (error) console.error("Cloud Folder Rename Error:", error);
+    }
+  }, [notes, folders, user, supabase, saveToStorage]);
+
+  const deleteFolder = useCallback(async (path: string) => {
+    if (!window.confirm(`WIPE_CLUSTER: [${path}] AND_ALL_INTERNAL_DATA?`)) return;
+
+    const updatedNotes = notes.filter(n => !n.title.startsWith(path + "/") && n.title !== path);
+    const updatedFolders = folders.filter(f => !f.startsWith(path + "/") && f !== path);
+
+    setNotes(updatedNotes);
+    setFolders(updatedFolders);
+    saveToStorage(updatedNotes, updatedFolders);
+
+    if (user) {
+      await supabase.from("notes").delete().like("title", `${path}/%`);
+      await supabase.from("notes").delete().eq("title", path);
+      const { error } = await supabase.from("folders").delete().eq("path", path).eq("user_id", user.id);
+      if (error) console.error("Cloud Folder Delete Error:", error);
+    }
+
+    toast(`CLUSTER_DELETED: [${path}]`, "system");
+  }, [notes, folders, user, supabase, saveToStorage, toast]);
 
   const deleteNote = useCallback(async (id: string) => {
     const updatedNotes = notes.filter((n) => n.id !== id);

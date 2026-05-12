@@ -13,6 +13,7 @@ interface NestedExplorerProps {
   onDeleteNote: (id: string) => void;
   onMoveNote?: (id: string, targetPath: string) => void;
   onMoveFolder?: (oldPath: string, targetPath: string) => void;
+  onDeleteFolder?: (path: string) => void;
   level?: number;
   parentPath?: string;
   collapseTrigger?: number;
@@ -41,7 +42,8 @@ const FolderItem = ({
   parentPath,
   collapseTrigger,
   selectedFolderPath,
-  onSelectFolder
+  onSelectFolder,
+  onDeleteFolder
 }: { 
   folder: TreeFolder; 
   activeNoteId: string | null;
@@ -49,6 +51,7 @@ const FolderItem = ({
   onDeleteNote: (id: string) => void;
   onMoveNote?: (id: string, targetPath: string) => void;
   onMoveFolder?: (oldPath: string, targetPath: string) => void;
+  onDeleteFolder?: (path: string) => void;
   level: number;
   parentPath: string;
   collapseTrigger?: number;
@@ -124,6 +127,18 @@ const FolderItem = ({
         <span className={cn("text-[11px] font-mono uppercase tracking-tight truncate flex-1", isSelected && "text-[var(--primary)] font-bold")}>
           {folder.name}
         </span>
+        {onDeleteFolder && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteFolder(currentPath);
+            }}
+            className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all hover:bg-[var(--destructive)]/10 rounded"
+            title="Delete Folder"
+          >
+            <Trash2 size={10} />
+          </button>
+        )}
       </div>
 
       <AnimatePresence initial={false}>
@@ -147,6 +162,7 @@ const FolderItem = ({
               onDeleteNote={onDeleteNote}
               onMoveNote={onMoveNote}
               onMoveFolder={onMoveFolder}
+              onDeleteFolder={onDeleteFolder}
               level={level + 1}
               parentPath={currentPath}
               collapseTrigger={collapseTrigger}

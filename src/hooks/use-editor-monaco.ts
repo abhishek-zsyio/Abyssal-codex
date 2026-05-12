@@ -316,10 +316,13 @@ export const useEditorMonaco = (
             
             if (textBeforeCursor.endsWith('[[')) {
               const suggestions = (notesRef.current || []).map(n => ({
-                label: n.title || "UNTITLED",
+                label: n.title.includes('/') ? n.title : (n.title || "UNTITLED"),
                 kind: monaco.languages.CompletionItemKind.Reference,
                 insertText: n.title || "UNTITLED",
-                detail: `Note ID: ${n.id?.split('-')[0] || '?'}`,
+                detail: `Path: ${n.title}`,
+                documentation: {
+                  value: n.content ? (n.content.substring(0, 100) + '...') : "No content"
+                },
                 range: {
                   startLineNumber: position.lineNumber,
                   endLineNumber: position.lineNumber,
@@ -341,17 +344,25 @@ export const useEditorMonaco = (
             const text = model.getValue();
             if (!text) return { links: [] };
             
-            // Wiki links: [[Note Title]]
+            // Wiki links: [[Note Title]] or [[Note Title|Alias]]
             const wikiRegex = /\[\[(.*?)\]\]/g;
             let match;
             while ((match = wikiRegex.exec(text)) !== null) {
               const startPos = model.getPositionAt(match.index);
               const endPos = model.getPositionAt(match.index + match[0].length);
-              const title = match[1];
+              const content = match[1];
               
-              const targetNote = (notesRef.current || []).find(n => 
-                n.title?.toLowerCase().trim() === title.toLowerCase().trim()
-              );
+              let target = content;
+              if (content.includes('|')) {
+                target = content.split('|')[0].trim();
+              }
+              
+              const targetLower = target.toLowerCase().trim();
+              const targetNote = (notesRef.current || []).find(n => {
+                const noteTitle = n.title?.toLowerCase().trim();
+                const noteId = n.id?.toLowerCase().trim();
+                return noteId === targetLower || noteTitle === targetLower || noteTitle?.endsWith('/' + targetLower);
+              });
               
               if (targetNote) {
                 links.push({
@@ -361,8 +372,8 @@ export const useEditorMonaco = (
                     endLineNumber: endPos.lineNumber,
                     endColumn: endPos.column
                   },
-                  url: `note://${encodeURIComponent(title)}`,
-                  tooltip: `Cmd/Ctrl + Click to follow: ${title}`
+                  url: `note://${encodeURIComponent(target)}`,
+                  tooltip: `Cmd/Ctrl + Click to follow: ${target}`
                 });
               }
             }
@@ -412,10 +423,13 @@ export const useEditorMonaco = (
             if (!titlePart) return;
             
             const title = decodeURIComponent(titlePart.replace(/^\/\//, ""));
+            const targetLower = title.toLowerCase().trim();
             
-            const targetNote = (notesRef.current || []).find(n => 
-              n.title?.toLowerCase().trim() === title.toLowerCase().trim()
-            );
+            const targetNote = (notesRef.current || []).find(n => {
+              const noteTitle = n.title?.toLowerCase().trim();
+              const noteId = n.id?.toLowerCase().trim();
+              return noteId === targetLower || noteTitle === targetLower || noteTitle?.endsWith('/' + targetLower);
+            });
 
             if (targetNote) {
               window.dispatchEvent(new CustomEvent('abyssal-log', { 

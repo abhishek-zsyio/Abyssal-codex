@@ -44,6 +44,8 @@ interface SidebarProps {
   onUpdateNote?: (id: string, updates: Partial<Note>) => void;
   folders?: string[];
   onAddFolder?: (path: string) => void;
+  onRenameFolder?: (oldPath: string, newPath: string) => void;
+  onDeleteFolder?: (path: string) => void;
 }
 
 const Sidebar = memo(({
@@ -69,6 +71,8 @@ const Sidebar = memo(({
   onUpdateNote,
   folders = [],
   onAddFolder,
+  onRenameFolder,
+  onDeleteFolder,
 }: SidebarProps) => {
   const { isEnabled } = usePlugins();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -173,7 +177,8 @@ const Sidebar = memo(({
   };
 
   return (
-    <aside className="w-80 h-full flex border-r border-dotted border-[var(--border)] bg-[var(--background)]">
+    <aside className="w-80 h-full flex border-r border-[var(--border)] bg-[var(--background)] relative">
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
       <SidebarNavigation 
         activeView={activeView}
         setActiveView={setActiveView}
@@ -195,11 +200,17 @@ const Sidebar = memo(({
               variants={slideInLeft}
               className="flex-1 flex flex-col overflow-hidden relative"
             >
-              <div className="p-6 border-b border-dotted border-[var(--border)]">
-                <div className="flex items-center justify-between mb-8">
+              <div className="p-8 border-b border-dotted border-[var(--border)] relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
+                   <div className="text-[14px] font-mono font-black text-[var(--border)] tracking-widest select-none">FS_0x1</div>
+                </div>
+                <div className="flex items-center justify-between mb-10">
                   <div className="flex flex-col">
-                    <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.4em] mb-0.5 opacity-70">File System</span>
-                    <h1 className="text-sm font-black text-[var(--foreground)] tracking-tighter uppercase">Explorer</h1>
+                    <div className="flex items-center gap-1.5 mb-1">
+                       <div className="w-1.5 h-1.5 border border-[var(--primary)] rotate-45" />
+                       <span className="text-[8px] font-mono text-[var(--primary)] uppercase tracking-[0.4em] font-black">Segment_Hub</span>
+                    </div>
+                    <h1 className="text-xl font-black text-[var(--foreground)] tracking-tighter uppercase leading-none">Explorer</h1>
                   </div>
                   <div className="flex items-center gap-0.5 self-end pb-0.5">
                     <button 
@@ -261,14 +272,15 @@ const Sidebar = memo(({
                   </div>
                 </div>
 
-                <div className="relative group mb-4">
+                <div className="relative group mb-6">
+                  <div className="absolute inset-0 bg-[var(--primary)]/5 opacity-0 group-focus-within:opacity-100 transition-opacity" />
                   <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] opacity-50 group-focus-within:opacity-100 transition-opacity" />
                   <input
                     type="text"
-                    placeholder="FILTER_SEARCH..."
+                    placeholder="LOCATE_NODE_STREAM..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[var(--card)]/30 border border-[var(--border)]/50 py-1.5 pl-9 pr-4 text-[10px] font-mono focus:outline-none focus:border-[var(--primary)] focus:bg-[var(--card)]/50 transition-all placeholder:text-[var(--muted-foreground)]/50"
+                    className="w-full bg-transparent border-b border-[var(--border)] py-2 pl-9 pr-4 text-[10px] font-mono focus:outline-none focus:border-[var(--primary)] transition-all placeholder:text-[var(--muted-foreground)]/30"
                   />
                 </div>
 
@@ -314,7 +326,7 @@ const Sidebar = memo(({
               <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 {isLoading ? (
                   <SidebarSkeleton />
-                ) : displayNotes.length === 0 ? (
+                ) : (displayNotes.length === 0 && folders.length === 0) ? (
                   <div className="p-8 text-center text-[10px] font-mono text-[var(--muted-foreground)]">
                     {activeTag ? `No notes tagged #${activeTag}` : "No notes found."}
                   </div>
@@ -348,29 +360,20 @@ const Sidebar = memo(({
                          <Badge variant="outline" className="text-[8px] h-4 px-1 opacity-50">{isFiltering ? displayNotes.length : regularNotes.length}</Badge>
                       </div>
                       
-                      {isFiltering ? (
-                        <motion.div variants={staggerContainer} initial="hidden" animate="show">
-                          <AnimatePresence mode="popLayout">
-                            {displayNotes.map(note => (
-                              <SidebarItem key={note.id} note={note} isActive={activeNoteId === note.id} onSelect={onSelectNote} onDelete={onDeleteNote} />
-                            ))}
-                          </AnimatePresence>
-                        </motion.div>
-                      ) : (
-                        <div className="py-2">
-                          <NestedExplorer 
-                            items={noteTree} 
-                            activeNoteId={activeNoteId} 
-                            onSelectNote={onSelectNote} 
-                            onDeleteNote={onDeleteNote} 
-                            onMoveNote={handleMoveNote}
-                            onMoveFolder={handleMoveFolder}
-                            collapseTrigger={collapseTrigger}
-                            selectedFolderPath={selectedFolderPath}
-                            onSelectFolder={setSelectedFolderPath}
-                          />
-                        </div>
-                      )}
+                      <div className="py-2 overflow-y-auto custom-scrollbar flex-1">
+                        <NestedExplorer 
+                          items={noteTree} 
+                          activeNoteId={activeNoteId} 
+                          onSelectNote={onSelectNote} 
+                          onDeleteNote={onDeleteNote} 
+                          onMoveNote={handleMoveNote}
+                          onMoveFolder={onRenameFolder || handleMoveFolder}
+                          onDeleteFolder={onDeleteFolder}
+                          collapseTrigger={collapseTrigger}
+                          selectedFolderPath={selectedFolderPath}
+                          onSelectFolder={setSelectedFolderPath}
+                        />
+                      </div>
                     </div>
                   </>
                 )}
