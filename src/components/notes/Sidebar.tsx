@@ -15,7 +15,6 @@ import { SidebarItem } from "./sidebar/SidebarItem";
 import { SidebarSkeleton } from "./sidebar/SidebarSkeleton";
 import { SidebarNavigation } from "./sidebar/SidebarNavigation";
 import NestedExplorer from "./sidebar/NestedExplorer";
-import NewFolderModal from "./sidebar/NewFolderModal";
 import { buildNoteTree } from "@/utils/tree";
 
 interface SidebarProps {
@@ -82,7 +81,7 @@ const Sidebar = memo(({
   const setActiveView = (onViewChange || setInternalActiveView) as any;
 
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -219,7 +218,7 @@ const Sidebar = memo(({
                       <FilePlus size={14} />
                     </button>
                     <button 
-                      onClick={() => setIsNewFolderModalOpen(true)} 
+                      onClick={() => setIsCreatingFolder(true)} 
                       className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
                       title="New Folder"
                     >
@@ -338,6 +337,9 @@ const Sidebar = memo(({
                           collapseTrigger={collapseTrigger}
                           selectedFolderPath={selectedFolderPath}
                           onSelectFolder={setSelectedFolderPath}
+                          isCreatingFolder={isCreatingFolder}
+                          setIsCreatingFolder={setIsCreatingFolder}
+                          onAddFolder={onAddFolder}
                         />
                       </div>
                     </div>

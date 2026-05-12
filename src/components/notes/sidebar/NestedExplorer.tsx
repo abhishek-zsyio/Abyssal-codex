@@ -19,6 +19,9 @@ interface NestedExplorerProps {
   collapseTrigger?: number;
   selectedFolderPath?: string | null;
   onSelectFolder?: (path: string | null) => void;
+  isCreatingFolder?: boolean;
+  setIsCreatingFolder?: (isCreating: boolean) => void;
+  onAddFolder?: (path: string) => void;
 }
 
 const getFileIcon = (name: string, isActive: boolean) => {
@@ -43,7 +46,10 @@ const FolderItem = ({
   collapseTrigger,
   selectedFolderPath,
   onSelectFolder,
-  onDeleteFolder
+  onDeleteFolder,
+  isCreatingFolder,
+  setIsCreatingFolder,
+  onAddFolder
 }: { 
   folder: TreeFolder; 
   activeNoteId: string | null;
@@ -57,6 +63,9 @@ const FolderItem = ({
   collapseTrigger?: number;
   selectedFolderPath?: string | null;
   onSelectFolder?: (path: string | null) => void;
+  isCreatingFolder?: boolean;
+  setIsCreatingFolder?: (isCreating: boolean) => void;
+  onAddFolder?: (path: string) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -68,6 +77,12 @@ const FolderItem = ({
       setIsOpen(false);
     }
   }, [collapseTrigger]);
+
+  useEffect(() => {
+    if (isCreatingFolder && selectedFolderPath === currentPath) {
+      setIsOpen(true);
+    }
+  }, [isCreatingFolder, selectedFolderPath, currentPath]);
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("folderPath", currentPath);
@@ -168,6 +183,9 @@ const FolderItem = ({
               collapseTrigger={collapseTrigger}
               selectedFolderPath={selectedFolderPath}
               onSelectFolder={onSelectFolder}
+              isCreatingFolder={isCreatingFolder}
+              setIsCreatingFolder={setIsCreatingFolder}
+              onAddFolder={onAddFolder}
             />
           </motion.div>
         )}
@@ -284,10 +302,45 @@ const NestedExplorer = memo(({
   parentPath = "",
   collapseTrigger,
   selectedFolderPath,
-  onSelectFolder
+  onSelectFolder,
+  isCreatingFolder,
+  setIsCreatingFolder,
+  onAddFolder
 }: NestedExplorerProps) => {
   return (
     <div className="flex flex-col w-full">
+      {isCreatingFolder && (parentPath === (selectedFolderPath || "")) && (
+        <div 
+          className="flex items-center gap-1.5 px-3 py-1.5 border-l-2 border-[var(--primary)] bg-[var(--primary)]/10"
+          style={{ paddingLeft: `${(level * 12) + 8}px` }}
+        >
+          <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+            <Folder size={14} className="text-[var(--primary)] fill-[var(--primary)]/20" />
+          </div>
+          <input 
+            autoFocus
+            className="bg-transparent border-none outline-none text-[11px] font-mono uppercase tracking-tight w-full text-[var(--foreground)] placeholder:text-[var(--primary)]/30"
+            placeholder="NEW_CLUSTER_NAME..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const name = e.currentTarget.value.trim();
+                if (name && onAddFolder) {
+                  onAddFolder(name);
+                }
+                setIsCreatingFolder?.(false);
+              } else if (e.key === "Escape") {
+                setIsCreatingFolder?.(false);
+              }
+            }}
+            onBlur={(e) => {
+              // Only cancel if we didn't just press Enter
+              setTimeout(() => {
+                setIsCreatingFolder?.(false);
+              }, 200);
+            }}
+          />
+        </div>
+      )}
       {items.map((item) => (
         item.type === "folder" ? (
           <FolderItem 
