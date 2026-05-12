@@ -15,6 +15,7 @@ import { SidebarItem } from "./sidebar/SidebarItem";
 import { SidebarSkeleton } from "./sidebar/SidebarSkeleton";
 import { SidebarNavigation } from "./sidebar/SidebarNavigation";
 import NestedExplorer from "./sidebar/NestedExplorer";
+import NewFolderModal from "./sidebar/NewFolderModal";
 import { buildNoteTree } from "@/utils/tree";
 
 interface SidebarProps {
@@ -77,6 +78,7 @@ const Sidebar = memo(({
   const setActiveView = (onViewChange || setInternalActiveView) as any;
 
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -159,6 +161,17 @@ const Sidebar = memo(({
     }
   };
 
+  const handleAddFolder = (name: string) => {
+    if (onAddFolder) {
+      const fullPath = selectedFolderPath ? `${selectedFolderPath}/${name}` : name;
+      onAddFolder(fullPath);
+      
+      window.dispatchEvent(new CustomEvent('abyssal-log', { 
+        detail: { message: `ALLOCATING_NEW_CLUSTER: [${fullPath}]`, type: 'system' } 
+      }));
+    }
+  };
+
   return (
     <aside className="w-80 h-full flex border-r border-dotted border-[var(--border)] bg-[var(--background)]">
       <SidebarNavigation 
@@ -200,17 +213,18 @@ const Sidebar = memo(({
                       <FilePlus size={14} />
                     </button>
                     <button 
-                      onClick={() => {
-                        const folderName = window.prompt("Enter folder name:");
-                        if (folderName && onAddFolder) {
-                          onAddFolder(folderName);
-                        }
-                      }} 
+                      onClick={() => setIsNewFolderModalOpen(true)} 
                       className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
                       title="New Folder"
                     >
                       <FolderPlus size={14} />
                     </button>
+                    <NewFolderModal 
+                      isOpen={isNewFolderModalOpen}
+                      onClose={() => setIsNewFolderModalOpen(false)}
+                      onConfirm={handleAddFolder}
+                      currentPath={selectedFolderPath}
+                    />
                     {isEnabled("daily-notes") && (
                       <button 
                         onClick={() => {
