@@ -113,7 +113,7 @@ const FolderItem = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1 cursor-pointer transition-colors group relative border-l-2",
+          "flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-colors group relative border-l-2",
           isSelected ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-transparent",
           isDragOver && "bg-[var(--primary)]/10 border-l-[var(--primary)]",
           "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--card)]/30"
@@ -133,7 +133,7 @@ const FolderItem = ({
               e.stopPropagation();
               onDeleteFolder(currentPath);
             }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all hover:bg-[var(--destructive)]/10 rounded"
+            className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all hover:bg-[var(--destructive)]/10 rounded-none"
             title="Delete Folder"
           >
             <Trash2 size={10} />
@@ -243,7 +243,7 @@ const FileItem = ({
         onSelectFolder?.(parentPath || null);
       }}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-1 cursor-pointer transition-all group relative border-l-2",
+        "flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-all group relative border-l-2",
         isActive 
           ? "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)] font-bold shadow-[inset_0_0_20px_rgba(var(--primary-rgb),0.05)]" 
           : "border-transparent text-[var(--foreground)]/70 hover:bg-[var(--card)]/40 hover:text-[var(--foreground)]",
@@ -256,7 +256,7 @@ const FileItem = ({
       </div>
       <div className="flex items-center gap-1.5 flex-1 overflow-hidden">
         {file.note.isFavorite && <Star size={8} className="text-[var(--primary)] fill-[var(--primary)] flex-shrink-0" />}
-        <span className="text-[11px] font-mono truncate tracking-tight">
+        <span className="text-[11px] font-mono truncate tracking-tight uppercase">
           {file.name}
         </span>
       </div>
@@ -265,7 +265,7 @@ const FileItem = ({
           e.stopPropagation();
           onDeleteNote(file.id);
         }}
-        className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all hover:bg-[var(--destructive)]/10 rounded"
+        className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all hover:bg-[var(--destructive)]/10 rounded-none"
       >
         <Trash2 size={12} />
       </button>

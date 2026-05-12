@@ -200,90 +200,56 @@ const Sidebar = memo(({
               variants={slideInLeft}
               className="flex-1 flex flex-col overflow-hidden relative"
             >
-              <div className="p-8 border-b border-dotted border-[var(--border)] relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
-                   <div className="text-[14px] font-mono font-black text-[var(--border)] tracking-widest select-none">FS_0x1</div>
-                </div>
-                <div className="flex items-center justify-between mb-10">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1.5 mb-1">
-                       <div className="w-1.5 h-1.5 border border-[var(--primary)] rotate-45" />
-                       <span className="text-[8px] font-mono text-[var(--primary)] uppercase tracking-[0.4em] font-black">Segment_Hub</span>
-                    </div>
-                    <h1 className="text-xl font-black text-[var(--foreground)] tracking-tighter uppercase leading-none">Explorer</h1>
-                  </div>
-                  <div className="flex items-center gap-0.5 self-end pb-0.5">
+              <div className="p-5 border-b border-[var(--border)] bg-[var(--card)]/5 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h1 className="text-xl font-black text-[var(--foreground)] tracking-tight uppercase leading-none flex items-baseline gap-2">
+                    Explorer
+                    <span className="text-[10px] font-mono text-[var(--muted-foreground)] font-normal tracking-normal lowercase opacity-40">/root</span>
+                  </h1>
+                  
+                  <div className="flex items-center gap-0.5">
                     <button 
                       onClick={() => {
                         const title = selectedFolderPath ? `${selectedFolderPath}/Untitled` : "Untitled";
                         onAddNote(title);
                       }} 
-                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
+                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
                       title={selectedFolderPath ? `New File in ${selectedFolderPath}` : "New File"}
                     >
                       <FilePlus size={14} />
                     </button>
                     <button 
                       onClick={() => setIsNewFolderModalOpen(true)} 
-                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
+                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
                       title="New Folder"
                     >
                       <FolderPlus size={14} />
                     </button>
-                    <NewFolderModal 
-                      isOpen={isNewFolderModalOpen}
-                      onClose={() => setIsNewFolderModalOpen(false)}
-                      onConfirm={handleAddFolder}
-                      currentPath={selectedFolderPath}
-                    />
-                    {isEnabled("daily-notes") && (
-                      <button 
-                        onClick={() => {
-                          const today = new Date().toLocaleDateString('en-CA');
-                          const dailyNoteTitle = `Daily_${today}`;
-                          const existing = notes.find(n => n.title === dailyNoteTitle);
-                          
-                          window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                            detail: { message: `INITIALIZING_DAILY_BUFFER: [${today}]`, type: 'system' } 
-                          }));
-
-                          if (existing) {
-                            onSelectNote(existing.id);
-                          } else {
-                            onAddNote(dailyNoteTitle); 
-                          }
-                        }} 
-                        className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
-                        title="Daily Note"
-                      >
-                        <Calendar size={14} />
-                      </button>
-                    )}
                     <button 
                       onClick={() => setCollapseTrigger(prev => prev + 1)} 
-                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--card)]/50 transition-colors rounded"
+                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
                       title="Collapse All"
                     >
                       <ChevronsDownUp size={14} />
                     </button>
-                    <Button size="icon" onClick={onClose} variant="ghost" className="lg:hidden ml-1 h-8 w-8">
-                      <X size={16} />
-                    </Button>
                   </div>
                 </div>
 
-                <div className="relative group mb-6">
-                  <div className="absolute inset-0 bg-[var(--primary)]/5 opacity-0 group-focus-within:opacity-100 transition-opacity" />
-                  <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] opacity-50 group-focus-within:opacity-100 transition-opacity" />
+                <div className="relative group/search">
+                  <div className="absolute inset-y-0 left-0 w-8 flex items-center justify-center text-[var(--muted-foreground)] group-focus-within/search:text-[var(--primary)] transition-colors">
+                    <Search size={12} strokeWidth={3} />
+                  </div>
                   <input
                     type="text"
-                    placeholder="LOCATE_NODE_STREAM..."
+                    placeholder="LOCATE_NODE..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-transparent border-b border-[var(--border)] py-2 pl-9 pr-4 text-[10px] font-mono focus:outline-none focus:border-[var(--primary)] transition-all placeholder:text-[var(--muted-foreground)]/30"
+                    className="w-full bg-[var(--background)]/50 border border-[var(--border)] py-2 pl-8 pr-4 text-[10px] font-mono focus:outline-none focus:border-[var(--primary)]/50 transition-all placeholder:text-[var(--muted-foreground)]/30 uppercase tracking-widest"
                   />
                 </div>
+              </div>
 
+              <div className="flex-shrink-0 px-6 pt-4 empty:hidden">
                 <AnimatePresence>
                   {activeTag && (
                     <motion.div
@@ -379,17 +345,17 @@ const Sidebar = memo(({
                 )}
               </div>
 
-              <div className="p-4 border-t border-dotted border-[var(--border)] bg-[var(--background)]">
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <Button onClick={exportAllNotes} size="sm" className="bg-[var(--card)]/50 hover:bg-[var(--card)] border-[var(--border)]"><Download size={12} className="mr-2" /> Export</Button>
-                  <Button onClick={() => fileInputRef.current?.click()} size="sm" className="bg-[var(--card)]/50 hover:bg-[var(--card)] border-[var(--border)]"><Upload size={12} className="mr-2" /> Import</Button>
+              <div className="p-6 border-t border-dotted border-[var(--border)] bg-[var(--background)]">
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <Button onClick={exportAllNotes} size="sm" className="bg-[var(--card)]/50 hover:bg-[var(--card)] border-[var(--border)] rounded-none h-9"><Download size={12} className="mr-2" /> Export</Button>
+                  <Button onClick={() => fileInputRef.current?.click()} size="sm" className="bg-[var(--card)]/50 hover:bg-[var(--card)] border-[var(--border)] rounded-none h-9"><Upload size={12} className="mr-2" /> Import</Button>
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                 </div>
                 <Button 
                   onClick={deleteAllNotes} 
                   variant="destructive" 
                   size="sm" 
-                  className="w-full bg-[var(--destructive)]/10 hover:bg-[var(--destructive)] text-[var(--destructive)] hover:text-white border-[var(--destructive)]/30 text-[10px] font-mono tracking-widest h-8"
+                  className="w-full bg-[var(--destructive)]/10 hover:bg-[var(--destructive)] text-[var(--destructive)] hover:text-white border-[var(--destructive)]/30 text-[10px] font-mono tracking-widest h-10 rounded-none"
                 >
                   <Trash2 size={12} className="mr-2" /> WIPE_ALL_BUFFERS
                 </Button>
