@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import dynamic from "next/dynamic";
 import { Note } from "@/types/note";
 
@@ -24,7 +24,7 @@ interface HomeModalsProps {
   setIsAuthModalOpen: (open: boolean) => void;
 }
 
-export const HomeModals = ({
+export const HomeModals = memo(({
   isOmniConsoleOpen,
   setIsOmniConsoleOpen,
   notes,
@@ -60,4 +60,4 @@ export const HomeModals = ({
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </>
   );
-};
+});

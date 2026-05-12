@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { motion } from "framer-motion";
 import { FileText, Package, Share2, Palette, Terminal as TerminalIcon, ShieldCheck, HelpCircle, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,7 @@ const NavItem = ({
   </button>
 );
 
-export const SidebarNavigation = ({
+export const SidebarNavigation = memo(({
   activeView,
   setActiveView,
   onOpenGraph,
@@ -159,4 +159,4 @@ export const SidebarNavigation = ({
       </div>
     </div>
   );
-};
+});

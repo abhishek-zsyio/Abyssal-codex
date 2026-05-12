@@ -18,6 +18,7 @@ export function useNotes() {
   const supabase = createClient();
 
   const lastUserId = useRef<string | null | undefined>(undefined);
+  const pendingSyncRef = useRef<{ notes: Note[], folders: string[] } | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -88,8 +89,21 @@ export function useNotes() {
   }, [user, supabase]);
 
   const saveToStorage = useCallback(async (notesToSave: Note[], foldersToSave: string[]) => {
-    await storage.saveNotes(notesToSave, user?.id);
-    await storage.saveFolders(foldersToSave, user?.id);
+    // Immediate local state update is already done via setNotes/setFolders
+    // Debounce the actual persistence
+    pendingSyncRef.current = { notes: notesToSave, folders: foldersToSave };
+    
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      const syncData = pendingSyncRef.current;
+      if (!syncData) return;
+      
+      await storage.saveNotes(syncData.notes, user?.id);
+      await storage.saveFolders(syncData.folders, user?.id);
+      saveTimeoutRef.current = null;
+      pendingSyncRef.current = null;
+    }, 2000); // 2 second debounce for persistence
   }, [user]);
 
   const addNote = useCallback(async (title: string = "Untitled", content: string = "") => {

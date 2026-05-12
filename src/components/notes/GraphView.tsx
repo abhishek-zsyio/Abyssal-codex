@@ -79,6 +79,7 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
   const currentNodesRef = useRef<Node[]>([]);
   const simulationTimeRef = useRef<number>(0);
   const lastFrameTimeRef = useRef<number>(Date.now());
+  const linkCacheRef = useRef<Map<string, { content: string, links: string[] }>>(new Map());
 
   const requestRender = useCallback(() => {
     needsRedrawRef.current = true;
@@ -305,12 +306,22 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
     const connectedPairs = new Set<string>();
     
     processedNotes.forEach(sourceNode => {
-      // Support [[Target|Alias]]
-      const wikiLinks = sourceNode.content?.match(/\[\[(.*?)\]\]/g) || [];
-      const targets = wikiLinks.map(l => {
-        const content = l.slice(2, -2).trim();
-        return content.includes('|') ? content.split('|')[0].trim() : content;
-      });
+      // Use cache to avoid re-parsing links if content hasn't changed
+      let targets: string[] = [];
+      const cached = linkCacheRef.current.get(sourceNode.id);
+      
+      if (cached && cached.content === sourceNode.content) {
+        targets = cached.links;
+      } else {
+        // Support [[Target|Alias]]
+        const wikiLinks = sourceNode.content?.match(/\[\[(.*?)\]\]/g) || [];
+        targets = wikiLinks.map(l => {
+          const content = l.slice(2, -2).trim();
+          return content.includes('|') ? content.split('|')[0].trim() : content;
+        });
+        linkCacheRef.current.set(sourceNode.id, { content: sourceNode.content, links: targets });
+      }
+      
       const uniqueTargets = new Set(targets);
 
       uniqueTargets.forEach(targetTitle => {
@@ -430,7 +441,7 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
     const hierarchyLinks = initialLinks.filter(l => l.isHierarchy);
 
     const simulation = d3.forceSimulation<Node>(initialNodes)
-      .alphaDecay(0.05)
+      .alphaDecay(0.08) // Faster stabilization
       .force("link", d3.forceLink<Node, Link>(visibleLinks).id(d => d.id).distance(80).strength(0.3))
       .force("charge", d3.forceManyBody().strength((d) => (d as Node).isFolder ? -600 : (d as Node).isRoguePlanet ? -150 : -80))
       .force("center", d3.forceCenter(0, 0).strength(0.02))
@@ -490,59 +501,93 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
       ctx.translate(width / 2 + x, height / 2 + y);
       ctx.scale(k, k);
 
-      const curHoverId = hoveredNodeRef.current;
-      const nodeToSys = new Map(initialNodes.map(n => [n.id, n.parentFolderId]));
 
       // 1. Neural Links (Neural Bridges)
+      const curHoverId = hoveredNodeRef.current;
+      
+      // Batch drawing for performance
+      ctx.lineWidth = 1.0 / k;
+      
+      // Group links by color to batch draw
+      const linksByColor = new Map<string, Link[]>();
+      const interSystemLinks: Link[] = [];
+      const highlightedLinks: Link[] = [];
+
       visibleLinks.forEach(link => {
         const s = link.source as Node; const t = link.target as Node;
         if (!s.x || !t.x) return;
-        const isHovered = curHoverId === s.id || curHoverId === t.id;
-        const sSys = nodeToSys.get(s.id); const tSys = nodeToSys.get(t.id);
-        const isInterSystem = sSys !== tSys;
         
-        const grad = ctx.createLinearGradient(s.x, s.y, t.x, t.y);
+        if (curHoverId === s.id || curHoverId === t.id) {
+          highlightedLinks.push(link);
+          return;
+        }
+
+        const sSys = s.parentFolderId; const tSys = t.parentFolderId;
+        if (sSys !== tSys) {
+          interSystemLinks.push(link);
+          return;
+        }
+
+        const color = (s.color || themeColors.foreground) + "22";
+        if (!linksByColor.has(color)) linksByColor.set(color, []);
+        linksByColor.get(color)!.push(link);
+      });
+
+      // Draw Intra-System Links (Batched)
+      linksByColor.forEach((links, color) => {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        links.forEach(link => {
+          const s = link.source as Node; const t = link.target as Node;
+          ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!);
+        });
+        ctx.stroke();
+      });
+
+      // Draw Inter-System Links (Batched if possible, or simple lines)
+      ctx.beginPath();
+      ctx.strokeStyle = themeColors.muted + "44";
+      interSystemLinks.forEach(link => {
+        const s = link.source as Node; const t = link.target as Node;
+        ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!);
+      });
+      ctx.stroke();
+
+      // Draw Highlighted Links (With Gradients and Glow)
+      highlightedLinks.forEach(link => {
+        const s = link.source as Node; const t = link.target as Node;
         const sourceColor = s.color || themeColors.primary;
         const targetColor = t.color || themeColors.primary;
         
-        if (isInterSystem) {
-          grad.addColorStop(0, sourceColor + (isHovered ? "ff" : "99"));
-          grad.addColorStop(1, targetColor + (isHovered ? "ff" : "44"));
-        } else {
-          grad.addColorStop(0, (s.color || themeColors.foreground) + (isHovered ? "aa" : "22"));
-          grad.addColorStop(1, (t.color || themeColors.foreground) + (isHovered ? "aa" : "11"));
-        }
+        const grad = ctx.createLinearGradient(s.x!, s.y!, t.x!, t.y!);
+        grad.addColorStop(0, sourceColor + "ff");
+        grad.addColorStop(1, targetColor + "66");
 
         ctx.beginPath();
         ctx.strokeStyle = grad;
-        
-        if (isInterSystem) {
-          if (isHovered) {
-            ctx.shadowBlur = 15 / k;
-            ctx.shadowColor = sourceColor;
-          }
-          ctx.lineWidth = (isHovered ? 3.0 : 1.2) / k;
-        } else {
-          ctx.lineWidth = 1.0 / k;
-        }
-        
-        ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y);
+        ctx.lineWidth = 3.0 / k;
+        ctx.shadowBlur = 15 / k;
+        ctx.shadowColor = sourceColor;
+        ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!);
         ctx.stroke();
-        if (isHovered) ctx.shadowBlur = 0;
+        ctx.shadowBlur = 0;
+      });
 
-        // Animated Data Packets for Inter-System Links
-        if (isInterSystem) {
+      // Animated Data Packets for Inter-System Links (Only if zoomed in or limited)
+      if (k > 0.3) {
+        interSystemLinks.forEach(link => {
+          const s = link.source as Node; const t = link.target as Node;
           const speed = 0.0015;
           const time = (simTime * speed) % 1;
-          const px = s.x + (t.x - s.x) * time;
-          const py = s.y + (t.y - s.y) * time;
+          const px = s.x! + (t.x! - s.x!) * time;
+          const py = s.y! + (t.y! - s.y!) * time;
           
           ctx.beginPath();
-          ctx.fillStyle = sourceColor;
-          ctx.arc(px, py, (isHovered ? 3 : 1.5) / k, 0, Math.PI * 2);
+          ctx.fillStyle = s.color || themeColors.primary;
+          ctx.arc(px, py, 1.5 / k, 0, Math.PI * 2);
           ctx.fill();
-        }
-      });
+        });
+      }
 
       // 2. Solar Nodes
       initialNodes.forEach(node => {
@@ -601,12 +646,7 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
     const mx = (e.clientX - rect.left - rect.width / 2 - transformRef.current.x) / transformRef.current.k;
     const my = (e.clientY - rect.top - rect.height / 2 - transformRef.current.y) / transformRef.current.k;
 
-    let found: Node | null = null;
-    for (const node of initialNodes) {
-      const dx = node.x! - mx; const dy = node.y! - my;
-      const hitRadius = node.size * 2.2;
-      if (dx * dx + dy * dy < hitRadius * hitRadius) { found = node; break; }
-    }
+    const found = simulationRef.current?.find(mx, my, 30) || null;
 
     if (found?.id !== hoveredNodeRef.current) {
         hoveredNodeRef.current = found?.id || null;

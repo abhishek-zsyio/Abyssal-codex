@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, memo, useEffect } from "react";
-import { ChevronRight, ChevronDown, FileText, Folder, Trash2, Star, FileJson, FileCode, Settings, File } from "lucide-react";
+import { ChevronRight, ChevronDown, FileText, Folder, Trash2, Star, FileJson, FileCode, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TreeItem, TreeFolder, TreeFile } from "@/utils/tree";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,7 +34,7 @@ const getFileIcon = (name: string, isActive: boolean) => {
   return <FileText className={iconClass} />;
 };
 
-const FolderItem = ({ 
+const FolderItem = memo(({ 
   folder, 
   activeNoteId, 
   onSelectNote, 
@@ -192,9 +192,9 @@ const FolderItem = ({
       </AnimatePresence>
     </div>
   );
-};
+});
 
-const FileItem = ({ 
+const FileItem = memo(({ 
   file, 
   activeNoteId, 
   onSelectNote, 
@@ -289,7 +289,7 @@ const FileItem = ({
       </button>
     </div>
   );
-};
+});
 
 const NestedExplorer = memo(({ 
   items, 
@@ -325,7 +325,12 @@ const NestedExplorer = memo(({
               if (e.key === "Enter") {
                 const name = e.currentTarget.value.trim();
                 if (name && onAddFolder) {
-                  onAddFolder(name);
+                  const fullPath = parentPath ? `${parentPath}/${name}` : name;
+                  onAddFolder(fullPath);
+                  
+                  window.dispatchEvent(new CustomEvent('abyssal-log', { 
+                    detail: { message: `ALLOCATING_NEW_CLUSTER: [${fullPath}]`, type: 'system' } 
+                  }));
                 }
                 setIsCreatingFolder?.(false);
               } else if (e.key === "Escape") {

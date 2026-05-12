@@ -3,7 +3,7 @@
 import React, { useRef, memo, useState, useMemo } from "react";
 import { Note } from "@/types/note";
 import { cn } from "../../lib/utils";
-import { Plus, Search, X, Hash, Tag, Calendar, Download, Upload, FolderPlus, FilePlus, ChevronsDownUp, Star, Trash2 } from "lucide-react";
+import { Search, X, Hash, Tag, Download, Upload, FolderPlus, FilePlus, ChevronsDownUp, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, slideInLeft } from "@/lib/transitions";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/DataDisplay";
 import { usePlugins } from "@/hooks/use-plugins";
 import SidebarPlugins from "./SidebarPlugins";
 import SidebarHelp from "./SidebarHelp";
-import { SidebarItem } from "./sidebar/SidebarItem";
+
 import { SidebarSkeleton } from "./sidebar/SidebarSkeleton";
 import { SidebarNavigation } from "./sidebar/SidebarNavigation";
 import NestedExplorer from "./sidebar/NestedExplorer";
@@ -29,11 +29,8 @@ interface SidebarProps {
   exportAllNotes?: () => void;
   importNotes?: (notes: Note[]) => void;
   deleteAllNotes?: () => void;
-  onOpenHelp?: () => void;
   onOpenThemes?: () => void;
-
   onToggleTerminal?: () => void;
-  onOpenPlugins?: () => void;
   onOpenAuth?: () => void;
   isLoggedIn?: boolean;
   isLoading?: boolean;
@@ -90,25 +87,16 @@ const Sidebar = memo(({
   }, [notes]);
 
   const displayNotes = useMemo(() => {
-    let filtered = notes.filter(n => !n.title.endsWith("/.keep") && n.title !== ".keep");
-    if (searchQuery) {
-      filtered = filtered.filter(n => 
-        n.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        n.content?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    if (activeTag) {
-      filtered = filtered.filter(n => (n.tags || []).includes(activeTag));
-    }
-    return filtered;
-  }, [notes, searchQuery, activeTag]);
+    if (!activeTag) return notes;
+    return notes.filter(n => (n.tags || []).includes(activeTag));
+  }, [notes, activeTag]);
 
-  const pinnedNotes = useMemo(() => displayNotes.filter(n => n.isFavorite), [displayNotes]);
+
   const regularNotes = useMemo(() => displayNotes.filter(n => !n.isFavorite), [displayNotes]);
 
   const noteTree = useMemo(() => buildNoteTree(displayNotes, folders), [displayNotes, folders]);
   
-  const isFiltering = !!searchQuery || !!activeTag;
+  const isFiltering = !!activeTag;
   const [collapseTrigger, setCollapseTrigger] = useState(0);
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
 
@@ -164,16 +152,7 @@ const Sidebar = memo(({
     }
   };
 
-  const handleAddFolder = (name: string) => {
-    if (onAddFolder) {
-      const fullPath = selectedFolderPath ? `${selectedFolderPath}/${name}` : name;
-      onAddFolder(fullPath);
-      
-      window.dispatchEvent(new CustomEvent('abyssal-log', { 
-        detail: { message: `ALLOCATING_NEW_CLUSTER: [${fullPath}]`, type: 'system' } 
-      }));
-    }
-  };
+
 
   return (
     <aside className="w-80 h-full flex border-r border-[var(--border)] bg-[var(--background)] relative">

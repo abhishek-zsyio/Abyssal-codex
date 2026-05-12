@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -14,7 +14,7 @@ interface WorkspaceHeaderProps {
   setIsSidebarOpen: (open: boolean) => void;
 }
 
-export const WorkspaceHeader = ({
+export const WorkspaceHeader = memo(({
   mainView,
   setMainView,
   activeNoteTitle,
@@ -108,4 +108,4 @@ export const WorkspaceHeader = ({
       </div>
     </div>
   );
-};
+});

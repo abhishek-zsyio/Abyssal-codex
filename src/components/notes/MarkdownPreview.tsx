@@ -5,36 +5,19 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, FileCode, CornerDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import dynamic from "next/dynamic";
+
+const SyntaxHighlighter = dynamic(() => import("react-syntax-highlighter").then(mod => mod.PrismLight), {
+  ssr: false,
+  loading: () => <div className="p-4 animate-pulse bg-[var(--background)] h-32" />
+});
+
 import { 
-  gruvboxDark, 
-  nord, 
-  dracula, 
-  oneDark, 
-  oneLight, 
-  xonokai, 
-  synthwave84, 
-  atomDark, 
-  solarizedDarkAtom,
-  vscDarkPlus
+  gruvboxDark
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 const getHighlightStyle = (theme: string) => {
-  switch (theme) {
-    case "nord": return nord;
-    case "monokai": return xonokai;
-    case "dracula": return dracula;
-    case "cyberpunk": return synthwave84;
-    case "light": return oneLight;
-    case "onedark": return oneDark;
-    case "tokyo-night": return vscDarkPlus;
-    case "catppuccin": return atomDark;
-    case "solarized": return solarizedDarkAtom;
-    case "github": return atomDark; // closest match
-    case "rose-pine": return dracula; // fallback
-    case "everforest": return gruvboxDark; // fallback
-    default: return gruvboxDark;
-  }
+  return gruvboxDark; // Simplified for now to avoid large bundle of themes
 };
 
 import { Button } from "@/components/ui/Button";
