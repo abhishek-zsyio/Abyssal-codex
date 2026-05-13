@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Star, Globe, Download, Maximize, PanelRight, Edit3, Eye, Link, Copy, Check, Hash } from "lucide-react";
+import { Star, Globe, Download, Maximize2, PanelRight, Edit3, Eye, Link, Copy, Check, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
@@ -56,6 +56,7 @@ export const EditorHeader = ({
   onUpdateTitle,
   isSaving
 }: EditorHeaderProps) => {
+  const { isEnabled } = usePlugins();
   return (
     <header className="h-14 border-b border-[var(--border)] flex items-center justify-between px-6 bg-[var(--background)] select-none">
       {/* Left: Identification & Path */}
@@ -132,6 +133,19 @@ export const EditorHeader = ({
           >
             <Eye size={14} />
           </button>
+          
+          {isEnabled("zen-mode") && (
+            <button 
+              onClick={onToggleZen}
+              className={cn(
+                "p-2 rounded-sm transition-all text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10",
+                isZenMode && "text-[var(--primary)] bg-[var(--primary)]/10"
+              )}
+              title="Toggle Zen Mode (⌘+B)"
+            >
+              <Maximize2 size={14} />
+            </button>
+          )}
         </div>
 
         {/* Actions */}
