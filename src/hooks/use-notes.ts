@@ -6,6 +6,7 @@ import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { createClient } from "@/utils/supabase/client";
+import { encryptNote, decryptNote } from "@/utils/encryption";
 
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -37,7 +38,10 @@ export function useNotes() {
       const savedNotes = await storage.getNotes<Note[]>(user?.id);
       let currentNotes: Note[] = [];
       if (savedNotes) {
-        currentNotes = savedNotes;
+        currentNotes = await Promise.all(savedNotes.map(async n => ({
+          ...n,
+          content: await decryptNote(n.content || "", user?.id)
+        })));
       }
 
       // Load Folders
@@ -54,16 +58,16 @@ export function useNotes() {
         ]);
 
         if (notesRes.data && !notesRes.error) {
-          const remoteNotes: Note[] = (notesRes.data as any[]).map((n) => ({
+          const remoteNotes: Note[] = await Promise.all((notesRes.data as any[]).map(async (n) => ({
             id: n.id,
             title: n.title,
-            content: n.content,
+            content: await decryptNote(n.content || "", user.id),
             isFavorite: n.is_favorite ?? false,
             isPublic: n.is_public ?? false,
             tags: n.tags || [],
             updatedAt: n.updated_at ? new Date(n.updated_at).getTime() : Date.now(),
             createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
-          }));
+          })));
 
           setNotes(() => {
             const localOnly = currentNotes.filter(ln => !remoteNotes.find(rn => rn.id === ln.id));
@@ -99,7 +103,13 @@ export function useNotes() {
       const syncData = pendingSyncRef.current;
       if (!syncData) return;
       
-      await storage.saveNotes(syncData.notes, user?.id);
+      // Encrypt for local storage
+      const encryptedNotes = await Promise.all(syncData.notes.map(async n => ({
+        ...n,
+        content: await encryptNote(n.content, user?.id)
+      })));
+
+      await storage.saveNotes(encryptedNotes, user?.id);
       await storage.saveFolders(syncData.folders, user?.id);
       saveTimeoutRef.current = null;
       pendingSyncRef.current = null;
@@ -122,11 +132,12 @@ export function useNotes() {
     saveToStorage(updatedNotes, folders);
 
     if (user) {
+      const encryptedContent = await encryptNote(newNote.content, user.id);
       const { error } = await supabase.from("notes").insert([{
         id: newNote.id,
         user_id: user.id,
         title: newNote.title,
-        content: newNote.content,
+        content: encryptedContent,
         is_favorite: newNote.isFavorite,
         tags: newNote.tags,
         updated_at: new Date(newNote.updatedAt).toISOString(),
@@ -164,7 +175,9 @@ export function useNotes() {
     if (user) {
       const dbUpdates: any = {};
       if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.content !== undefined) dbUpdates.content = updates.content;
+      if (updates.content !== undefined) {
+        dbUpdates.content = await encryptNote(updates.content, user.id);
+      }
       if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
       if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
       dbUpdates.updated_at = new Date().toISOString();

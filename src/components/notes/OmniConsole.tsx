@@ -18,7 +18,8 @@ import {
   Package,
   Calendar,
   Command,
-  ArrowRight
+  ArrowRight,
+  Lock
 } from "lucide-react";
 import { spring, microSpring, staggerContainer, fadeInScale } from "@/lib/transitions";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ interface OmniConsoleProps {
   exportAllNotes: () => void;
   onOpenPlugins: () => void;
   onOpenThemes: () => void;
+  onOpenSecurity: () => void;
 }
 
 const OmniConsole = ({
@@ -57,6 +59,7 @@ const OmniConsole = ({
   exportAllNotes,
   onOpenPlugins,
   onOpenThemes,
+  onOpenSecurity,
 }: OmniConsoleProps) => {
   const { theme } = useTheme();
   const { isEnabled } = usePlugins();
@@ -124,7 +127,7 @@ const OmniConsole = ({
 
     switch (cmd) {
       case "help":
-        addLog("COMMANDS: LS, CAT, TOUCH, RM, PWD, CLEAR, THEMES, PLUGINS, EXPORT, WHOAMI, UNAME, DATE, NEOFETCH, PING", "info");
+        addLog("COMMANDS: LS, CAT, TOUCH, RM, PWD, CLEAR, THEMES, PLUGINS, VAULT, EXPORT, WHOAMI, UNAME, DATE, NEOFETCH, PING", "info");
         break;
       case "ls":
         if (notes.length === 0) addLog("DIRECTORY_EMPTY", "warning");
@@ -187,6 +190,11 @@ const OmniConsole = ({
         break;
       case "plugins":
         onOpenPlugins();
+        onClose();
+        break;
+      case "vault":
+      case "security":
+        onOpenSecurity();
         onClose();
         break;
       case "export":

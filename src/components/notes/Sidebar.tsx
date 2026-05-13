@@ -32,6 +32,7 @@ interface SidebarProps {
   onOpenThemes?: () => void;
   onToggleTerminal?: () => void;
   onOpenAuth?: () => void;
+  onOpenSecurity?: () => void;
   isLoggedIn?: boolean;
   isLoading?: boolean;
   activeView?: "explorer" | "plugins" | "help";
@@ -59,6 +60,7 @@ const Sidebar = memo(({
   onOpenThemes,
   onToggleTerminal,
   onOpenAuth,
+  onOpenSecurity,
   isLoggedIn,
   isLoading,
   activeView: externalActiveView = "explorer",
@@ -164,6 +166,7 @@ const Sidebar = memo(({
         onOpenThemes={onOpenThemes}
         onToggleTerminal={onToggleTerminal}
         onOpenAuth={onOpenAuth}
+        onOpenSecurity={onOpenSecurity}
         isLoggedIn={isLoggedIn}
       />
 

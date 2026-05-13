@@ -2,7 +2,7 @@
 
 import React, { memo } from "react";
 import { motion } from "framer-motion";
-import { FileText, Package, Share2, Palette, Terminal as TerminalIcon, ShieldCheck, HelpCircle, Cpu } from "lucide-react";
+import { FileText, Package, Share2, Palette, Terminal as TerminalIcon, ShieldCheck, HelpCircle, Cpu, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { microSpring } from "@/lib/transitions";
 
@@ -13,6 +13,7 @@ interface SidebarNavigationProps {
   onOpenThemes?: () => void;
   onToggleTerminal?: () => void;
   onOpenAuth?: () => void;
+  onOpenSecurity?: () => void;
   isLoggedIn?: boolean;
 }
 
@@ -77,6 +78,7 @@ export const SidebarNavigation = memo(({
   onOpenThemes,
   onToggleTerminal,
   onOpenAuth,
+  onOpenSecurity,
   isLoggedIn
 }: SidebarNavigationProps) => {
   return (
@@ -134,6 +136,13 @@ export const SidebarNavigation = memo(({
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-1 w-full pb-4">
+        <NavItem 
+          icon={Lock}
+          label="Vault"
+          title="Security"
+          onClick={onOpenSecurity || (() => {})}
+        />
+
         <NavItem 
           icon={ShieldCheck}
           label="Auth"

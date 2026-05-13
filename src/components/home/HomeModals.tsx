@@ -7,6 +7,7 @@ import { Note } from "@/types/note";
 const OmniConsole = dynamic(() => import("@/components/notes/OmniConsole"), { ssr: false });
 const ThemeModal = dynamic(() => import("@/components/notes/ThemeModal"), { ssr: false });
 const AuthModal = dynamic(() => import("@/components/auth/AuthModal"), { ssr: false });
+const SecurityModal = dynamic(() => import("@/components/notes/SecurityModal"), { ssr: false });
 
 interface HomeModalsProps {
   isOmniConsoleOpen: boolean;
@@ -22,6 +23,8 @@ interface HomeModalsProps {
   isThemeModalOpen: boolean;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
+  isSecurityModalOpen: boolean;
+  setIsSecurityModalOpen: (open: boolean) => void;
 }
 
 export const HomeModals = memo(({
@@ -37,7 +40,9 @@ export const HomeModals = memo(({
   handleDeleteNote,
   isThemeModalOpen,
   isAuthModalOpen,
-  setIsAuthModalOpen
+  setIsAuthModalOpen,
+  isSecurityModalOpen,
+  setIsSecurityModalOpen
 }: HomeModalsProps) => {
   return (
     <>
@@ -55,9 +60,14 @@ export const HomeModals = memo(({
           setIsSidebarOpen(true);
           setIsOmniConsoleOpen(false);
         }}
+        onOpenSecurity={() => {
+          setIsSecurityModalOpen(true);
+          setIsOmniConsoleOpen(false);
+        }}
       />
       <ThemeModal isOpen={isThemeModalOpen} onClose={() => setIsThemeModalOpen(false)} />
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <SecurityModal isOpen={isSecurityModalOpen} onClose={() => setIsSecurityModalOpen(false)} />
     </>
   );
 });

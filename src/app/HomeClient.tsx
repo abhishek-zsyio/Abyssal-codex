@@ -63,6 +63,7 @@ function HomeContent() {
   const [sidebarView, setSidebarView] = useState<"explorer" | "plugins" | "help">("explorer");
   const [mainView, setMainView] = useState<"editor" | "graph">("editor");
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
 
@@ -228,6 +229,7 @@ function HomeContent() {
             onClose={() => setIsSidebarOpen(false)}
             onOpenThemes={() => setIsThemeModalOpen(true)}
             onOpenAuth={() => setIsAuthModalOpen(true)}
+            onOpenSecurity={() => setIsSecurityModalOpen(true)}
             isLoggedIn={!!user}
             isLoading={isLoading}
             onToggleTerminal={() => setIsOmniConsoleOpen(prev => !prev)}
@@ -309,6 +311,8 @@ function HomeContent() {
           isThemeModalOpen={isThemeModalOpen}
           isAuthModalOpen={isAuthModalOpen}
           setIsAuthModalOpen={setIsAuthModalOpen}
+          isSecurityModalOpen={isSecurityModalOpen}
+          setIsSecurityModalOpen={setIsSecurityModalOpen}
         />
       </main>
     </>
