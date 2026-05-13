@@ -2,7 +2,7 @@
 
 import { useState, useEffect, createContext, useContext } from "react";
 
-export type Theme = "dark" | "light" | "nord" | "monokai" | "cyberpunk" | "catppuccin" | "rose-pine" | "everforest" | "tokyo-night" | "pale-light" | string;
+export type Theme = "dark" | "light" | "nord" | "monokai" | "cyberpunk" | "catppuccin" | "rose-pine" | "everforest" | "tokyo-night" | "pale-light" | "ayu" | "synthwave" | "night-owl" | "cobalt2" | "gruvbox-material" | string;
 
 interface ThemeContextType {
   theme: Theme;

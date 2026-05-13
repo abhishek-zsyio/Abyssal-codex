@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Metadata, Viewport } from "next";
+import { AppProviders } from "@/components/providers/AppProviders";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://abyssal-codex.vercel.app"),
@@ -50,7 +51,9 @@ export default function RootLayout({
       <body
         className="antialiased selection:bg-[var(--primary)]/30 bg-[var(--background)] text-[var(--foreground)] h-screen overflow-hidden flex flex-col font-sans"
       >
-        {children}
+        <AppProviders>
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

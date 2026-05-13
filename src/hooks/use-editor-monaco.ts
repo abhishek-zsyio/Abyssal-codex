@@ -17,6 +17,11 @@ export const MONACO_THEMES: Record<string, string> = {
   "rose-pine": "rose-pine",
   everforest: "everforest",
   "tokyo-night": "tokyo-night",
+  ayu: "ayu",
+  synthwave: "synthwave",
+  "night-owl": "night-owl",
+  cobalt2: "cobalt2",
+  "gruvbox-material": "gruvbox-material",
 };
 
 export const useEditorMonaco = (
@@ -300,6 +305,96 @@ export const useEditorMonaco = (
         "editor.lineHighlightBackground": "#24283b",
       },
     });
+
+    monaco.editor.defineTheme("ayu", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "cbccc6", background: "1f2430" },
+        { token: "comment", foreground: "707a8c" },
+        { token: "keyword", foreground: "ffcc66" },
+        { token: "string", foreground: "bae67e" },
+        { token: "number", foreground: "ffae57" },
+      ],
+      colors: {
+        "editor.background": "#1f2430",
+        "editor.foreground": "#cbccc6",
+        "editor.lineHighlightBackground": "#242936",
+        "editorCursor.foreground": "#ffcc66",
+      },
+    });
+
+    monaco.editor.defineTheme("synthwave", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "ffffff", background: "262335" },
+        { token: "comment", foreground: "848bb2" },
+        { token: "keyword", foreground: "ff7edb" },
+        { token: "string", foreground: "36f9f6" },
+        { token: "number", foreground: "f97e72" },
+      ],
+      colors: {
+        "editor.background": "#262335",
+        "editor.foreground": "#ffffff",
+        "editor.lineHighlightBackground": "#241b2f",
+        "editorCursor.foreground": "#ff7edb",
+      },
+    });
+
+    monaco.editor.defineTheme("night-owl", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "d6deeb", background: "011627" },
+        { token: "comment", foreground: "5f7e97" },
+        { token: "keyword", foreground: "c792ea" },
+        { token: "string", foreground: "ecc48d" },
+        { token: "number", foreground: "f78c6c" },
+      ],
+      colors: {
+        "editor.background": "#011627",
+        "editor.foreground": "#d6deeb",
+        "editor.lineHighlightBackground": "#01111d",
+        "editorCursor.foreground": "#80cbc4",
+      },
+    });
+
+    monaco.editor.defineTheme("cobalt2", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "ffffff", background: "193549" },
+        { token: "comment", foreground: "0088ff" },
+        { token: "keyword", foreground: "ffc600" },
+        { token: "string", foreground: "3ad900" },
+        { token: "number", foreground: "ff628c" },
+      ],
+      colors: {
+        "editor.background": "#193549",
+        "editor.foreground": "#ffffff",
+        "editor.lineHighlightBackground": "#152c3e",
+        "editorCursor.foreground": "#ffc600",
+      },
+    });
+
+    monaco.editor.defineTheme("gruvbox-material", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "dfbf8e", background: "282828" },
+        { token: "comment", foreground: "928374" },
+        { token: "keyword", foreground: "ea6962" },
+        { token: "string", foreground: "a9b665" },
+        { token: "number", foreground: "d3869b" },
+      ],
+      colors: {
+        "editor.background": "#282828",
+        "editor.foreground": "#dfbf8e",
+        "editor.lineHighlightBackground": "#32302f",
+        "editorCursor.foreground": "#a89984",
+      },
+    });
     
     monaco.editor.setTheme(MONACO_THEMES[theme] || theme);
 
@@ -344,63 +439,64 @@ export const useEditorMonaco = (
             const text = model.getValue();
             if (!text) return { links: [] };
             
-            // Wiki links: [[Note Title]] or [[Note Title|Alias]]
-            const wikiRegex = /\[\[(.*?)\]\]/g;
+            // Combined regex to match code blocks, inline code, wikilinks, and note links
+            // Group 1: wikilink content, Group 2: note link target
+            const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|\[\[([\s\S]*?)\]\]|\[.*?\]\(note:\/\/(.*?)\))/g;
+            
             let match;
-            while ((match = wikiRegex.exec(text)) !== null) {
+            while ((match = combinedRegex.exec(text)) !== null) {
               const startPos = model.getPositionAt(match.index);
               const endPos = model.getPositionAt(match.index + match[0].length);
-              const content = match[1];
               
-              let target = content;
-              if (content.includes('|')) {
-                target = content.split('|')[0].trim();
-              }
-              
-              const targetLower = target.toLowerCase().trim();
-              const targetNote = (notesRef.current || []).find(n => {
-                const noteTitle = n.title?.toLowerCase().trim();
-                const noteId = n.id?.toLowerCase().trim();
-                return noteId === targetLower || noteTitle === targetLower || noteTitle?.endsWith('/' + targetLower);
-              });
-              
-              if (targetNote) {
-                links.push({
-                  range: {
-                    startLineNumber: startPos.lineNumber,
-                    startColumn: startPos.column,
-                    endLineNumber: endPos.lineNumber,
-                    endColumn: endPos.column
-                  },
-                  url: `note://${encodeURIComponent(target)}`,
-                  tooltip: `Cmd/Ctrl + Click to follow: ${target}`
+              // Case 1: Wikilink [[Note Title]] or [[Note Title|Alias]]
+              if (match[1] !== undefined) {
+                const content = match[1];
+                let target = content;
+                if (content.includes('|')) {
+                  target = content.split('|')[0].trim();
+                }
+                
+                const targetLower = target.toLowerCase().trim();
+                const targetNote = (notesRef.current || []).find(n => {
+                  const noteTitle = n.title?.toLowerCase().trim();
+                  const noteId = n.id?.toLowerCase().trim();
+                  return noteId === targetLower || noteTitle === targetLower || noteTitle?.endsWith('/' + targetLower);
                 });
-              }
-            }
+                
+                if (targetNote) {
+                  links.push({
+                    range: {
+                      startLineNumber: startPos.lineNumber,
+                      startColumn: startPos.column,
+                      endLineNumber: endPos.lineNumber,
+                      endColumn: endPos.column
+                    },
+                    url: `note://${encodeURIComponent(target)}`,
+                    tooltip: `Cmd/Ctrl + Click to follow: ${target}`
+                  });
+                }
+              } 
+              // Case 2: Markdown note links: [Text](note://Title)
+              else if (match[2] !== undefined) {
+                const titleMatch = match[2];
+                const title = titleMatch ? decodeURIComponent(titleMatch) : "";
+                
+                const targetNote = (notesRef.current || []).find(n => 
+                  n.title?.toLowerCase().trim() === title.toLowerCase().trim()
+                );
 
-            // Markdown note links: [Text](note://Title)
-            const mdRegex = /\[.*?\]\(note:\/\/(.*?)\)/g;
-            while ((match = mdRegex.exec(text)) !== null) {
-              const startPos = model.getPositionAt(match.index);
-              const endPos = model.getPositionAt(match.index + match[0].length);
-              const titleMatch = match[1];
-              const title = titleMatch ? decodeURIComponent(titleMatch) : "";
-              
-              const targetNote = (notesRef.current || []).find(n => 
-                n.title?.toLowerCase().trim() === title.toLowerCase().trim()
-              );
-
-              if (targetNote) {
-                links.push({
-                  range: {
-                    startLineNumber: startPos.lineNumber,
-                    startColumn: startPos.column,
-                    endLineNumber: endPos.lineNumber,
-                    endColumn: endPos.column
-                  },
-                  url: `note://${titleMatch}`,
-                  tooltip: `Cmd/Ctrl + Click to follow: ${title}`
-                });
+                if (targetNote) {
+                  links.push({
+                    range: {
+                      startLineNumber: startPos.lineNumber,
+                      startColumn: startPos.column,
+                      endLineNumber: endPos.lineNumber,
+                      endColumn: endPos.column
+                    },
+                    url: `note://${titleMatch}`,
+                    tooltip: `Cmd/Ctrl + Click to follow: ${title}`
+                  });
+                }
               }
             }
 

@@ -254,5 +254,55 @@ export const AVAILABLE_PLUGINS: PluginMetadata[] = [
     icon: "Component",
     category: "theme",
     guide: "A clean dark theme that celebrates the lights of Tokyo at night. Featuring vibrant purples and blues."
+  },
+  {
+    id: "theme-ayu",
+    name: "Ayu Mirage",
+    description: "A refined dark theme with a warm, minimalist color palette.",
+    author: "Ayu",
+    version: "1.0.0",
+    icon: "Wind",
+    category: "theme",
+    guide: "Mirage is the middle ground between light and dark. It uses warm tones and high contrast to provide a sophisticated writing experience."
+  },
+  {
+    id: "theme-synthwave",
+    name: "Synthwave '84",
+    description: "Neon dreams and retro-futuristic aesthetics inspired by the 80s.",
+    author: "Robb Owen",
+    version: "1.0.0",
+    icon: "Music",
+    category: "theme",
+    guide: "Step into the grid. Synthwave '84 features glowing pinks and blues against a deep purple background. For those who want their editor to feel like a neon-lit arcade."
+  },
+  {
+    id: "theme-night-owl",
+    name: "Night Owl",
+    description: "A theme for the night owls who work best in deep blue environments.",
+    author: "Sarah Drasner",
+    version: "1.0.0",
+    icon: "Bird",
+    category: "theme",
+    guide: "Fine-tuned for those who code late into the night. Deep blues and vibrant pastels ensure that color contrast is accessible while reducing eye strain."
+  },
+  {
+    id: "theme-cobalt2",
+    name: "Cobalt2 Official",
+    description: "The official high-contrast blue theme for power users.",
+    author: "Wes Bos",
+    version: "1.0.0",
+    icon: "CloudRain",
+    category: "theme",
+    guide: "A high-fidelity theme featuring yellow, blue, and orange. Cobalt2 is designed to be easy on the eyes while making important information pop."
+  },
+  {
+    id: "theme-gruvbox-material",
+    name: "Gruvbox Organic",
+    description: "A more organic and softer take on the classic Gruvbox palette.",
+    author: "Sainnhe",
+    version: "1.0.0",
+    icon: "Leaf",
+    category: "theme",
+    guide: "A warmer, more natural version of the legendary Gruvbox theme. Designed for maximum comfort during extended focus sessions."
   }
 ];

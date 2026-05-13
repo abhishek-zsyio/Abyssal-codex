@@ -30,7 +30,7 @@ export const WorkspaceHeader = memo(({
       <div className="absolute top-0 left-8 w-px h-full bg-[var(--border)] opacity-20" />
       <div className="absolute top-0 right-8 w-px h-full bg-[var(--border)] opacity-20" />
 
-      <div className="flex items-center gap-10 h-full relative z-10">
+      <div className="flex items-center gap-6 h-full relative z-10">
         <div className="flex flex-col">
           <div className="flex items-center gap-2 mb-1">
              <div className="w-1 h-1 bg-[var(--primary)] animate-pulse" />

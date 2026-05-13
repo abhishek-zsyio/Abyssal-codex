@@ -314,6 +314,8 @@ export function useNotes() {
     addFolder,
     updateNote,
     deleteNote,
+    renameFolder,
+    deleteFolder,
     toggleFavorite,
     togglePublic,
     exportAllNotes,

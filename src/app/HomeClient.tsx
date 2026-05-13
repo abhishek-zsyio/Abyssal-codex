@@ -75,7 +75,9 @@ function HomeContent() {
     startTransition(() => {
       router.push(`/?id=${newNoteId}`, { scroll: false });
       setOpenNoteIds(prev => Array.from(new Set([...prev, newNoteId])));
-      setIsSidebarOpen(false);
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      }
     });
   }, [addNote, router]);
 
@@ -101,7 +103,9 @@ function HomeContent() {
       setOpenNoteIds(prev => Array.from(new Set([...prev, id])));
       setMainView("editor");
       setIsSplitPane(false);
-      setIsSidebarOpen(false);
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      }
     });
   }, [router]);
 
@@ -164,9 +168,13 @@ function HomeContent() {
     };
     window.addEventListener("error", handleResizeError);
 
+    const handleSidebarOpen = () => setIsSidebarOpen(true);
+    window.addEventListener("abyssal-sidebar-open", handleSidebarOpen);
+
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("error", handleResizeError);
+      window.removeEventListener("abyssal-sidebar-open", handleSidebarOpen);
     };
   }, [mounted, handleAddNote]);
 
@@ -226,6 +234,7 @@ function HomeContent() {
             onDeleteNote={handleDeleteNote}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
+            isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
             onOpenThemes={() => setIsThemeModalOpen(true)}
             onOpenAuth={() => setIsAuthModalOpen(true)}

@@ -36,6 +36,8 @@ A beautifully designed, glassmorphic note-taking application built with **Next.j
 
 The easiest way to deploy this app is using [Vercel](https://vercel.com/new).
 
+For detailed instructions, troubleshooting, and environment configuration, see the [Deployment Guide](./DEPLOYMENT.md).
+
 1. Push your code to a GitHub repository.
 2. Connect the repository to Vercel.
 3. Vercel will automatically detect Next.js and deploy your app.

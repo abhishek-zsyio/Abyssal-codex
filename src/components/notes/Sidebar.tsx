@@ -25,6 +25,7 @@ interface SidebarProps {
   onDeleteNote: (id: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  isOpen?: boolean;
   onClose?: () => void;
   exportAllNotes?: () => void;
   importNotes?: (notes: Note[]) => void;
@@ -53,6 +54,7 @@ const Sidebar = memo(({
   onDeleteNote,
   searchQuery,
   setSearchQuery,
+  isOpen = true,
   onClose,
   exportAllNotes,
   importNotes,
@@ -154,14 +156,28 @@ const Sidebar = memo(({
     }
   };
 
-
-
   return (
-    <aside className="w-80 h-full flex border-r border-[var(--border)] bg-[var(--background)] relative">
+    <aside className={cn(
+      "h-full flex border-r border-[var(--border)] bg-[var(--background)] relative transition-all duration-300 ease-in-out",
+      isOpen ? "w-80" : "w-14"
+    )}>
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
       <SidebarNavigation 
         activeView={activeView}
-        setActiveView={setActiveView}
+        setActiveView={(view) => {
+          if (!isOpen) {
+            // If closed, always open it and set the view
+            setActiveView(view);
+            window.dispatchEvent(new CustomEvent('abyssal-sidebar-open'));
+          } else if (view === activeView) {
+            // If open and clicking the same view, toggle it closed
+            onClose?.();
+          } else {
+            // If open and clicking a different view, just switch view
+            setActiveView(view);
+          }
+        }}
+        isOpen={isOpen}
         onOpenGraph={onOpenGraph}
         onOpenThemes={onOpenThemes}
         onToggleTerminal={onToggleTerminal}
@@ -170,7 +186,10 @@ const Sidebar = memo(({
         isLoggedIn={isLoggedIn}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col overflow-hidden transition-all duration-300",
+        isOpen ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4 pointer-events-none"
+      )}>
         <AnimatePresence mode="wait">
           {activeView === "explorer" ? (
             <motion.div 
@@ -206,6 +225,15 @@ const Sidebar = memo(({
                     >
                       <FolderPlus size={14} />
                     </button>
+                    {selectedFolderPath && onDeleteFolder && (
+                      <button 
+                        onClick={() => onDeleteFolder(selectedFolderPath)} 
+                        className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors"
+                        title={`Delete ${selectedFolderPath}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                     <button 
                       onClick={() => setCollapseTrigger(prev => prev + 1)} 
                       className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"

@@ -99,6 +99,9 @@ const THEMES: { id: Theme; name: string; desc: string; color: string; accent: st
     accent: '#a7c080'
   },
   { 
+    id: 'tokyo-night', 
+    name: 'Tokyo Night', 
+    desc: 'A clean dark theme that celebrates the lights of Tokyo at night.',
     color: '#1a1b26',
     accent: '#bb9af7'
   },
@@ -108,6 +111,41 @@ const THEMES: { id: Theme; name: string; desc: string; color: string; accent: st
     desc: 'An ultra-minimal, high-clarity light theme. Soft, professional tones for focus.',
     color: '#fdfdfd',
     accent: '#636e72'
+  },
+  { 
+    id: 'ayu', 
+    name: 'Ayu Mirage', 
+    desc: 'A refined dark theme with a warm, minimalist color palette.',
+    color: '#1f2430',
+    accent: '#ffcc66'
+  },
+  { 
+    id: 'synthwave', 
+    name: 'Synthwave \'84', 
+    desc: 'Neon dreams and retro-futuristic aesthetics inspired by the 80s.',
+    color: '#262335',
+    accent: '#ff7edb'
+  },
+  { 
+    id: 'night-owl', 
+    name: 'Night Owl', 
+    desc: 'Deep blues and vibrant pastels for the late-night sessions.',
+    color: '#011627',
+    accent: '#c792ea'
+  },
+  { 
+    id: 'cobalt2', 
+    name: 'Cobalt2 Official', 
+    desc: 'High-contrast blue theme for power users. Easy on the eyes.',
+    color: '#193549',
+    accent: '#ffc600'
+  },
+  { 
+    id: 'gruvbox-material', 
+    name: 'Gruvbox Organic', 
+    desc: 'A warmer, more natural version of the legendary Gruvbox theme.',
+    color: '#282828',
+    accent: '#a89984'
   },
 ];
 

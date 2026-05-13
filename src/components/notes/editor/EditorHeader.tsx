@@ -150,6 +150,16 @@ export const EditorHeader = ({
 
         {/* Actions */}
         <div className="flex items-center gap-1 border-l border-[var(--border)] pl-6">
+          <button 
+            onClick={onToggleRightSidebar}
+            className={cn(
+              "p-2 rounded-sm transition-all",
+              isRightSidebarOpen ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+            title="Toggle Index Buffer (TOC)"
+          >
+            <PanelRight size={14} />
+          </button>
           <button onClick={onDownload} className="p-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
             <Download size={14} />
           </button>

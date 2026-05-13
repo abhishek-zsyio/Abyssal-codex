@@ -3,6 +3,7 @@
 import React, { useState, useMemo, memo, useDeferredValue } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import { Check, FileCode, CornerDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
@@ -37,7 +38,27 @@ interface MarkdownPreviewProps {
   isEnabled: (id: string) => boolean;
   availablePlugins: PluginMetadata[];
   onContextMenu?: (e: React.MouseEvent) => void;
+  isScrollable?: boolean;
 }
+
+const extractText = (children: any): string => {
+  return React.Children.toArray(children)
+    .map((child: any) => {
+      if (typeof child === "string" || typeof child === "number") return child.toString();
+      if (React.isValidElement(child) && (child.props as any).children) return extractText((child.props as any).children);
+      return "";
+    })
+    .join("");
+};
+
+const slugify = (text: string) => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
 
 const MarkdownPreview = memo(({ 
   content, 
@@ -48,7 +69,8 @@ const MarkdownPreview = memo(({
   theme, 
   isEnabled, 
   availablePlugins,
-  onContextMenu
+  onContextMenu,
+  isScrollable = true
 }: MarkdownPreviewProps) => {
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
   const [showAllChunks, setShowAllChunks] = useState(false);
@@ -56,16 +78,26 @@ const MarkdownPreview = memo(({
 
   const processedContent = useMemo(() => {
     if (!deferredContent) return "";
-    // Support aliases [[Target|Alias]]
-    return deferredContent.replace(/\[\[(.*?)\]\]/g, (match, content) => {
-      let target = content;
-      let alias = content;
-      if (content.includes('|')) {
-        const parts = content.split('|');
-        target = parts[0].trim();
-        alias = parts.slice(1).join('|').trim();
+    
+    // We want to avoid replacing wikilinks inside code blocks or inline code.
+    // This regex matches code blocks, inline code, and wikilinks in order.
+    // Since it's global, it will consume code blocks before looking for wikilinks.
+    const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|\[\[([\s\S]*?)\]\])/g;
+    
+    return deferredContent.replace(combinedRegex, (match, linkContent) => {
+      // If linkContent (the first capture group) is defined, it means we matched [[...]]
+      if (linkContent !== undefined) {
+        let target = linkContent;
+        let alias = linkContent;
+        if (linkContent.includes('|')) {
+          const parts = linkContent.split('|');
+          target = parts[0].trim();
+          alias = parts.slice(1).join('|').trim();
+        }
+        return `[${alias}](note://${encodeURIComponent(target)})`;
       }
-      return `[${alias}](note://${encodeURIComponent(target)})`;
+      // Otherwise, it's a code block or inline code, return it untouched
+      return match;
     });
   }, [deferredContent]);
 
@@ -91,7 +123,10 @@ const MarkdownPreview = memo(({
     <div 
       ref={containerRef}
       onContextMenu={onContextMenu}
-      className="flex-1 h-full w-full overflow-y-auto custom-scrollbar relative bg-[var(--card)]/50 tech-grid selection:bg-[var(--primary)] selection:text-[var(--background)]"
+      className={cn(
+        "flex-1 w-full relative bg-[var(--card)]/50 tech-grid selection:bg-[var(--primary)] selection:text-[var(--background)]",
+        isScrollable ? "h-full overflow-y-auto custom-scrollbar" : "h-auto"
+      )}
     >
       {/* Atmospheric Accents */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-20">
@@ -122,12 +157,58 @@ const MarkdownPreview = memo(({
 
         <ReactMarkdown 
           remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
           urlTransform={(url) => url}
           components={{
-            h1: ({ children, node, ...props }: any) => <h1 className="group" {...props}>{children}</h1>,
-            h2: ({ children, node, ...props }: any) => <h2 className="group" {...props}>{children}</h2>,
-            h3: ({ children, node, ...props }: any) => <h3 className="group" {...props}>{children}</h3>,
+            details: ({ children, ...props }: any) => (
+              <details className="my-6 border border-[var(--border)] bg-[var(--background)]/30 group transition-all [&>*:not(summary)]:px-6 [&>*:not(summary)]:pb-6" {...props}>
+                {children}
+              </details>
+            ),
+            summary: ({ children, ...props }: any) => (
+              <summary className="px-6 py-4 cursor-pointer font-black text-[var(--primary)] uppercase tracking-[0.2em] text-[10px] bg-[var(--card)]/50 hover:bg-[var(--primary)]/5 transition-all list-none flex items-center gap-3 border-b border-transparent group-open:border-[var(--border)] group-open:bg-[var(--primary)]/5" {...props}>
+                <div className="w-1.5 h-1.5 bg-[var(--primary)] group-open:rotate-90 transition-transform" />
+                {children}
+              </summary>
+            ),
+            h1: ({ children, node, ...props }: any) => <h1 id={slugify(extractText(children))} className="group" {...props}>{children}</h1>,
+            h2: ({ children, node, ...props }: any) => <h2 id={slugify(extractText(children))} className="group" {...props}>{children}</h2>,
+            h3: ({ children, node, ...props }: any) => <h3 id={slugify(extractText(children))} className="group" {...props}>{children}</h3>,
+            h4: ({ children, node, ...props }: any) => <h4 id={slugify(extractText(children))} className="group" {...props}>{children}</h4>,
+            h5: ({ children, node, ...props }: any) => <h5 id={slugify(extractText(children))} className="group" {...props}>{children}</h5>,
+            h6: ({ children, node, ...props }: any) => <h6 id={slugify(extractText(children))} className="group" {...props}>{children}</h6>,
             a: ({ href, children, node, ...props }: any) => {
+              const isAnchor = href?.startsWith("#");
+              if (isAnchor) {
+                return (
+                  <a 
+                    href={href} 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const id = href.substring(1);
+                      
+                      // Try to find in current view
+                      let element = containerRef.current?.querySelector(`[id="${id}"]`);
+                      
+                      if (!element && !showAllChunks) {
+                         // Not found and we are in segmented view
+                         // Show all chunks and then scroll
+                         setShowAllChunks(true);
+                         setTimeout(() => {
+                           const el = containerRef.current?.querySelector(`[id="${id}"]`);
+                           if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                         }, 150);
+                      } else if (element) {
+                        element.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    }}
+                    className="text-[var(--primary)] hover:underline transition-all"
+                    {...props}
+                  >
+                    {children}
+                  </a>
+                );
+              }
               const isNoteLink = href?.includes("note:");
               if (isNoteLink) {
                 // Extract title even if prefixed (e.g. http://localhost:3000/note://Title)

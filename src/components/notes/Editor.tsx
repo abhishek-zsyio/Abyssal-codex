@@ -68,10 +68,14 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
     if (!deferredTitle || !deferredAllNotes) return [];
     const wikiLink = `[[${deferredTitle}]]`;
     const protocolLink = `(note://${encodeURIComponent(deferredTitle)})`;
-    return deferredAllNotes.filter(n => 
-      n.id !== note.id && 
-      (n.content?.includes(wikiLink) || n.content?.includes(protocolLink))
-    );
+    
+    return deferredAllNotes.filter(n => {
+      if (n.id === note.id || !n.content) return false;
+      
+      // We want to avoid counting links inside code blocks or inline code as backlinks
+      const cleanContent = n.content.replace(/```[\s\S]*?```|`[^`\n]*?`/g, '');
+      return cleanContent.includes(wikiLink) || cleanContent.includes(protocolLink);
+    });
   }, [deferredAllNotes, deferredTitle, note.id]);
   
   const { editorRef, handleEditorDidMount } = useEditorMonaco(
@@ -97,6 +101,54 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
     setContent(note.content);
     setTitle(note.title);
   }, [note.id]);
+
+  useEffect(() => {
+    const handleTocScroll = (e: any) => {
+      const id = e.detail.id;
+      if (editorRef.current) {
+        const model = editorRef.current.getModel();
+        if (!model) return;
+        
+        const lines = model.getLinesContent();
+        const lineIndex = lines.findIndex((line: string) => {
+          const match = line.match(/^(#{1,6})\s+(.+)$/);
+          if (match) {
+            const slug = match[2].toLowerCase().trim()
+              .replace(/[^\w\s-]/g, "")
+              .replace(/[\s_-]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+            return slug === id;
+          }
+          return false;
+        });
+
+        if (lineIndex !== -1) {
+          editorRef.current.revealLineInCenter(lineIndex + 1);
+          editorRef.current.setPosition({ lineNumber: lineIndex + 1, column: 1 });
+          editorRef.current.focus();
+        }
+      }
+    };
+
+    const handleTocNavigate = (e: any) => {
+      const targetTitle = e.detail.target.toLowerCase().trim();
+      const targetNote = allNotes.find((n: any) => {
+        const noteTitle = n.title?.toLowerCase().trim();
+        const noteId = n.id?.toLowerCase().trim();
+        return noteId === targetTitle || noteTitle === targetTitle || noteTitle?.endsWith('/' + targetTitle);
+      });
+      if (targetNote) {
+        onNavigate?.(targetNote.id);
+      }
+    };
+
+    window.addEventListener('abyssal-toc-scroll', handleTocScroll);
+    window.addEventListener('abyssal-toc-navigate', handleTocNavigate);
+    return () => {
+      window.removeEventListener('abyssal-toc-scroll', handleTocScroll);
+      window.removeEventListener('abyssal-toc-navigate', handleTocNavigate);
+    };
+  }, [isEditing, editorRef, allNotes, onNavigate]);
 
   const handleDownloadMd = () => {
     const dataStr = "data:text/markdown;charset=utf-8," + encodeURIComponent(`# ${title}\n\n${content}`);
@@ -215,7 +267,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
           onContextMenu={openMenu}
           className="flex-1 min-w-0 overflow-y-auto custom-scrollbar bg-[var(--card)] border-r border-dotted border-[var(--border)]"
         >
-          <div className="h-full flex flex-col">
+          <div className={cn("flex flex-col", isEditing ? "h-full" : "min-h-full")}>
             <div className="pt-16 lg:pt-24 px-12 lg:px-20 pb-0">
                <div className="flex flex-col mb-6 group/title-container">
                  {/* Cluster Path (Folder) */}
@@ -282,7 +334,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
             <div className="flex-1 min-h-0">
               <AnimatePresence mode="wait">
                 {isEditing ? (
-                  <motion.div key="editor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+                  <motion.div key="editor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 h-full min-h-0 overflow-hidden">
                     <Editor
                       key={note.id}
                       height="100%"
@@ -313,7 +365,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
                     initial={{ opacity: 0 }} 
                     animate={{ opacity: 1 }} 
                     exit={{ opacity: 0 }} 
-                    className="flex-1 h-full w-full overflow-hidden"
+                    className="flex-1 h-auto w-full overflow-visible"
                   >
                     <MarkdownPreview 
                       content={deferredContent} 
@@ -325,6 +377,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
                       isEnabled={isEnabled}
                       availablePlugins={availablePlugins}
                       onContextMenu={openMenu}
+                      isScrollable={false}
                     />
                   </motion.div>
                 )}

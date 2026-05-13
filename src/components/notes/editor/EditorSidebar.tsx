@@ -2,10 +2,19 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity, FileText, Hash, Clock, Database, Link, ShieldAlert, Trash2 } from "lucide-react";
+import { Activity, FileText, Hash, Clock, Database, Link, ShieldAlert, Trash2, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Note } from "@/types/note";
+
+const slugify = (text: string) => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
 
 interface EditorSidebarProps {
   isOpen: boolean;
@@ -26,6 +35,36 @@ export const EditorSidebar = ({
   onNavigate,
   onDelete
 }: EditorSidebarProps) => {
+  const tocItems = React.useMemo(() => {
+    // Find the Table of Contents heading
+    const lines = content.split('\n');
+    const tocHeadingIndex = lines.findIndex(line => 
+      line.toLowerCase().includes('table of contents') && line.startsWith('#')
+    );
+    
+    if (tocHeadingIndex === -1) return null;
+    
+    const items = [];
+    // Search for list items following the heading
+    for (let i = tocHeadingIndex + 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line && items.length === 0) continue;
+      
+      // Match markdown list items with links: - [Title](target)
+      const match = line.match(/^[-*+]\s+\[(.*?)\]\((.*?)\)/);
+      if (match) {
+        items.push({ text: match[1], url: match[2] });
+      } else if (line.startsWith('#')) {
+        // Stop if we hit another heading
+        break;
+      } else if (line && !line.match(/^[-*+]/) && items.length > 0) {
+        // Stop if we hit a non-list line after starting the list
+        break;
+      }
+    }
+    return items.length > 0 ? items : null;
+  }, [content]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -38,58 +77,53 @@ export const EditorSidebar = ({
         >
           <div className="w-[360px] p-8 h-full flex flex-col">
             <section className="space-y-12">
-              {/* Stats Module */}
-              {isEnabled("stats-plugin") && (
-                <div className="relative">
+              {/* Table of Contents / Index Buffer */}
+              {tocItems && (
+                <div>
                   <div className="flex items-center justify-between border-b border-dotted border-[var(--border)] pb-2 mb-6">
                     <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] flex items-center gap-2">
-                      <Activity size={12} className="text-[var(--primary)]" /> System_Analysis
+                      <List size={12} className="text-[var(--primary)]" /> Index_Buffer
                     </span>
-                    <div className="flex gap-1">
-                      <div className="w-1 h-1 bg-[var(--primary)]" />
-                      <div className="w-4 h-1 bg-[var(--primary)]/20" />
-                    </div>
+                    <span className="text-[8px] font-mono text-[var(--muted-foreground)] bg-[var(--card)] px-1 border border-[var(--border)]">{tocItems.length}</span>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    {[
-                      { label: "Words_Vol", value: content.split(/\s+/).filter(Boolean).length, unit: "WDS", icon: FileText, progress: 65 },
-                      { label: "Char_Stream", value: content.length, unit: "CHR", icon: Hash, progress: 40 },
-                      { label: "Read_Latency", value: Math.ceil(content.split(/\s+/).length / 200), unit: "MIN", icon: Clock, progress: 25 },
-                      { label: "Encryption", value: "MD_CODEX", unit: "", icon: Database, progress: 100 },
-                    ].map((stat, idx) => (
-                      <div key={idx} className="bg-[var(--card)]/30 border border-[var(--border)] p-3 relative group overflow-hidden transition-all hover:border-[var(--primary)]/30">
-                        <div className="corner-accent corner-tl opacity-20" />
-                        <div className="corner-accent corner-br opacity-20" />
-                        
-                        <div className="flex flex-col gap-2 relative z-10">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[7px] text-[var(--muted-foreground)] font-mono uppercase tracking-widest">{stat.label}</span>
-                            <stat.icon size={8} className="text-[var(--primary)] opacity-40" />
-                          </div>
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-sm text-[var(--primary)] font-mono font-bold leading-none tabular-nums tracking-tighter">
-                              {stat.value}
-                            </span>
-                            {stat.unit && <span className="text-[7px] text-[var(--muted-foreground)] font-mono uppercase">{stat.unit}</span>}
-                          </div>
-                          
-                          {/* Micro Progress Bar */}
-                          <div className="h-[2px] w-full bg-[var(--border)] mt-1 overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${stat.progress}%` }}
-                              className="h-full bg-[var(--primary)]/40"
-                            />
-                          </div>
-                        </div>
-                      </div>
+                  <div className="space-y-0.5 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                    {tocItems.map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          if (item.url.startsWith("#")) {
+                            const id = item.url.substring(1);
+                            const el = document.getElementById(id);
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "start" });
+                            } else {
+                              // Fallback for Edit mode: Emit event to scroll editor
+                              window.dispatchEvent(new CustomEvent('abyssal-toc-scroll', { 
+                                detail: { id } 
+                              }));
+                            }
+                          } else if (item.url.includes("note://")) {
+                            const target = decodeURIComponent(item.url.split("note://")[1].replace(/^\/\//, ""));
+                            window.dispatchEvent(new CustomEvent('abyssal-toc-navigate', { 
+                              detail: { target } 
+                            }));
+                          }
+                        }}
+                        className="w-full text-left py-1.5 px-2 hover:bg-[var(--primary)]/5 transition-all group flex items-start gap-3 border-l border-transparent hover:border-[var(--primary)]/30"
+                        title={item.text}
+                      >
+                         <div className="mt-1.5 w-1 h-1 rotate-45 border bg-transparent border-[var(--primary)]/30 group-hover:border-[var(--primary)] group-hover:bg-[var(--primary)]/20 transition-all duration-300" />
+                         <span className="text-[9px] font-mono uppercase tracking-wider truncate text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors">
+                           {item.text}
+                         </span>
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Timeline */}
+              {/* Stats Module */}
               <div>
                 <div className="flex items-center justify-between border-b border-dotted border-[var(--border)] pb-2 mb-6">
                   <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] flex items-center gap-2">
