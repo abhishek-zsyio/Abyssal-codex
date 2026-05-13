@@ -28,6 +28,7 @@ interface EditorHeaderProps {
   onCommit: () => void;
   isRightSidebarOpen: boolean;
   onToggleRightSidebar: () => void;
+  onUpdateTitle?: (title: string) => void;
   isSaving: boolean;
 }
 
@@ -52,120 +53,100 @@ export const EditorHeader = ({
   onCommit,
   isRightSidebarOpen,
   onToggleRightSidebar,
+  onUpdateTitle,
   isSaving
 }: EditorHeaderProps) => {
-  const { isEnabled } = usePlugins();
-  
   return (
-    <header className="h-14 border-b border-[var(--border)] flex items-stretch justify-between px-6 bg-[var(--card)]/40 backdrop-blur-xl relative overflow-hidden group">
-      {/* Immersive Accents */}
-      <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
-      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--primary)]/10 to-transparent" />
+    <header className="h-14 border-b border-[var(--border)] flex items-center justify-between px-6 bg-[var(--background)] select-none">
+      {/* Left: Identification & Path */}
+      <div className="flex items-center gap-4 min-w-0 flex-1">
+        <div className="flex items-center gap-2 px-2 py-1 bg-[var(--card)] border border-[var(--border)] rounded-sm shrink-0">
+          <Hash size={10} className="text-[var(--primary)] opacity-50" />
+          <span className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-tighter">
+            {id.split('-')[0]}
+          </span>
+        </div>
 
-      <div className="flex items-center gap-10 min-w-0 flex-1 relative z-10">
-        {/* Instance ID Removed */}
-
-        <div className="flex flex-col min-w-0 flex-1 max-w-2xl">
-          <div className="flex items-center gap-3">
-            <h2 className="text-[13px] font-black text-[var(--foreground)] uppercase tracking-[0.1em] truncate">
-              {String(title || "UNTITLED_CODEX")}
-            </h2>
-            <AnimatePresence>
-              {isSaving && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
-                  className="flex items-center gap-2 px-2 py-1 bg-[var(--primary)] text-[var(--background)] rounded-none"
-                >
-                  <div className="w-1.5 h-1.5 bg-[var(--background)] animate-pulse" />
-                  <span className="text-[8px] font-mono font-black uppercase tracking-[0.2em]">Syncing</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--muted-foreground)] uppercase whitespace-nowrap opacity-60 group-hover:opacity-100 transition-opacity">
+            <span>{title.split('/').slice(0, -1).join(' / ') || 'root'}</span>
+            {title.includes('/') && <span className="text-[var(--primary)] mx-0.5">/</span>}
           </div>
+          <input
+            type="text"
+            value={title.split('/').pop() || ""}
+            onChange={(e) => {
+              const parts = title.split('/');
+              parts[parts.length - 1] = e.target.value.replace(/\//g, '');
+              onUpdateTitle?.(parts.join('/'));
+            }}
+            className="bg-transparent border-none outline-none text-[13px] font-bold text-[var(--foreground)] w-full focus:text-[var(--primary)] transition-colors placeholder:opacity-20 truncate"
+            placeholder="Untitled"
+          />
         </div>
       </div>
 
-      <div className="flex items-center gap-6 shrink-0 relative z-10">
-        {/* Toolset A: Fragment Control */}
-        <div className="flex items-center gap-1.5 border-x border-[var(--border)] px-6 h-full">
+      {/* Right: Functional Groups */}
+      <div className="flex items-center gap-6 shrink-0">
+        {/* Status Indicators */}
+        <div className="flex items-center gap-4 border-r border-[var(--border)] pr-6">
           <button 
             onClick={onToggleFavorite} 
-            className={cn(
-              "p-2.5 transition-all group/btn relative", 
-              isFavorite ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            )}
+            className={cn("transition-colors", isFavorite ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
           >
-            <Star size={14} className={cn(isFavorite && "fill-current shadow-[0_0_10px_var(--primary)]")} />
-            {isFavorite && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-[1px] bg-[var(--primary)]" />}
+            <Star size={14} className={cn(isFavorite && "fill-current")} />
           </button>
           
           <button 
             onClick={onTogglePublic} 
-            className={cn(
-              "p-2.5 transition-all relative", 
-              isPublic ? "text-[var(--accent)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            )}
+            className={cn("transition-colors", isPublic ? "text-[var(--accent)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
           >
             {copiedShareLink ? <Check size={14} className="text-[var(--accent)]" /> : <Globe size={14} />}
-            {isPublic && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-[1px] bg-[var(--accent)]" />}
           </button>
 
-          <button onClick={onDownload} className="p-2.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all">
-            <Download size={14} />
-          </button>
-
-          <button 
-            onClick={onToggleRightSidebar} 
-            className={cn(
-              "p-2.5 transition-all hidden xl:block", 
-              isRightSidebarOpen ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            )}
-          >
-            <PanelRight size={14} />
-          </button>
+          <div className="flex items-center gap-2 px-2 py-1 bg-[var(--card)] border border-[var(--border)]">
+             <div className={cn("w-1.5 h-1.5 rounded-full", isSaving ? "bg-[var(--primary)] animate-pulse" : "bg-[var(--accent)]/40")} />
+             <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">
+               {isSaving ? "Syncing" : "Saved"}
+             </span>
+          </div>
         </div>
 
-        {/* Toolset B: View Switcher */}
-        <div className="flex items-center p-1 bg-[var(--background)]/50 border border-[var(--border)] gap-0.5">
+        {/* View Switcher (Minimalist) */}
+        <div className="flex items-center gap-1">
           <button 
             onClick={() => onToggleEdit(true)}
             className={cn(
-              "px-3 py-1.5 transition-all relative overflow-hidden text-[8px] font-mono font-black uppercase tracking-widest", 
-              isEditing ? "text-[var(--background)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              "p-2 rounded-sm transition-all",
+              isEditing ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             )}
           >
-            {isEditing && <motion.div layoutId="editor-mode" className="absolute inset-0 bg-[var(--primary)] -z-10" />}
-            Edit
+            <Edit3 size={14} />
           </button>
           <button 
             onClick={() => onToggleEdit(false)}
             className={cn(
-              "px-3 py-1.5 transition-all relative overflow-hidden text-[8px] font-mono font-black uppercase tracking-widest", 
-              !isEditing ? "text-[var(--background)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              "p-2 rounded-sm transition-all",
+              !isEditing ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             )}
           >
-            {!isEditing && <motion.div layoutId="editor-mode" className="absolute inset-0 bg-[var(--primary)] -z-10" />}
-            Preview
+            <Eye size={14} />
           </button>
         </div>
 
-        {/* Toolset C: Data Operations */}
-        <div className="flex items-center gap-1 border-l border-[var(--border)] pl-6 h-full">
-          <button onClick={onCopy} className="p-2.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all">
-            {copiedContent ? <Check size={14} className="text-[var(--accent)]" /> : <Copy size={14} />}
+        {/* Actions */}
+        <div className="flex items-center gap-1 border-l border-[var(--border)] pl-6">
+          <button onClick={onDownload} className="p-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
+            <Download size={14} />
           </button>
-
+          <button onClick={onCopy} className="p-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
+            <Copy size={14} />
+          </button>
           <button 
-            onClick={onCommit} 
-            className="h-8 px-6 ml-4 bg-[var(--primary)] text-[var(--background)] font-black text-[9px] uppercase tracking-[0.2em] relative group/commit overflow-hidden"
+            onClick={onCommit}
+            className="ml-2 px-4 py-1.5 bg-[var(--primary)] text-[var(--background)] font-bold text-[10px] uppercase tracking-wider hover:bg-[var(--primary)]/90 transition-colors"
           >
-             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/commit:translate-y-0 transition-transform duration-300" />
-             <div className="relative z-10 flex items-center gap-2">
-                <Hash size={10} className="opacity-50" />
-                Commit
-             </div>
+            Commit
           </button>
         </div>
       </div>

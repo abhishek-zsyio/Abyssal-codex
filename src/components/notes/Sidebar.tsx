@@ -270,7 +270,7 @@ const Sidebar = memo(({
               <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 {isLoading ? (
                   <SidebarSkeleton />
-                ) : (displayNotes.length === 0 && folders.length === 0) ? (
+                ) : (displayNotes.length === 0 && folders.length === 0 && !isCreatingFolder) ? (
                   <div className="p-8 text-center text-[10px] font-mono text-[var(--muted-foreground)]">
                     {activeTag ? `No notes tagged #${activeTag}` : "No notes found."}
                   </div>

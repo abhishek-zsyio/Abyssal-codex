@@ -298,6 +298,7 @@ const NestedExplorer = memo(({
   onDeleteNote, 
   onMoveNote,
   onMoveFolder,
+  onDeleteFolder,
   level = 0,
   parentPath = "",
   collapseTrigger,
@@ -356,11 +357,15 @@ const NestedExplorer = memo(({
             onDeleteNote={onDeleteNote}
             onMoveNote={onMoveNote}
             onMoveFolder={onMoveFolder}
+            onDeleteFolder={onDeleteFolder}
             level={level}
             parentPath={parentPath}
             collapseTrigger={collapseTrigger}
             selectedFolderPath={selectedFolderPath}
             onSelectFolder={onSelectFolder}
+            isCreatingFolder={isCreatingFolder}
+            setIsCreatingFolder={setIsCreatingFolder}
+            onAddFolder={onAddFolder}
           />
         ) : (
           <FileItem 

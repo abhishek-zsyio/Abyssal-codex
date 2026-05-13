@@ -200,6 +200,10 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
               toast("DOCUMENT_COMMITTED_TO_STORAGE", "success");
             }, 800);
           }}
+          onUpdateTitle={(newTitle) => {
+            setTitle(newTitle);
+            debouncedUpdate(note.id, { title: newTitle });
+          }}
           isRightSidebarOpen={isRightSidebarOpen}
           onToggleRightSidebar={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
           isSaving={isSaving}
@@ -213,20 +217,48 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
         >
           <div className="h-full flex flex-col">
             <div className="pt-16 lg:pt-24 px-12 lg:px-20 pb-0">
-               <div className="flex items-center gap-2 mb-4 opacity-40">
-                  <div className="w-1.5 h-1.5 border border-[var(--primary)] rotate-45" />
-                  <span className="text-[8px] font-mono uppercase tracking-[0.4em]">Node_Stream_Primary</span>
+               <div className="flex flex-col mb-6 group/title-container">
+                 {/* Cluster Path (Folder) */}
+                 <div className="flex items-center gap-2 mb-3 group/cluster">
+                    <div className="w-1.5 h-1.5 border border-[var(--primary)] rotate-45 opacity-40 group-focus-within/cluster:opacity-100 transition-opacity" />
+                    <span className="text-[8px] font-mono uppercase tracking-[0.4em] opacity-40">CLUSTER_ID:</span>
+                    <input 
+                      type="text"
+                      value={title.split('/').slice(0, -1).join('/')}
+                      onChange={(e) => {
+                        const newCluster = e.target.value.replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
+                        const name = title.split('/').pop() || "";
+                        const newTitle = newCluster ? `${newCluster}/${name}` : name;
+                        setTitle(newTitle);
+                        debouncedUpdate(note.id, { title: newTitle });
+                      }}
+                      className="bg-transparent border-none outline-none text-[8px] font-mono text-[var(--primary)] uppercase tracking-[0.4em] w-full placeholder:opacity-20 focus:text-[var(--primary)]"
+                      placeholder="ROOT_DOMAIN"
+                    />
+                 </div>
+                 
+                 {/* Node Name (File) */}
+                 <div className="relative">
+                   <input
+                    type="text"
+                    value={title.split('/').pop() || ""}
+                    onChange={(e) => {
+                      const newNodeName = e.target.value.replace(/\//g, '');
+                      const parts = title.split('/');
+                      parts[parts.length - 1] = newNodeName;
+                      const newTitle = parts.join('/');
+                      setTitle(newTitle);
+                      debouncedUpdate(note.id, { title: newTitle });
+                    }}
+                    className="w-full bg-transparent text-5xl font-black outline-none placeholder:text-[var(--border)] text-[var(--foreground)] tracking-tighter leading-none selection:bg-[var(--primary)]/30"
+                    placeholder="UNIDENTIFIED_SEGMENT..."
+                  />
+                  <div className="absolute -bottom-4 left-0 flex items-center gap-4 opacity-20">
+                    <span className="text-[8px] font-mono uppercase tracking-widest">Protocol: ABYSSAL_STORAGE_V2</span>
+                    <span className="text-[8px] font-mono uppercase tracking-widest">Sync: ACTIVE</span>
+                  </div>
+                 </div>
                </div>
-               <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  debouncedUpdate(note.id, { title: e.target.value });
-                }}
-                className="w-full bg-transparent text-5xl font-black mb-6 outline-none placeholder:text-[var(--border)] text-[var(--foreground)] tracking-tighter leading-none"
-                placeholder="UNIDENTIFIED_SEGMENT..."
-              />
               <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] pb-6 mb-4">
                 {(note.tags || []).map(tag => (
                   <Badge key={tag} variant="success" className="gap-1">
