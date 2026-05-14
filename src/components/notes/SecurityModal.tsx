@@ -83,14 +83,14 @@ export default function SecurityModal({ isOpen, onClose }: SecurityModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl"
           />
 
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative w-full max-w-lg bg-[var(--background)] border border-[var(--border)] shadow-2xl flex flex-col overflow-hidden font-mono"
+            className="relative w-full max-w-lg bg-[var(--background)]/90 backdrop-blur-2xl border border-[var(--border)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden font-mono rounded-none"
           >
             {/* Header */}
             <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/40">
@@ -210,7 +210,7 @@ export default function SecurityModal({ isOpen, onClose }: SecurityModalProps) {
             {/* Footer */}
             <div className="px-6 h-10 bg-[var(--card)]/10 border-t border-[var(--border)] flex items-center justify-between opacity-50">
               <div className="flex items-center gap-2">
-                <div className="w-1 h-1 bg-[var(--primary)] rounded-full" />
+                <div className="w-1.5 h-1.5 bg-[var(--primary)] shadow-[0_0_5px_var(--primary)]" />
                 <span className="text-[7px] uppercase tracking-[0.2em]">AES_256_GCM</span>
               </div>
               <span className="text-[7px] uppercase tracking-widest">Kernel_ID: 0xAF</span>

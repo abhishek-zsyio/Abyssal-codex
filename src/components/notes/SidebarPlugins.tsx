@@ -280,12 +280,12 @@ export default function SidebarPlugins({ onClose }: SidebarPluginsProps) {
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2 mb-0.5">
-                              <h3 className="text-[10px] font-bold text-[var(--foreground)] uppercase truncate">
+                            <h3 className="text-[10px] font-bold text-[var(--foreground)] uppercase truncate">
                                 {plugin.name}
                               </h3>
-                              {installed && enabled && <div className="w-1 h-1 bg-[var(--primary)] rounded-full" />}
+                              {installed && enabled && <div className="w-1.5 h-1.5 bg-[var(--primary)] shadow-[0_0_5px_var(--primary)]" />}
                             </div>
-                            <p className="text-[8px] font-mono text-[var(--muted-foreground)] line-clamp-1 opacity-60">
+                            <p className="text-[8px] font-mono text-[var(--muted-foreground)] line-clamp-1 opacity-60 uppercase tracking-tighter">
                               {plugin.description}
                             </p>
                           </div>
@@ -303,12 +303,12 @@ export default function SidebarPlugins({ onClose }: SidebarPluginsProps) {
             </div>
 
             {/* Status Footer */}
-            <div className="p-3 border-t border-[var(--border)] bg-[var(--card)]/5 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 opacity-40">
+            <div className="p-3 h-10 border-t border-[var(--border)] bg-[var(--card)]/5 flex items-center justify-between">
+              <div className="flex items-center gap-2 opacity-40">
                 <Zap size={10} className="text-[var(--primary)]" />
-                <span className="text-[7px] font-mono text-[var(--foreground)] uppercase tracking-widest">Module system active</span>
+                <span className="text-[7px] font-mono text-[var(--foreground)] uppercase tracking-widest">Core_Module_Ready</span>
               </div>
-              <span className="text-[7px] font-mono text-[var(--muted-foreground)] opacity-30">0xAF_KERNEL_LOADED</span>
+              <span className="text-[7px] font-mono text-[var(--muted-foreground)] opacity-30 tracking-tighter uppercase">Kernel_v4.2_Loaded</span>
             </div>
           </motion.div>
         )}

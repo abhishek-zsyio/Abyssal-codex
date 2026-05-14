@@ -57,8 +57,8 @@ const EmptyState = ({ onAddNote }: EmptyStateProps) => {
           className="mb-2"
         >
           <div className="flex items-center justify-center gap-2 mb-3">
-            <div className="w-1.5 h-1.5 bg-[var(--primary)] animate-pulse" />
-            <span className="text-[9px] font-mono text-[var(--primary)] uppercase tracking-[0.3em]">
+            <div className="w-2 h-2 bg-[var(--primary)] animate-pulse shadow-[0_0_8px_var(--primary)]" />
+            <span className="text-[9px] font-mono font-bold text-[var(--primary)] uppercase tracking-[0.4em]">
               SYSTEM_IDLE
             </span>
           </div>
@@ -91,22 +91,22 @@ const EmptyState = ({ onAddNote }: EmptyStateProps) => {
         >
           <div className="flex items-center gap-1.5 mb-3">
             <Keyboard size={10} className="text-[var(--muted-foreground)]/40" />
-            <span className="text-[8px] font-mono text-[var(--muted-foreground)]/40 uppercase tracking-widest">Shortcuts</span>
+            <span className="text-[8px] font-mono text-[var(--muted-foreground)]/40 uppercase tracking-widest">Global_Shortcuts</span>
           </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
             {shortcuts.map(({ keys, label }) => (
-              <div key={label} className="flex items-center gap-2">
-                <div className="flex items-center gap-0.5">
+              <div key={label} className="flex items-center justify-between gap-4 group">
+                <div className="flex items-center gap-1">
                   {keys.map((k) => (
                     <kbd
                       key={k}
-                      className="px-1 py-px text-[8px] font-mono bg-[var(--card)] border border-[var(--border)] text-[var(--muted-foreground)] leading-none rounded-sm"
+                      className="px-1.5 py-0.5 text-[8px] font-mono bg-[var(--card)] border border-[var(--border)] text-[var(--muted-foreground)] leading-none rounded-none group-hover:text-[var(--primary)] group-hover:border-[var(--primary)]/40 transition-colors"
                     >
                       {k}
                     </kbd>
                   ))}
                 </div>
-                <span className="text-[8px] font-mono text-[var(--muted-foreground)]/50 truncate">{label}</span>
+                <span className="text-[7px] font-mono text-[var(--muted-foreground)]/40 uppercase tracking-tighter truncate group-hover:text-[var(--muted-foreground)] transition-colors">{label}</span>
               </div>
             ))}
           </div>

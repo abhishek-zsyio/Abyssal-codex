@@ -194,39 +194,39 @@ const OmniConsole = ({
             initial="hidden"
             animate="show"
             exit="exit"
-            className="relative w-full max-w-xl bg-[var(--background)] border border-[var(--border)] shadow-[0_32px_64px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[70vh] font-mono"
+            className="relative w-full max-w-xl bg-[var(--background)]/80 backdrop-blur-2xl border border-[var(--border)] shadow-[0_32px_64px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[70vh] font-mono rounded-none"
           >
             {/* Input Row */}
-            <div className="flex items-center px-4 h-14 bg-[var(--card)]/40 border-b border-[var(--border)]">
+            <div className="flex items-center px-4 h-14 bg-[var(--card)]/10 border-b border-[var(--border)]">
               <div className="text-[var(--primary)] mr-3 opacity-60">
-                {query.startsWith("/") ? <TerminalIcon size={16} /> : <Command size={16} />}
+                {query.startsWith("/") ? <TerminalIcon size={14} /> : <Command size={14} />}
               </div>
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder={activeTab === "search" ? "Search for notes…" : "Enter system command…"}
-                className="flex-1 bg-transparent border-none outline-none text-[var(--foreground)] text-[12px] font-mono placeholder:text-[var(--muted-foreground)]/30"
+                placeholder={activeTab === "search" ? "Search_Global_Buffer..." : "Execute_System_Command..."}
+                className="flex-1 bg-transparent border-none outline-none text-[var(--foreground)] text-[11px] font-mono placeholder:text-[var(--muted-foreground)]/30 uppercase tracking-tight"
               />
               <div className="flex gap-1 ml-4">
                 <button 
                   onClick={() => setActiveTab("search")}
                   className={cn(
-                    "px-2 py-0.5 text-[8px] border transition-colors",
-                    activeTab === "search" ? "bg-[var(--primary)]/10 border-[var(--primary)]/40 text-[var(--primary)]" : "border-[var(--border)] text-[var(--muted-foreground)]/50"
+                    "px-3 h-7 text-[8px] border transition-all font-bold tracking-widest",
+                    activeTab === "search" ? "bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)]" : "border-[var(--border)] text-[var(--muted-foreground)]/50 hover:text-[var(--foreground)]"
                   )}
                 >
-                  SEARCH
+                  INDEX
                 </button>
                 <button 
                   onClick={() => setActiveTab("terminal")}
                   className={cn(
-                    "px-2 py-0.5 text-[8px] border transition-colors",
-                    activeTab === "terminal" ? "bg-[var(--primary)]/10 border-[var(--primary)]/40 text-[var(--primary)]" : "border-[var(--border)] text-[var(--muted-foreground)]/50"
+                    "px-3 h-7 text-[8px] border transition-all font-bold tracking-widest",
+                    activeTab === "terminal" ? "bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)]" : "border-[var(--border)] text-[var(--muted-foreground)]/50 hover:text-[var(--foreground)]"
                   )}
                 >
-                  CONSOLE
+                  SHELL
                 </button>
               </div>
             </div>
@@ -300,14 +300,14 @@ const OmniConsole = ({
             </div>
 
             {/* Footer */}
-            <div className="px-4 h-9 bg-[var(--card)]/20 border-t border-[var(--border)] text-[8px] text-[var(--muted-foreground)] flex justify-between items-center shrink-0 font-mono uppercase tracking-[0.2em]">
-              <div className="flex gap-4">
-                <span className="flex items-center gap-1.5"><Kbd>TAB</Kbd> MODAL_SWAP</span>
-                <span className="flex items-center gap-1.5"><Kbd>ENTER</Kbd> COMMIT</span>
+            <div className="px-4 h-10 bg-[var(--card)]/20 border-t border-[var(--border)] text-[8px] text-[var(--muted-foreground)] flex justify-between items-center shrink-0 font-mono uppercase tracking-[0.2em]">
+              <div className="flex gap-6">
+                <span className="flex items-center gap-2"><Kbd className="rounded-none">TAB</Kbd> MODAL_SWAP</span>
+                <span className="flex items-center gap-2"><Kbd className="rounded-none">ENTER</Kbd> COMMIT_ACTION</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full animate-pulse" />
-                <span>SECURE_LINK</span>
+                <div className="w-2 h-2 bg-[var(--accent)] animate-pulse shadow-[0_0_8px_var(--accent)]" />
+                <span className="opacity-60">LINK_SECURE</span>
               </div>
             </div>
           </motion.div>

@@ -102,9 +102,9 @@ export default function SidebarHelp({ onClose }: SidebarHelpProps) {
             {SHORTCUTS.map((s, i) => (
               <div key={i} className="flex items-center justify-between py-1.5 border-b border-[var(--border)]/30 last:border-0">
                 <span className="text-[9px] font-mono text-[var(--muted-foreground)]">{s.desc}</span>
-                <div className="flex gap-0.5">
+                <div className="flex gap-1.5">
                   {s.keys.map(k => (
-                    <kbd key={k} className="px-1 py-0.5 bg-[var(--card)] border border-[var(--border)] text-[8px] font-mono text-[var(--foreground)] min-w-[18px] text-center">
+                    <kbd key={k} className="px-1.5 py-0.5 bg-[var(--card)] border border-[var(--border)] text-[8px] font-mono text-[var(--foreground)] min-w-[18px] text-center rounded-none group-hover:border-[var(--primary)]/30 transition-colors">
                       {k}
                     </kbd>
                   ))}
@@ -119,9 +119,9 @@ export default function SidebarHelp({ onClose }: SidebarHelpProps) {
            <div className="grid grid-cols-2 gap-2">
             <div className="p-2 border border-[var(--border)] bg-[var(--card)]/10">
               <span className="block text-[7px] font-mono text-[var(--muted-foreground)] uppercase mb-1">Sync</span>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-[9px] font-mono text-[var(--foreground)]">LOCAL</span>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]" />
+                <span className="text-[9px] font-mono text-[var(--foreground)] uppercase">Local_State</span>
               </div>
             </div>
             <div className="p-2 border border-[var(--border)] bg-[var(--card)]/10">
