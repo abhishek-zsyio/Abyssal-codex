@@ -75,7 +75,7 @@ const MarkdownPreview = memo(({
 
   const processedContent = useMemo(() => {
     if (!deferredContent) return "";
-    const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|\[\[([\s\S]*?)\]\])/g;
+    const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|§\{([\s\S]*?)\})/g;
     return deferredContent.replace(combinedRegex, (match, linkContent) => {
       if (linkContent !== undefined) {
         let target = linkContent;

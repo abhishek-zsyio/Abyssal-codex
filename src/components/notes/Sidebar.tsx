@@ -133,9 +133,20 @@ const Sidebar = memo(({
     const folderName = folderParts[folderParts.length - 1];
     const newFolderPath = targetParentPath ? `${targetParentPath}/${folderName}` : folderName;
     
-    const notesToMove = notes.filter(n => n.title === oldPath || n.title.startsWith(oldPath + "/"));
-    
-    if (onUpdateNote) {
+    // Check if target is the same or a subfolder of itself
+    if (targetParentPath === oldPath || targetParentPath.startsWith(oldPath + "/")) {
+      return;
+    }
+
+    if (onRenameFolder) {
+      onRenameFolder(oldPath, newFolderPath);
+      
+      window.dispatchEvent(new CustomEvent('abyssal-log', { 
+        detail: { message: `RELOCATING_CLUSTER: [${folderName}] -> [${targetParentPath || 'ROOT'}]`, type: 'system' } 
+      }));
+    } else if (onUpdateNote) {
+      // Fallback if onRenameFolder is not provided
+      const notesToMove = notes.filter(n => n.title === oldPath || n.title.startsWith(oldPath + "/"));
       notesToMove.forEach(note => {
         const relativePath = note.title.substring(oldPath.length);
         const newTitle = `${newFolderPath}${relativePath}`;
@@ -165,9 +176,16 @@ const Sidebar = memo(({
 
   return (
     <aside className={cn(
-      "h-full flex border-r border-[var(--border)] bg-[var(--background)] relative transition-all duration-300 ease-in-out",
-      isOpen ? "w-[268px]" : "w-12"
+      "h-full flex border-r border-[var(--border)] bg-[var(--background)] z-[100] transition-all duration-300 ease-in-out shrink-0",
+      "fixed md:relative",
+      isOpen ? "w-[268px] translate-x-0" : "w-12 -translate-x-12 md:translate-x-0"
     )}>
+      {isOpen && (
+        <div 
+          onClick={onClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[-1] md:hidden"
+        />
+      )}
 
       <SidebarNavigation 
         activeView={activeView}
@@ -262,7 +280,7 @@ const Sidebar = memo(({
                           onOpenToSide={onOpenToSide}
                           onDeleteNote={onDeleteNote} 
                           onMoveNote={handleMoveNote}
-                          onMoveFolder={onRenameFolder || handleMoveFolder}
+                          onMoveFolder={handleMoveFolder}
                           onDeleteFolder={onDeleteFolder}
                           collapseTrigger={collapseTrigger}
                           selectedFolderPath={selectedFolderPath}

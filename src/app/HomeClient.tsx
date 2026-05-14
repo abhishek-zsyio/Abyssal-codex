@@ -337,7 +337,7 @@ function HomeContent() {
                             onClick={() => setFocusedPane("left")}
                             className={cn(
                               "h-full min-w-0 transition-all duration-300", 
-                              isSplitPane && secondaryNote ? "w-1/2 border-r border-[var(--border)]" : "w-full",
+                              isSplitPane && secondaryNote ? "w-1/2 border-r border-[var(--border)] hidden md:block" : "w-full",
                               isSplitPane && focusedPane === "left" && "ring-1 ring-inset ring-[var(--primary)]/30 z-10 shadow-[0_0_30px_rgba(var(--primary-rgb),0.05)]"
                             )}
                           >

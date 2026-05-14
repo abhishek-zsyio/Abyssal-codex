@@ -428,12 +428,12 @@ export const useEditorMonaco = (
         monaco.languages.wikiLinkRegistered = true;
         
         monaco.languages.registerCompletionItemProvider('markdown', {
-          triggerCharacters: ['['],
+          triggerCharacters: ['§'],
           provideCompletionItems: (model: any, position: any) => {
             const lineContent = model.getLineContent(position.lineNumber);
             const textBeforeCursor = lineContent.substring(0, position.column - 1);
             
-            if (textBeforeCursor.endsWith('[[')) {
+            if (textBeforeCursor.endsWith('§{')) {
               const suggestions = (notesRef.current || []).map(n => ({
                 label: n.title.includes('/') ? n.title : (n.title || "UNTITLED"),
                 kind: monaco.languages.CompletionItemKind.Reference,
@@ -465,7 +465,7 @@ export const useEditorMonaco = (
             
             // Combined regex to match code blocks, inline code, wikilinks, and note links
             // Group 1: wikilink content, Group 2: note link target
-            const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|\[\[([\s\S]*?)\]\]|\[.*?\]\(note:\/\/(.*?)\))/g;
+            const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|§\{([\s\S]*?)\}|\[.*?\]\(note:\/\/(.*?)\))/g;
             
             let match;
             while ((match = combinedRegex.exec(text)) !== null) {
@@ -553,7 +553,7 @@ export const useEditorMonaco = (
 
             if (targetNote) {
               window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                detail: { message: `NAVIGATING_TO: [[${title}]]`, type: 'system' } 
+                detail: { message: `NAVIGATING_TO: §{${title}}`, type: 'system' } 
               }));
               navigateRef.current?.(targetNote.id);
             }
