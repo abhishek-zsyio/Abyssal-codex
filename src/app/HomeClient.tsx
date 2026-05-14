@@ -248,13 +248,9 @@ function HomeContent() {
         {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       </AnimatePresence>
 
-      <main className="h-full w-full flex overflow-hidden bg-[var(--background)] text-[#ebdbb2] relative">
-        {/* Global Immersive Layer */}
-        <div className="absolute inset-0 pointer-events-none select-none z-0">
-           <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
-           <div className="absolute inset-0 opacity-[0.1] bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-[length:32px_32px]" />
-           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--background)]/50 to-[var(--background)]" />
-        </div>
+      <main className="h-full w-full flex overflow-hidden bg-[var(--background)] text-[var(--foreground)] relative">
+        {/* Subtle dot-grid — single very faint layer */}
+        <div className="absolute inset-0 pointer-events-none select-none z-0 opacity-[0.025] bg-[radial-gradient(circle,var(--foreground)_1px,transparent_1px)] bg-[length:28px_28px]" />
 
         <AnimatePresence>
           {isSidebarOpen && (
@@ -354,8 +350,13 @@ function HomeContent() {
           </div>
           
           {isPending && (
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-[#282828] z-50 overflow-hidden">
-              <motion.div className="h-full bg-[#fabd2f]" initial={{ x: "-100%" }} animate={{ x: "100%" }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
+            <div className="absolute top-0 left-0 w-full h-px bg-[var(--border)] z-50 overflow-hidden">
+              <motion.div
+                className="h-full bg-[var(--primary)]"
+                initial={{ x: "-100%" }}
+                animate={{ x: "100%" }}
+                transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+              />
             </div>
           )}
         </div>

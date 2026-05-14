@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Note } from "@/types/note";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,8 @@ import {
   Link2,
   Pause,
   Play,
-  Info,
+  Filter,
+  FolderOpen,
 } from "lucide-react";
 import { useGraphTheme } from "@/hooks/use-graph-theme";
 import { useGraphSimulation } from "@/hooks/use-graph-simulation";
@@ -42,23 +43,26 @@ export default function GraphView({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const transformRef = useRef({ x: 0, y: 0, k: 0.75 });
+  const targetTransformRef = useRef<{ x: number; y: number; k: number } | null>(null);
   const hoveredNodeRef = useRef<string | null>(null);
   const needsRedrawRef = useRef(true);
   const rafRef = useRef(0);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
-  const [selectedPreview, setSelectedPreview] = useState<GraphNode | null>(
-    null,
-  );
+  const [selectedPreview, setSelectedPreview] = useState<GraphNode | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isPaused, setIsPaused] = useState(false);
   const [isLinkMode, setIsLinkMode] = useState(false);
   const [linkSource, setLinkSource] = useState<GraphNode | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [hideOrphans, setHideOrphans] = useState(false);
+  const [foldersOnly, setFoldersOnly] = useState(false);
 
   const searchRef = useRef("");
   const isPausedRef = useRef(false);
+  const hideOrphansRef = useRef(false);
+  const foldersOnlyRef = useRef(false);
 
   const requestRender = useCallback(() => {
     needsRedrawRef.current = true;
@@ -75,14 +79,10 @@ export default function GraphView({
     },
   );
 
-  useEffect(() => {
-    searchRef.current = searchQuery;
-    requestRender();
-  }, [searchQuery, requestRender]);
-  useEffect(() => {
-    isPausedRef.current = isPaused;
-    requestRender();
-  }, [isPaused, requestRender]);
+  useEffect(() => { searchRef.current = searchQuery; requestRender(); }, [searchQuery, requestRender]);
+  useEffect(() => { isPausedRef.current = isPaused; requestRender(); }, [isPaused, requestRender]);
+  useEffect(() => { hideOrphansRef.current = hideOrphans; requestRender(); }, [hideOrphans, requestRender]);
+  useEffect(() => { foldersOnlyRef.current = foldersOnly; requestRender(); }, [foldersOnly, requestRender]);
 
   useEffect(() => {
     if (!isOpen || !canvasRef.current || !containerRef.current) return;
@@ -90,6 +90,26 @@ export default function GraphView({
     const container = containerRef.current;
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
+
+    // ── degree map (connection count per node) ────────────────────────────
+    const degreeMap = new Map<string, number>();
+    initialLinks.forEach((l) => {
+      const sId = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+      const tId = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+      degreeMap.set(sId, (degreeMap.get(sId) || 0) + 1);
+      degreeMap.set(tId, (degreeMap.get(tId) || 0) + 1);
+    });
+    // radius for a node based on degree
+    const nodeRadius = (node: GraphNode): number => {
+      if (node.isGhost) return 3;
+      const deg = degreeMap.get(node.id) || 0;
+      if (node.isFolder) return node.isRootSun ? 10 + Math.sqrt(deg) * 1.5 : 7 + Math.sqrt(deg);
+      return 4 + Math.sqrt(deg) * 0.8;
+    };
+
+    // ── per-node lerped alpha state ────────────────────────────────────────
+    const alphaMap = new Map<string, number>();
+    initialNodes.forEach(n => alphaMap.set(n.id, 1));
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -116,248 +136,192 @@ export default function GraphView({
     const wikiLinks = initialLinks.filter((l) => !l.isHierarchy);
     const hierarchyLinks = initialLinks.filter((l) => l.isHierarchy);
 
-    // ── Pre-bake node textures (run once per themeColors change) ─────────────
-    // Key: `${type}:${color}` → offscreen canvas
-    const texCache = new Map<string, HTMLCanvasElement>();
-    const bakeNode = (type: 'planet-root'|'planet'|'star'|'ghost', color: string, bg: string): HTMLCanvasElement => {
-      const key = `${type}:${color}`;
-      if (texCache.has(key)) return texCache.get(key)!;
-      const SIZE = type === 'planet-root' ? 120 : type === 'planet' ? 80 : type === 'star' ? 60 : 24;
-      const c = document.createElement('canvas');
-      c.width = SIZE; c.height = SIZE;
-      const cx = c.getContext('2d')!;
-      const cx0 = SIZE / 2, cy0 = SIZE / 2;
-      if (type === 'ghost') {
-        cx.strokeStyle = color + '55'; cx.lineWidth = 1;
-        cx.setLineDash([2, 3]);
-        cx.beginPath(); cx.arc(cx0, cy0, 8, 0, Math.PI * 2); cx.stroke();
-        cx.setLineDash([]);
-      } else if (type === 'star') {
-        const r = 5;
-        const corona = cx.createRadialGradient(cx0, cy0, 0, cx0, cy0, SIZE / 2);
-        corona.addColorStop(0, color + 'aa'); corona.addColorStop(0.35, color + '33'); corona.addColorStop(1, color + '00');
-        cx.beginPath(); cx.arc(cx0, cy0, SIZE / 2, 0, Math.PI * 2);
-        cx.fillStyle = corona; cx.fill();
-        cx.beginPath(); cx.arc(cx0, cy0, r, 0, Math.PI * 2);
-        cx.fillStyle = color + 'ff'; cx.fill();
-      } else {
-        // planet
-        const r = type === 'planet-root' ? 22 : 14;
-        // atmosphere
-        const atm = cx.createRadialGradient(cx0, cy0, r * 0.5, cx0, cy0, r * 2.5);
-        atm.addColorStop(0, color + '33'); atm.addColorStop(1, color + '00');
-        cx.beginPath(); cx.arc(cx0, cy0, r * 2.5, 0, Math.PI * 2);
-        cx.fillStyle = atm; cx.fill();
-        // orbital ring
-        cx.save(); cx.translate(cx0, cy0); cx.scale(1, 0.3);
-        cx.beginPath(); cx.arc(0, 0, r * 1.85, 0, Math.PI * 2);
-        cx.strokeStyle = color + '44'; cx.lineWidth = 1.5; cx.stroke();
-        cx.restore();
-        // sphere
-        const sphere = cx.createRadialGradient(cx0 - r * 0.35, cy0 - r * 0.35, r * 0.05, cx0, cy0, r);
-        sphere.addColorStop(0, color + 'ff'); sphere.addColorStop(0.65, color + 'cc'); sphere.addColorStop(1, bg + 'bb');
-        cx.beginPath(); cx.arc(cx0, cy0, r, 0, Math.PI * 2);
-        cx.fillStyle = sphere; cx.fill();
-        // specular
-        const spec = cx.createRadialGradient(cx0 - r * 0.38, cy0 - r * 0.38, 0, cx0 - r * 0.38, cy0 - r * 0.38, r * 0.55);
-        spec.addColorStop(0, 'rgba(255,255,255,0.4)'); spec.addColorStop(1, 'rgba(255,255,255,0)');
-        cx.beginPath(); cx.arc(cx0, cy0, r, 0, Math.PI * 2);
-        cx.fillStyle = spec; cx.fill();
-      }
-      texCache.set(key, c);
-      return c;
-    };
-
-    // Pre-warm textures for all unique colors
-    const uniqueColors = Array.from(new Set(initialNodes.map(n => n.color || themeColors.muted)));
-    uniqueColors.forEach(col => {
-      bakeNode('planet-root', col, themeColors.background);
-      bakeNode('planet', col, themeColors.background);
-      bakeNode('star', col, themeColors.background);
-      bakeNode('ghost', col, themeColors.background);
-    });
-
     const drawFrame = () => {
       rafRef.current = requestAnimationFrame(drawFrame);
-      if (!needsRedrawRef.current) return;
-      needsRedrawRef.current = false;
-
+      // Smooth pan animation toward targetTransform
+      if (targetTransformRef.current) {
+        const T = targetTransformRef.current;
+        const cur = transformRef.current;
+        const TLERP = 0.1;
+        const nx = cur.x + (T.x - cur.x) * TLERP;
+        const ny = cur.y + (T.y - cur.y) * TLERP;
+        const nk = cur.k + (T.k - cur.k) * TLERP;
+        transformRef.current = { x: nx, y: ny, k: nk };
+        if (Math.abs(nx - T.x) < 0.5 && Math.abs(ny - T.y) < 0.5 && Math.abs(nk - T.k) < 0.001)
+          targetTransformRef.current = null;
+        needsRedrawRef.current = true;
+      }
+      // Always run lerp; only skip full redraw if nothing changed
       const { x, y, k } = transformRef.current;
       const W = canvas.width / (window.devicePixelRatio || 1);
       const H = canvas.height / (window.devicePixelRatio || 1);
+      const cur = hoveredNodeRef.current;
+      const q = searchRef.current.toLowerCase();
 
-      // ── space background (theme-aware) ────────────────────────────────────
+      // filter flags
+      const doHideOrphans = hideOrphansRef.current;
+      const doFoldersOnly = foldersOnlyRef.current;
+
+      // compute 1st + 2nd-degree neighbor sets
+      const neighbors1 = new Set<string>();
+      const neighbors2 = new Set<string>();
+      if (cur) {
+        initialLinks.forEach((l) => {
+          const sId = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+          const tId = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+          if (sId === cur) neighbors1.add(tId);
+          if (tId === cur) neighbors1.add(sId);
+        });
+        initialLinks.forEach((l) => {
+          const sId = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+          const tId = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+          if (neighbors1.has(sId) && tId !== cur) neighbors2.add(tId);
+          if (neighbors1.has(tId) && sId !== cur) neighbors2.add(sId);
+        });
+      }
+      const neighborIds = neighbors1; // alias for hit/edge checks
+
+      // lerp alpha targets toward actual values — triggers redraw if anything moved
+      const LERP = 0.18;
+      let anyChanged = false;
+      initialNodes.forEach(node => {
+        // filter hidden nodes
+        const deg = degreeMap.get(node.id) || 0;
+        const isOrphan = deg === 0 && !node.isFolder;
+        if ((doHideOrphans && isOrphan) || (doFoldersOnly && !node.isFolder)) {
+          alphaMap.set(node.id, 0); return;
+        }
+        let target: number;
+        if (q) target = node.title.toLowerCase().includes(q) ? 1 : 0.04;
+        else if (cur) {
+          if (node.id === cur) target = 1;
+          else if (neighbors1.has(node.id)) target = 0.9;
+          else if (neighbors2.has(node.id)) target = 0.45;
+          else target = 0.05;
+        }
+        else target = node.isGhost ? 0.2 : 1;
+        const prev = alphaMap.get(node.id) ?? target;
+        const next = prev + (target - prev) * LERP;
+        if (Math.abs(next - prev) > 0.003) { alphaMap.set(node.id, next); anyChanged = true; needsRedrawRef.current = true; }
+        else alphaMap.set(node.id, target);
+      });
+
+      if (!needsRedrawRef.current) return;
+      needsRedrawRef.current = false;
+
+      // ── background ────────────────────────────────────────────────────────
       ctx.fillStyle = themeColors.background;
       ctx.fillRect(0, 0, W, H);
-
-      // Star field — uses theme foreground color so light themes get dark stars
-      if (!(drawFrame as any)._stars) {
-        (drawFrame as any)._stars = Array.from({ length: 260 }, () => ({
-          x: Math.random() * 4000 - 2000,
-          y: Math.random() * 4000 - 2000,
-          r: Math.random() * 1.1 + 0.2,
-          a: Math.random() * 0.5 + 0.1,
-        }));
-      }
-      ctx.save();
-      ctx.translate(W / 2 + x, H / 2 + y);
-      ctx.scale(k, k);
-      (drawFrame as any)._stars.forEach((s: any) => {
-        ctx.globalAlpha = s.a * 0.6;
-        ctx.fillStyle = themeColors.foreground;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r / k, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      ctx.globalAlpha = 1;
-      ctx.restore();
 
       ctx.save();
       ctx.translate(W / 2 + x, H / 2 + y);
       ctx.scale(k, k);
 
       const nodeMap = new Map(initialNodes.map((n) => [n.id, n]));
-      const cur = hoveredNodeRef.current;
-      const q = searchRef.current.toLowerCase();
-
-      const neighborIds = new Set<string>();
-      if (cur) {
-        [...wikiLinks, ...hierarchyLinks].forEach((l) => {
-          const sId =
-            typeof l.source === "string"
-              ? l.source
-              : (l.source as GraphNode).id;
-          const tId =
-            typeof l.target === "string"
-              ? l.target
-              : (l.target as GraphNode).id;
-          if (sId === cur) neighborIds.add(tId);
-          if (tId === cur) neighborIds.add(sId);
-        });
-      }
-
       const res = (ref: string | GraphNode): GraphNode | undefined =>
-        typeof ref === "string" ? nodeMap.get(ref) : (ref as GraphNode);
+        typeof ref === 'string' ? nodeMap.get(ref) : (ref as GraphNode);
 
-      // ── nebula blobs — only at zoom > 0.3, skip at low zoom ────────────────
-      const folderNodes = initialNodes.filter(n => n.isFolder && n.x !== undefined);
-      if (k > 0.25) {
-        folderNodes.forEach((fn) => {
-          const nr = fn.isRootSun ? 200 : 120;
-          const g = ctx.createRadialGradient(fn.x!, fn.y!, 0, fn.x!, fn.y!, nr);
-          g.addColorStop(0, (fn.color || themeColors.primary) + "12");
-          g.addColorStop(1, (fn.color || themeColors.primary) + "00");
-          ctx.globalAlpha = 0.7;
-          ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(fn.x!, fn.y!, nr, 0, Math.PI * 2); ctx.fill();
-          ctx.globalAlpha = 1;
-        });
-      }
-
-      // ── hierarchy edges — plain lines (no per-edge gradient) ────────────
-      ctx.lineWidth = 0.7 / k;
+      // ── edges ─────────────────────────────────────────────────────────────
+      // hierarchy — always drawn, very faint
       hierarchyLinks.forEach((l) => {
         const s = res(l.source); const t = res(l.target);
         if (!s || !t || s.x === undefined || t.x === undefined) return;
-        const hi = cur === s.id || cur === t.id || neighborIds.has(s.id) || neighborIds.has(t.id);
-        ctx.strokeStyle = (s.color || themeColors.muted) + (hi ? '55' : '1a');
-        ctx.lineWidth = (hi ? 1.2 : 0.6) / k;
+        const sA = alphaMap.get(s.id) ?? 1;
+        const tA = alphaMap.get(t.id) ?? 1;
+        if (Math.min(sA, tA) < 0.02) return;
+        const connected = cur && (s.id === cur || t.id === cur || neighborIds.has(s.id) || neighborIds.has(t.id));
+        const edgeA = Math.min(sA, tA);
+        ctx.globalAlpha = edgeA;
+        ctx.strokeStyle = (s.color || themeColors.muted) + (connected ? '60' : '22');
+        ctx.lineWidth = (connected ? 1 : 0.5) / k;
         ctx.beginPath(); ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!); ctx.stroke();
       });
 
-      // ── wiki edges ─────────────────────────────────────────────────────────
-      if (cur) {
-        // only show connected links when hovering
-        wikiLinks.forEach((l) => {
-          const s = res(l.source); const t = res(l.target);
-          if (!s || !t || s.x === undefined || t.x === undefined) return;
-          if (s.id !== cur && t.id !== cur) return;
-          ctx.strokeStyle = (s.color || themeColors.primary) + 'bb';
+      // wiki links
+      wikiLinks.forEach((l) => {
+        const s = res(l.source); const t = res(l.target);
+        if (!s || !t || s.x === undefined || t.x === undefined) return;
+        const isActive = cur && (s.id === cur || t.id === cur);
+        const sA = alphaMap.get(s.id) ?? 1;
+        const tA = alphaMap.get(t.id) ?? 1;
+        const edgeA = Math.min(sA, tA);
+        if (edgeA < 0.02) return;
+        ctx.globalAlpha = edgeA;
+        if (isActive) {
+          // glowing active edge
+          ctx.strokeStyle = (s.color || themeColors.primary) + 'cc';
           ctx.lineWidth = 1.5 / k;
+          ctx.shadowColor = s.color || themeColors.primary;
+          ctx.shadowBlur = 6;
           ctx.beginPath(); ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!); ctx.stroke();
-        });
-      } else {
-        // Batch by color — single path per color
-        const buckets = new Map<string, [number, number, number, number][]>();
-        wikiLinks.forEach((l) => {
-          const s = res(l.source); const t = res(l.target);
-          if (!s || !t || s.x === undefined || t.x === undefined) return;
-          const c = s.color || themeColors.muted;
-          if (!buckets.has(c)) buckets.set(c, []);
-          buckets.get(c)!.push([s.x!, s.y!, t.x!, t.y!]);
-        });
-        buckets.forEach((segs, color) => {
-          ctx.beginPath(); ctx.strokeStyle = color + '0f'; ctx.lineWidth = 0.4 / k;
-          segs.forEach(([x1, y1, x2, y2]) => { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); });
-          ctx.stroke();
-        });
-      }
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.strokeStyle = (s.color || themeColors.muted) + '18';
+          ctx.lineWidth = 0.5 / k;
+          ctx.beginPath(); ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!); ctx.stroke();
+        }
+      });
+      ctx.globalAlpha = 1;
 
-      // ── nodes — drawImage from pre-baked textures ─────────────────────────
-      // Set font once for the entire label pass
-      const labelFont = `400 ${9 / k}px ui-monospace, monospace`;
-      const labelFontBold = `600 ${11 / k}px ui-monospace, monospace`;
-      ctx.textAlign = 'left';
+      // ── nodes ─────────────────────────────────────────────────────────────
+      const labelFont = `400 ${10 / k}px ui-monospace, monospace`;
+      ctx.textAlign = 'center';
 
       initialNodes.forEach((node) => {
         if (node.x === undefined || node.y === undefined) return;
+        const a = alphaMap.get(node.id) ?? 1;
+        if (a < 0.01) return;
         const isHov = node.id === cur;
         const isNeigh = neighborIds.has(node.id);
         const matched = q && node.title.toLowerCase().includes(q);
-
-        let a = 1;
-        if (q) a = matched ? 1 : 0.08;
-        else if (cur) a = isHov ? 1 : isNeigh ? 0.8 : 0.15;
-        else a = node.isGhost ? 0.3 : 0.9;
+        const c = node.color || themeColors.muted;
+        const r = nodeRadius(node);
 
         ctx.globalAlpha = a;
-        const c = node.color || themeColors.muted;
 
-        if (node.isFolder) {
-          const type = node.isRootSun ? 'planet-root' : 'planet';
-          const tex = bakeNode(type, c, themeColors.background);
-          const SIZE = tex.width;
-          // drawImage is a fast GPU blit — no gradient creation per frame
-          ctx.drawImage(tex, node.x! - SIZE / 2, node.y! - SIZE / 2, SIZE, SIZE);
-
-          // hover ring (cheap stroke, only when hovered)
-          if (isHov) {
-            const r = node.isRootSun ? 22 : 14;
-            ctx.beginPath(); ctx.arc(node.x!, node.y!, r + 5 / k, 0, Math.PI * 2);
-            ctx.strokeStyle = c + '88'; ctx.lineWidth = 2 / k; ctx.stroke();
-          }
-
-        } else if (node.isGhost) {
-          const tex = bakeNode('ghost', c, themeColors.background);
-          ctx.drawImage(tex, node.x! - 12, node.y! - 12, 24, 24);
-
+        if (node.isGhost) {
+          // dashed ring only
+          ctx.save();
+          ctx.setLineDash([1.5 / k, 2.5 / k]);
+          ctx.beginPath(); ctx.arc(node.x!, node.y!, r, 0, Math.PI * 2);
+          ctx.strokeStyle = c + '55'; ctx.lineWidth = 0.7 / k; ctx.stroke();
+          ctx.setLineDash([]); ctx.restore();
         } else {
-          const tex = bakeNode('star', c, themeColors.background);
-          const SIZE = isHov ? 60 : 44;
-          ctx.drawImage(tex, node.x! - SIZE / 2, node.y! - SIZE / 2, SIZE, SIZE);
+          // filled circle — folder gets stronger fill
+          const fillAlpha = node.isFolder ? (isHov ? '40' : '25') : (isHov ? '35' : '18');
+          ctx.beginPath(); ctx.arc(node.x!, node.y!, r, 0, Math.PI * 2);
+          ctx.fillStyle = c + fillAlpha; ctx.fill();
 
-          // diffraction spikes only on hover (cheap lines)
+          // stroke ring
+          ctx.strokeStyle = c + (isHov || isNeigh ? 'ee' : 'aa');
+          ctx.lineWidth = (isHov ? 1.8 : node.isFolder ? 1.2 : 0.9) / k;
+          ctx.stroke();
+
+          // outer glow ring on hover
           if (isHov) {
-            const spike = 14 / k;
-            ctx.strokeStyle = c + '88'; ctx.lineWidth = 0.8 / k;
-            ctx.beginPath();
-            ctx.moveTo(node.x! - spike, node.y!); ctx.lineTo(node.x! + spike, node.y!);
-            ctx.moveTo(node.x!, node.y! - spike); ctx.lineTo(node.x!, node.y! + spike);
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(node.x!, node.y!, r + 4 / k, 0, Math.PI * 2);
+            ctx.strokeStyle = c + '30'; ctx.lineWidth = 3 / k; ctx.stroke();
           }
         }
 
         ctx.globalAlpha = 1;
 
-        // Labels
-        const showLabel = node.isFolder || isHov || (isNeigh && k > 0.5) || matched || (k > 2.8 && !node.isGhost);
+        // Labels — show for: hovered, 1st-deg neighbor (zoom>0.6), hub (deg≥3, zoom>0.9), folders, search match
+        const deg = degreeMap.get(node.id) || 0;
+        const isHub = deg >= 3;
+        const is2nd = neighbors2.has(node.id);
+        const showLabel = isHov || matched
+          || (neighbors1.has(node.id) && k > 0.5)
+          || (node.isFolder && k > 0.25)
+          || (isHub && k > 0.8 && !node.isGhost);
         if (showLabel) {
-          ctx.globalAlpha = (isHov ? 1 : node.isFolder ? 0.85 : 0.6) * a;
-          ctx.font = node.isFolder ? labelFontBold : labelFont;
+          const labelA = (isHov ? 1 : neighbors1.has(node.id) || node.isFolder ? 0.8 : is2nd ? 0.5 : 0.4) * a;
+          ctx.globalAlpha = labelA;
+          const fSize = node.isFolder ? (node.isRootSun ? 11 : 10) : 9;
+          ctx.font = `${node.isFolder ? 600 : 400} ${fSize / k}px ui-monospace, monospace`;
           ctx.fillStyle = isHov ? themeColors.foreground : c;
-          const offX = (node.isFolder ? (node.isRootSun ? 26 : 18) : 10) / k;
-          const label = node.title.length > 22 ? node.title.slice(0, 22) + '…' : node.title;
-          ctx.fillText(label, node.x! + offX, node.y! + 4 / k);
+          const label = node.title.length > 20 ? node.title.slice(0, 20) + '…' : node.title;
+          ctx.fillText(label, node.x!, node.y! + r + 10 / k);
           ctx.globalAlpha = 1;
         }
       });
@@ -367,26 +331,40 @@ export default function GraphView({
 
     drawFrame();
     return () => {
-      window.removeEventListener("resize", resize);
-      container.removeEventListener("wheel", onWheel);
+      window.removeEventListener('resize', resize);
+      container.removeEventListener('wheel', onWheel);
       cancelAnimationFrame(rafRef.current);
     };
   }, [isOpen, initialNodes, initialLinks, themeColors, requestRender]);
 
   // ── mouse ──────────────────────────────────────────────────────────────────
+  // degree map for hit-radius (recomputed from links)
+  const degreeMapHit = useMemo(() => {
+    const m = new Map<string, number>();
+    initialLinks.forEach(l => {
+      const sId = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+      const tId = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+      m.set(sId, (m.get(sId) || 0) + 1);
+      m.set(tId, (m.get(tId) || 0) + 1);
+    });
+    return m;
+  }, [initialLinks]);
+
   const hitTest = useCallback(
     (mx: number, my: number) => {
       return (
         initialNodes.find((n) => {
           if (n.x === undefined) return false;
-          const dx = n.x! - mx,
-            dy = n.y! - my;
-          const r = n.isFolder ? (n.isRootSun ? 20 : 14) : 10;
-          return dx * dx + dy * dy < r * r;
+          const dx = n.x! - mx, dy = n.y! - my;
+          const deg = degreeMapHit.get(n.id) || 0;
+          const r = n.isGhost ? 3 : n.isFolder
+            ? (n.isRootSun ? 10 + Math.sqrt(deg) * 1.5 : 7 + Math.sqrt(deg))
+            : 4 + Math.sqrt(deg) * 0.8;
+          return dx * dx + dy * dy < (r + 4) * (r + 4); // +4px tolerance
         }) || null
       );
     },
-    [initialNodes],
+    [initialNodes, degreeMapHit],
   );
 
   const handleMouseMove = useCallback(
@@ -445,22 +423,24 @@ export default function GraphView({
               if (onUpdateNote) {
                 const src = notes.find((n) => n.id === linkSource.id);
                 if (src) {
-                  const wl = `[[${node.title}]]`;
-                  onUpdateNote(src.id, {
-                    content: (src.content || "") + "\n\n" + wl,
-                  });
+                  onUpdateNote(src.id, { content: (src.content || "") + `\n\n[[${node.title}]]` });
                 }
               }
               setLinkSource(null);
               setIsLinkMode(false);
-            } else if (
-              isLinkMode &&
-              !linkSource &&
-              !node.isGhost &&
-              !node.isFolder
-            ) {
+            } else if (isLinkMode && !linkSource && !node.isGhost && !node.isFolder) {
               setLinkSource(node);
             } else if (!node.isFolder && !node.isGhost && onSelectNote) {
+              // pan-to-node before opening
+              if (canvasRef.current) {
+                const r = canvasRef.current.getBoundingClientRect();
+                targetTransformRef.current = {
+                  x: -(node.x!) * transformRef.current.k,
+                  y: -(node.y!) * transformRef.current.k,
+                  k: transformRef.current.k,
+                };
+                needsRedrawRef.current = true;
+              }
               onSelectNote(node.id);
             }
           }
@@ -505,11 +485,42 @@ export default function GraphView({
     ],
   );
 
-  const noteCount = initialNodes.filter(
-    (n) => !n.isFolder && !n.isGhost,
-  ).length;
+  const noteCount = initialNodes.filter((n) => !n.isFolder && !n.isGhost).length;
   const folderCount = initialNodes.filter((n) => n.isFolder).length;
   const linkCount = initialLinks.filter((l) => !l.isHierarchy).length;
+
+  // connections list for hovered node (for info panel)
+  const hoveredConnections = useMemo(() => {
+    if (!hoveredNode) return [];
+    const connected: { node: GraphNode; type: 'wiki' | 'folder' }[] = [];
+    const nodeMap = new Map(initialNodes.map(n => [n.id, n]));
+    initialLinks.forEach(l => {
+      const sId = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+      const tId = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+      if (sId === hoveredNode.id) {
+        const n = nodeMap.get(tId); if (n) connected.push({ node: n, type: l.isHierarchy ? 'folder' : 'wiki' });
+      } else if (tId === hoveredNode.id) {
+        const n = nodeMap.get(sId); if (n) connected.push({ node: n, type: l.isHierarchy ? 'folder' : 'wiki' });
+      }
+    });
+    return connected;
+  }, [hoveredNode, initialNodes, initialLinks]);
+
+  // fit-to-view: compute bounding box of all placed nodes
+  const fitToView = useCallback(() => {
+    const placed = initialNodes.filter(n => n.x !== undefined && !n.isGhost);
+    if (!placed.length || !canvasRef.current) { transformRef.current = { x: 0, y: 0, k: 0.75 }; requestRender(); return; }
+    const xs = placed.map(n => n.x!), ys = placed.map(n => n.y!);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const r = canvasRef.current.getBoundingClientRect();
+    const W = r.width, H = r.height;
+    const pad = 80;
+    const k = Math.min((W - pad * 2) / (maxX - minX || 1), (H - pad * 2) / (maxY - minY || 1), 2);
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    targetTransformRef.current = { x: -cx * k, y: -cy * k, k };
+    needsRedrawRef.current = true;
+  }, [initialNodes, requestRender]);
 
   return (
     <AnimatePresence>
@@ -615,11 +626,8 @@ export default function GraphView({
                   },
                   {
                     icon: Maximize2,
-                    action: () => {
-                      transformRef.current = { x: 0, y: 0, k: 0.75 };
-                      requestRender();
-                    },
-                    tip: "Reset view",
+                    action: fitToView,
+                    tip: "Fit to view",
                   },
                 ].map(({ icon: Icon, action, active, tip }, i) => (
                   <button
@@ -636,6 +644,26 @@ export default function GraphView({
                     <Icon size={14} strokeWidth={1.8} />
                   </button>
                 ))}
+                {/* Filter toggles */}
+                <div className="w-px h-4 bg-[var(--border)]/40 mx-1" />
+                <button
+                  onClick={() => setHideOrphans(v => !v)}
+                  title={hideOrphans ? "Show orphan nodes" : "Hide orphan nodes"}
+                  className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-all",
+                    hideOrphans ? "bg-[var(--primary)]/15 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5"
+                  )}
+                >
+                  <Filter size={13} strokeWidth={1.8} />
+                </button>
+                <button
+                  onClick={() => setFoldersOnly(v => !v)}
+                  title={foldersOnly ? "Show all nodes" : "Folders only"}
+                  className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-all",
+                    foldersOnly ? "bg-[var(--primary)]/15 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5"
+                  )}
+                >
+                  <FolderOpen size={13} strokeWidth={1.8} />
+                </button>
                 {variant === "modal" && (
                   <button
                     onClick={onClose}
@@ -678,21 +706,21 @@ export default function GraphView({
               {/* Legend */}
               <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 select-none pointer-events-none">
                 {[
-                  { shape: "folder", label: "Planet  (folder)" },
-                  { shape: "note", label: "Star  (note)" },
-                  { shape: "ghost", label: "Asteroid  (unresolved ref)" },
+                  { shape: "folder", label: "DIR  (folder)" },
+                  { shape: "note", label: "NODE  (note)" },
+                  { shape: "ghost", label: "REF  (unresolved)" },
                 ].map(({ shape, label }) => (
                   <div key={shape} className="flex items-center gap-2">
                     {shape === "folder" && (
-                      <div className="w-4 h-4 rounded-full border-2 border-[var(--primary)] bg-[var(--primary)]/50 shrink-0" />
+                      <div className="w-3 h-3 border border-[var(--primary)] bg-[var(--primary)]/20 shrink-0" />
                     )}
                     {shape === "note" && (
-                      <div className="w-3 h-3 rounded-full bg-[var(--foreground)]/50 shrink-0" />
+                      <div className="w-3 h-3 rounded-full border border-[var(--foreground)]/50 bg-[var(--foreground)]/10 shrink-0" />
                     )}
                     {shape === "ghost" && (
-                      <div className="w-3 h-3 rounded-full border border-dashed border-[var(--muted-foreground)]/50 shrink-0" />
+                      <div className="w-3 h-3 rounded-full border border-dashed border-[var(--muted-foreground)]/40 shrink-0" />
                     )}
-                    <span className="text-[9px] font-mono text-[var(--muted-foreground)]/60 uppercase tracking-wider">
+                    <span className="text-[9px] font-mono text-[var(--muted-foreground)]/50 uppercase tracking-wider">
                       {label}
                     </span>
                   </div>
@@ -700,11 +728,64 @@ export default function GraphView({
               </div>
 
               {/* Hover hint */}
-              <div className="absolute bottom-4 right-4 select-none pointer-events-none text-[9px] font-mono text-[var(--muted-foreground)]/30 uppercase tracking-wider text-right">
-                scroll to zoom · drag to pan
-                <br />
-                click note to open
+              <div className="absolute bottom-4 right-4 select-none pointer-events-none text-[9px] font-mono text-[var(--muted-foreground)]/25 uppercase tracking-wider text-right">
+                scroll · zoom &nbsp;|&nbsp; drag · pan
               </div>
+
+              {/* Node info panel */}
+              <AnimatePresence>
+                {hoveredNode && !hoveredNode.isGhost && (
+                  <motion.div
+                    key={hoveredNode.id + '-info'}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 12 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-4 right-4 w-56 pointer-events-none select-none"
+                  >
+                    <div className="bg-[var(--card)]/70 backdrop-blur-xl border border-[var(--border)]/50 p-3 shadow-xl">
+                      {/* title */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: hoveredNode.color }} />
+                        <span className="text-[11px] font-semibold font-mono text-[var(--foreground)] truncate">
+                          {hoveredNode.title}
+                        </span>
+                      </div>
+                      {/* stats row */}
+                      <div className="flex gap-3 mb-2">
+                        <span className="text-[9px] font-mono text-[var(--muted-foreground)]/70 uppercase">
+                          {hoveredConnections.filter(c => c.type === 'wiki').length} links
+                        </span>
+                        <span className="text-[9px] font-mono text-[var(--muted-foreground)]/40">·</span>
+                        <span className="text-[9px] font-mono text-[var(--muted-foreground)]/70 uppercase">
+                          {hoveredNode.isFolder ? 'folder' : hoveredNode.isGhost ? 'unresolved' : 'note'}
+                        </span>
+                      </div>
+                      {/* connections list */}
+                      {hoveredConnections.length > 0 && (
+                        <div className="flex flex-col gap-0.5 border-t border-[var(--border)]/30 pt-2">
+                          {hoveredConnections.slice(0, 6).map(({ node: cn, type }) => (
+                            <div key={cn.id} className="flex items-center gap-1.5">
+                              <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: cn.color }} />
+                              <span className="text-[9px] font-mono text-[var(--muted-foreground)]/60 truncate">
+                                {cn.title}
+                              </span>
+                              <span className="text-[8px] font-mono text-[var(--muted-foreground)]/30 ml-auto shrink-0">
+                                {type === 'wiki' ? '↔' : '⊂'}
+                              </span>
+                            </div>
+                          ))}
+                          {hoveredConnections.length > 6 && (
+                            <span className="text-[8px] font-mono text-[var(--muted-foreground)]/30 mt-0.5">
+                              +{hoveredConnections.length - 6} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Node preview tooltip */}
               <AnimatePresence>

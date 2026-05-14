@@ -1,10 +1,9 @@
 "use client";
 
-import React, { memo } from "react";
-import { motion } from "framer-motion";
-import { X, FileText } from "lucide-react";
+import React, { memo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { softSpring } from "@/lib/transitions";
 import { Note } from "@/types/note";
 
 interface TabProps {
@@ -12,80 +11,87 @@ interface TabProps {
   title: string;
   isActive: boolean;
   isFocused?: boolean;
+  isModified?: boolean;
+  onSelect: () => void;
+  onClose: (e: React.MouseEvent) => void;
   onOpenToSide?: (id: string) => void;
 }
 
-const Tab = memo(({ 
-  id, 
-  title, 
-  isActive, 
-  onSelect, 
-  onClose,
-  isFocused,
-  onOpenToSide
-}: TabProps) => (
-  <div 
-    onClick={onSelect}
-    onContextMenu={(e) => {
-      if (onOpenToSide) {
-        e.preventDefault();
-        onOpenToSide(id);
-      }
-    }}
-    className={cn(
-      "flex items-center gap-3 px-4 h-10 border-r border-[var(--border)] text-[8px] font-mono cursor-pointer transition-all whitespace-nowrap group relative min-w-[100px] md:min-w-[140px] max-w-[200px] md:max-w-[240px] overflow-hidden",
-      isActive 
-        ? "bg-[var(--card)]/40 text-[var(--primary)]" 
-        : "bg-transparent text-[var(--muted-foreground)] hover:bg-[var(--card)]/20 hover:text-[var(--foreground)]",
-      isFocused && "shadow-[inset_0_-2px_0_var(--primary)]"
-    )}
-  >
-    <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
-    
-    {isActive && (
-      <>
-        <motion.div 
-          layoutId="active-tab-top"
-          className={cn(
-            "absolute top-0 left-0 right-0 h-[2px] bg-[var(--primary)] transition-all",
-            isFocused ? "opacity-100 shadow-[0_0_12px_var(--primary)]" : "opacity-40"
-          )} 
-        />
-        <div className={cn("absolute top-0 left-0 w-1.5 h-1.5 bg-[var(--primary)]", !isFocused && "opacity-40")} />
-        <div className={cn("absolute top-0 right-0 w-1.5 h-1.5 bg-[var(--primary)]", !isFocused && "opacity-40")} />
-        {isFocused && (
-          <motion.div 
-            animate={{ x: ["-100%", "200%"] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-[var(--primary)]/10 to-transparent skew-x-12"
-          />
-        )}
-      </>
-    )}
-    
-    <div className={cn(
-      "w-2 h-2 border transition-colors flex-shrink-0 rotate-45",
-      isActive ? "border-[var(--primary)] bg-[var(--primary)]" : "border-[var(--muted-foreground)] opacity-50"
-    )} />
-    
-    <div className="flex flex-col min-w-0 flex-1 py-1">
-       <span className="text-[6px] opacity-40 uppercase tracking-[0.3em] leading-none mb-0.5">Stream_Ref</span>
-       <span className="truncate font-black uppercase tracking-[0.1em]">
-         {title || "UNTITLED"}
-       </span>
-    </div>
+const Tab = memo(({
+  id, title, isActive, isFocused, isModified,
+  onSelect, onClose, onOpenToSide,
+}: TabProps) => {
+  const parts = title.split("/");
+  const fileName = parts[parts.length - 1] || "Untitled";
+  const folderPrefix = parts.length > 1 ? parts.slice(0, -1).join("/") + "/" : null;
 
-    <button 
-      onClick={onClose} 
+  return (
+    <div
+      onClick={onSelect}
+      onContextMenu={(e) => {
+        if (onOpenToSide) { e.preventDefault(); onOpenToSide(id); }
+      }}
       className={cn(
-        "p-1.5 hover:text-[var(--destructive)] transition-colors ml-2 relative z-10", 
-        isActive ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100"
+        "group relative flex items-center gap-2 px-3 h-9 border-r border-[var(--border)] cursor-pointer whitespace-nowrap select-none shrink-0",
+        "min-w-[100px] max-w-[200px] overflow-hidden transition-colors duration-150",
+        isActive
+          ? "bg-[var(--background)] text-[var(--foreground)]"
+          : "bg-transparent text-[var(--muted-foreground)] hover:bg-[var(--card)]/30 hover:text-[var(--foreground)]"
       )}
     >
-      <X size={11} />
-    </button>
-  </div>
-));
+      {/* active top bar */}
+      {isActive && (
+        <motion.div
+          layoutId="tab-active-bar"
+          className={cn(
+            "absolute top-0 left-0 right-0 h-[2px]",
+            isFocused ? "bg-[var(--primary)] shadow-[0_0_8px_var(--primary)]" : "bg-[var(--border)]"
+          )}
+          transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
+        />
+      )}
+
+      {/* modified dot */}
+      {isModified && (
+        <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] shrink-0" />
+      )}
+      {!isModified && (
+        <div className={cn(
+          "w-1.5 h-1.5 shrink-0 transition-colors",
+          isActive ? "bg-[var(--primary)]/60" : "bg-[var(--muted-foreground)]/20"
+        )} />
+      )}
+
+      {/* title */}
+      <div className="flex items-baseline gap-0.5 min-w-0 flex-1">
+        {folderPrefix && (
+          <span className="text-[8px] font-mono text-[var(--muted-foreground)]/40 truncate hidden sm:block">
+            {folderPrefix}
+          </span>
+        )}
+        <span className={cn(
+          "text-[9px] font-mono font-semibold uppercase tracking-wide truncate",
+          isActive ? "text-[var(--foreground)]" : "text-[var(--muted-foreground)]"
+        )}>
+          {fileName || "UNTITLED"}
+        </span>
+      </div>
+
+      {/* close */}
+      <button
+        onClick={onClose}
+        className={cn(
+          "w-4 h-4 flex items-center justify-center rounded-sm flex-shrink-0 transition-all",
+          isActive
+            ? "opacity-50 hover:opacity-100 hover:bg-[var(--foreground)]/10 hover:text-[var(--destructive)]"
+            : "opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-[var(--destructive)]"
+        )}
+      >
+        <X size={10} />
+      </button>
+    </div>
+  );
+});
 
 Tab.displayName = "Tab";
 
@@ -101,41 +107,39 @@ interface HomeTabsProps {
 }
 
 export const HomeTabs = ({
-  openNoteIds,
-  notes,
-  activeNoteId,
-  secondaryNoteId,
-  focusedPane,
-  handleSelectNote,
-  handleOpenToSide,
-  handleCloseNote
+  openNoteIds, notes, activeNoteId, secondaryNoteId,
+  focusedPane, handleSelectNote, handleOpenToSide, handleCloseNote,
 }: HomeTabsProps) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
   if (openNoteIds.length === 0) return null;
 
   return (
-    <div className="flex bg-[var(--background)] border-b border-[var(--border)] overflow-x-auto no-scrollbar min-h-[40px] relative z-20">
-      <div className="absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-[var(--background)] to-transparent z-10 pointer-events-none opacity-50" />
-      {openNoteIds.map(id => {
-        const note = notes.find(n => n.id === id);
-        if (!note) return null;
-        
-        const isPrimaryActive = activeNoteId === id;
-        const isSecondaryActive = secondaryNoteId === id;
-        const isFocused = (isPrimaryActive && focusedPane === "left") || (isSecondaryActive && focusedPane === "right");
+    <div
+      ref={scrollRef}
+      className="flex bg-[var(--card)]/10 border-b border-[var(--border)] overflow-x-auto custom-scrollbar min-h-[36px] max-h-[36px] relative z-20"
+    >
+      {/* fade gradients for scroll indicator */}
+      <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[var(--background)] to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[var(--background)] to-transparent z-10 pointer-events-none" />
 
+      {openNoteIds.map((id) => {
+        const note = notes.find((n) => n.id === id);
+        if (!note) return null;
+        const isPrimary = activeNoteId === id;
+        const isSecondary = secondaryNoteId === id;
+        const isFocused =
+          (isPrimary && focusedPane === "left") ||
+          (isSecondary && focusedPane === "right");
         return (
-          <Tab 
+          <Tab
             key={id}
             id={id}
-            title={note.title || "UNTITLED"}
-            isActive={isPrimaryActive || isSecondaryActive}
+            title={note.title || "Untitled"}
+            isActive={isPrimary || isSecondary}
             isFocused={isFocused}
             onSelect={() => handleSelectNote(id)}
+            onClose={(e) => { e.stopPropagation(); handleCloseNote(id); }}
             onOpenToSide={handleOpenToSide}
-            onClose={(e) => {
-              e.stopPropagation();
-              handleCloseNote(id);
-            }}
           />
         );
       })}

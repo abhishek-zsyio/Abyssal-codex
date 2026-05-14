@@ -1,8 +1,9 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { FileText, Share2, Columns2, ChevronRight, Menu } from "lucide-react";
 
 interface WorkspaceHeaderProps {
   mainView: "editor" | "graph";
@@ -21,91 +22,133 @@ export const WorkspaceHeader = memo(({
   isSplitPane,
   setIsSplitPane,
   hasSecondaryNote,
-  setIsSidebarOpen
+  setIsSidebarOpen,
 }: WorkspaceHeaderProps) => {
+  const [time, setTime] = useState("");
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setTime(now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }));
+    };
+    tick();
+    const id = setInterval(tick, 10000);
+    return () => clearInterval(id);
+  }, []);
+
+  // parse breadcrumb parts from title like "folder/subfolder/note"
+  const parts = activeNoteTitle ? activeNoteTitle.split("/") : [];
+
   return (
-    <div className="h-14 border-b border-[var(--border)] bg-[var(--card)]/30 backdrop-blur-xl flex items-center justify-between px-6 relative overflow-hidden group">
-      {/* Visual Accents */}
-      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--primary)]/20 to-transparent" />
-      <div className="absolute top-0 left-8 w-px h-full bg-[var(--border)] opacity-20" />
-      <div className="absolute top-0 right-8 w-px h-full bg-[var(--border)] opacity-20" />
+    <div className="h-10 border-b border-[var(--border)] bg-[var(--card)]/20 flex items-center px-3 gap-3 relative overflow-hidden shrink-0">
+      {/* top accent line */}
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[var(--primary)]/15 to-transparent pointer-events-none" />
 
-      <div className="flex items-center gap-6 h-full relative z-10">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2 mb-1">
-             <div className="w-1 h-1 bg-[var(--primary)] animate-pulse" />
-             <span className="text-[7px] font-mono text-[var(--primary)] uppercase tracking-[0.4em] font-black">Workspace_Protocol</span>
-          </div>
-          <div className="flex items-center p-0.5 bg-[var(--background)]/50 border border-[var(--border)] rounded-none gap-0.5">
-            <button
-              onClick={() => setMainView("editor")}
-              className={cn(
-                "text-[8px] font-mono font-bold uppercase tracking-[0.15em] transition-all px-3 py-1 relative overflow-hidden",
-                mainView === "editor" 
-                  ? "text-[var(--background)] z-10" 
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              )}
-            >
-              {mainView === "editor" && (
-                <motion.div 
-                  layoutId="active-mode"
-                  className="absolute inset-0 bg-[var(--primary)] -z-10"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                />
-              )}
-              01 // EDITOR_CORE
-            </button>
-            <button
-              onClick={() => setMainView("graph")}
-              className={cn(
-                "text-[8px] font-mono font-bold uppercase tracking-[0.15em] transition-all px-3 py-1 relative overflow-hidden",
-                mainView === "graph" 
-                  ? "text-[var(--background)] z-10" 
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              )}
-            >
-              {mainView === "graph" && (
-                <motion.div 
-                  layoutId="active-mode"
-                  className="absolute inset-0 bg-[var(--primary)] -z-10"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                />
-              )}
-              02 // NEXUS_MAP
-            </button>
-          </div>
-        </div>
+      {/* mobile menu trigger */}
+      <button
+        onClick={() => setIsSidebarOpen(true)}
+        className="lg:hidden w-7 h-7 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors shrink-0"
+      >
+        <Menu size={14} />
+      </button>
 
+      {/* view switcher */}
+      <div className="flex items-center gap-0 border border-[var(--border)] bg-[var(--background)]/60 p-0.5 shrink-0">
+        {([
+          { key: "editor", label: "EDITOR" },
+          { key: "graph",  label: "GRAPH"  },
+        ] as const).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setMainView(key)}
+            className={cn(
+              "relative px-3 py-0.5 text-[8px] font-mono font-bold uppercase tracking-widest transition-all",
+              mainView === key
+                ? "text-[var(--background)]"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+          >
+            {mainView === key && (
+              <motion.div
+                layoutId="hdr-active-tab"
+                className="absolute inset-0 bg-[var(--primary)]"
+                transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+              />
+            )}
+            <span className="relative z-10">{label}</span>
+          </button>
+        ))}
       </div>
 
-      <div className="flex items-center gap-8 relative z-10">
+      {/* breadcrumb */}
+      {mainView === "editor" && (
+        <div className="flex-1 flex items-center gap-1 min-w-0 overflow-hidden">
+          {parts.length === 0 ? (
+            <span className="text-[9px] font-mono text-[var(--muted-foreground)]/40 uppercase tracking-widest">
+              no file open
+            </span>
+          ) : (
+            parts.map((part, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <ChevronRight size={10} className="text-[var(--muted-foreground)]/30 shrink-0" />}
+                <span
+                  className={cn(
+                    "text-[9px] font-mono truncate",
+                    i === parts.length - 1
+                      ? "text-[var(--foreground)] font-semibold"
+                      : "text-[var(--muted-foreground)]/50"
+                  )}
+                >
+                  {part}
+                </span>
+              </React.Fragment>
+            ))
+          )}
+        </div>
+      )}
+      {mainView === "graph" && (
+        <div className="flex-1 flex items-center gap-1.5 min-w-0">
+          <Share2 size={10} className="text-[var(--primary)]/60 shrink-0" />
+          <span className="text-[9px] font-mono text-[var(--muted-foreground)]/50 uppercase tracking-widest">
+            Knowledge Graph
+          </span>
+        </div>
+      )}
+
+      {/* right side actions */}
+      <div className="flex items-center gap-2 shrink-0">
+        {/* time */}
+        <span className="hidden md:block text-[8px] font-mono text-[var(--muted-foreground)]/30 tabular-nums">
+          {time}
+        </span>
+
+        {/* split toggle */}
         {mainView === "editor" && hasSecondaryNote && (
           <button
             onClick={() => {
-              const nextSplitState = !isSplitPane;
-              setIsSplitPane(nextSplitState);
-              if (nextSplitState) setIsSidebarOpen(false);
+              setIsSplitPane(!isSplitPane);
             }}
+            title={isSplitPane ? "Close split" : "Split editor"}
             className={cn(
-              "h-8 px-4 text-[8px] font-mono font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-2 group/btn",
-              isSplitPane 
-                ? "bg-[var(--destructive)]/10 border-[var(--destructive)] text-[var(--destructive)]" 
-                : "bg-transparent border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--foreground)]"
+              "h-6 px-2 text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 border transition-all",
+              isSplitPane
+                ? "border-[var(--destructive)]/60 text-[var(--destructive)] bg-[var(--destructive)]/5"
+                : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50 hover:text-[var(--foreground)]"
             )}
           >
-            <div className={cn("w-1.5 h-1.5 border transition-colors", isSplitPane ? "border-[var(--destructive)] bg-[var(--destructive)]" : "border-[var(--muted-foreground)] group-hover/btn:border-[var(--primary)]")} />
-            {isSplitPane ? "TERMINATE" : "SPLIT"}
+            <Columns2 size={10} />
+            {isSplitPane ? "UNSPLIT" : "SPLIT"}
           </button>
         )}
-        
-        <div className="flex flex-col items-end">
-           <div className="flex items-center gap-2">
-              <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">Network_Sync</span>
-              <div className="w-1.5 h-1.5 rounded-none bg-[var(--primary)] animate-pulse shadow-[0_0_8px_var(--primary)]" />
-           </div>
-           <span className="text-[9px] font-mono text-[var(--foreground)] font-bold tracking-tighter uppercase opacity-80 mt-0.5">0x7F_ACTIVE_NODE</span>
+
+        {/* live dot */}
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 bg-[var(--primary)] animate-pulse shadow-[0_0_6px_var(--primary)]" />
+          <span className="hidden sm:block text-[7px] font-mono text-[var(--muted-foreground)]/40 uppercase tracking-widest">LIVE</span>
         </div>
       </div>
     </div>
   );
 });
+
+WorkspaceHeader.displayName = "WorkspaceHeader";
