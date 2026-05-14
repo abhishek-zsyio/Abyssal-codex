@@ -15,6 +15,7 @@ import {
   Play,
   Filter,
   FolderOpen,
+  Hash,
 } from "lucide-react";
 import { useGraphTheme } from "@/hooks/use-graph-theme";
 import { useGraphSimulation } from "@/hooks/use-graph-simulation";
@@ -536,31 +537,31 @@ export default function GraphView({
             />
           )}
             <motion.div
-            initial={{ opacity: 0, scale: 0.99, y: 0 }}
+            initial={{ opacity: 0, scale: 0.99, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.99, y: 0 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, scale: 0.99, y: 10 }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
             className={cn(
-              "flex flex-col bg-[var(--background)] border border-[var(--border)] shadow-2xl overflow-hidden",
+              "flex flex-col bg-[var(--background)]/80 backdrop-blur-2xl border border-[var(--border)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden",
               variant === "modal"
                 ? "fixed inset-4 md:inset-10 z-[401] rounded-none"
                 : "relative w-full h-full border-none rounded-none",
             )}
           >
             {/* ── HEADER ──────────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between px-5 h-12 border-b border-[var(--border)] bg-[var(--card)]/10 shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="flex gap-1">
-                  <div className="w-2.5 h-2.5 bg-[var(--destructive)]/70" />
-                  <div className="w-2.5 h-2.5 bg-yellow-500/70" />
-                  <div className="w-2.5 h-2.5 bg-[var(--primary)]/70" />
+            <div className="flex items-center justify-between px-5 h-12 border-b border-[var(--border)] bg-[var(--card)]/5 backdrop-blur-md shrink-0">
+              <div className="flex items-center gap-5">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 bg-[var(--destructive)]/50 border border-[var(--destructive)]/20 shadow-[0_0_8px_var(--destructive)]/10" />
+                  <div className="w-2.5 h-2.5 bg-yellow-500/50 border border-yellow-500/20" />
+                  <div className="w-2.5 h-2.5 bg-[var(--primary)]/50 border border-[var(--primary)]/20 shadow-[0_0_8px_var(--primary)]/10" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black font-mono text-[var(--foreground)] tracking-[0.2em] uppercase">
-                    Neural_Graph_Engine
+                  <span className="text-[10px] font-black font-mono text-[var(--foreground)] tracking-[0.3em] uppercase">
+                    Neural_Graph_Engine <span className="text-[var(--primary)] opacity-40 ml-1">v4.0</span>
                   </span>
-                  <span className="text-[7px] font-mono text-[var(--muted-foreground)] opacity-40 uppercase tracking-widest">
-                    {folderCount} DIR · {noteCount} NODE · {linkCount} EDGE
+                  <span className="text-[7px] font-mono text-[var(--muted-foreground)] opacity-40 uppercase tracking-[0.2em]">
+                    Active_Entities: {noteCount + folderCount} &nbsp;|&nbsp; Stream_Links: {linkCount}
                   </span>
                 </div>
               </div>
@@ -745,39 +746,39 @@ export default function GraphView({
                     transition={{ duration: 0.15 }}
                     className="absolute top-4 right-4 w-56 pointer-events-none select-none"
                   >
-                    <div className="bg-[var(--background)] border border-[var(--border)] p-4 shadow-2xl relative">
-                      <div className="absolute top-0 right-0 p-2 opacity-20">
-                        <Hash size={10} className="text-[var(--primary)]" />
+                    <div className="bg-[var(--card)]/80 backdrop-blur-xl border border-[var(--border)] p-5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] relative">
+                      <div className="absolute top-0 right-0 p-3 opacity-10">
+                        <Hash size={12} className="text-[var(--primary)]" />
                       </div>
                       {/* title */}
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-2 h-2 rotate-45 shrink-0" style={{ backgroundColor: hoveredNode.color }} />
-                        <span className="text-[10px] font-black font-mono text-[var(--foreground)] truncate uppercase tracking-tight">
+                      <div className="flex items-center gap-3 mb-5">
+                        <div className="w-2 h-2 rotate-45 shrink-0 shadow-[0_0_8px_currentColor]" style={{ backgroundColor: hoveredNode.color }} />
+                        <span className="text-[11px] font-black font-mono text-[var(--foreground)] truncate uppercase tracking-tight">
                           {hoveredNode.title}
                         </span>
                       </div>
                       {/* stats row */}
-                      <div className="flex gap-4 mb-5 border-y border-[var(--border)]/30 py-2">
-                        <div className="flex flex-col">
-                          <span className="text-[6px] font-mono text-[var(--muted-foreground)] uppercase">Connections</span>
-                          <span className="text-[9px] font-mono font-bold text-[var(--foreground)] uppercase">
-                            {hoveredConnections.filter(c => c.type === 'wiki').length} UNITS
+                      <div className="flex gap-5 mb-6 border-y border-[var(--border)]/10 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[6px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">unit_refs</span>
+                          <span className="text-[10px] font-mono font-bold text-[var(--foreground)] uppercase">
+                            {hoveredConnections.filter(c => c.type === 'wiki').length}
                           </span>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-[6px] font-mono text-[var(--muted-foreground)] uppercase">Classification</span>
-                          <span className="text-[9px] font-mono font-bold text-[var(--primary)] uppercase">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[6px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">class_type</span>
+                          <span className="text-[10px] font-mono font-bold text-[var(--primary)] uppercase">
                             {hoveredNode.isFolder ? 'DIRECTORY' : hoveredNode.isGhost ? 'REFERENCE' : 'DATA_NODE'}
                           </span>
                         </div>
                       </div>
                       {/* connections list */}
                       {hoveredConnections.length > 0 && (
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           {hoveredConnections.slice(0, 5).map(({ node: cn, type }) => (
-                            <div key={cn.id} className="flex items-center gap-2 group/conn">
-                              <div className="w-1 h-1 bg-[var(--border)] shrink-0 group-hover/conn:bg-[var(--primary)]" />
-                              <span className="text-[8px] font-mono text-[var(--muted-foreground)] truncate uppercase tracking-tighter">
+                            <div key={cn.id} className="flex items-center gap-3 group/conn">
+                              <div className="w-1 h-1 bg-[var(--border)] shrink-0 group-hover/conn:bg-[var(--primary)] group-hover/conn:shadow-[0_0_5px_var(--primary)] transition-all" />
+                              <span className="text-[8px] font-mono text-[var(--muted-foreground)] truncate uppercase tracking-tight group-hover/conn:text-[var(--foreground)] transition-colors">
                                 {cn.title}
                               </span>
                               <span className="text-[7px] font-mono text-[var(--muted-foreground)]/20 ml-auto shrink-0 uppercase tracking-tighter">
@@ -786,9 +787,11 @@ export default function GraphView({
                             </div>
                           ))}
                           {hoveredConnections.length > 5 && (
-                            <span className="text-[7px] font-mono text-[var(--primary)]/60 mt-2 block uppercase tracking-widest text-center border-t border-[var(--border)]/20 pt-1">
-                              +{hoveredConnections.length - 5} ADDITIONAL_NODES
-                            </span>
+                            <div className="mt-3 border-t border-[var(--border)]/10 pt-2 text-center">
+                              <span className="text-[7px] font-mono text-[var(--primary)]/40 uppercase tracking-[0.2em]">
+                                +{hoveredConnections.length - 5} OVERFLOW_UNITS
+                              </span>
+                            </div>
                           )}
                         </div>
                       )}
