@@ -16,6 +16,16 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     };
 
     window.addEventListener("contextmenu", handleContextMenu);
+
+    // Register Service Worker for PWA
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => console.log("SW_REGISTERED: [ACTIVE]", reg.scope))
+          .catch((err) => console.error("SW_REGISTRATION_FAILED: ", err));
+      });
+    }
     
     return () => {
       window.removeEventListener("contextmenu", handleContextMenu);

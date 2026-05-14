@@ -38,7 +38,8 @@ export const metadata: Metadata = {
     apple: [
       { url: "/icon.png", type: "image/png" },
     ],
-  }
+  },
+  manifest: "/manifest.json"
 };
 
 export const viewport: Viewport = {

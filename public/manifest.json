@@ -1,17 +1,35 @@
 {
   "name": "Abyssal Codex",
-  "short_name": "Codex",
-  "description": "Industrial-grade technical knowledge management.",
+  "short_name": "Abyssal",
+  "description": "Advanced Technical Brutalist Knowledge Nexus & Neural Network for developers and researchers.",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#111111",
   "theme_color": "#fabd2f",
+  "orientation": "any",
+  "categories": ["productivity", "utilities", "developer tools"],
   "icons": [
     {
       "src": "/logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Neural Graph Visualization"
     }
   ]
 }

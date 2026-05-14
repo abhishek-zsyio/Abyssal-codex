@@ -68,3 +68,21 @@ export function resolveNoteId(targetTitle: string, allNotes: { id: string; title
   
   return undefined;
 }
+
+/**
+ * Updates all wiki links in content when a note is renamed
+ */
+export function updateLinksInContent(content: string, oldTitle: string, newTitle: string): string {
+  if (!content) return content;
+
+  // Escape special regex characters in the title
+  const escapedOldTitle = oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
+  // Regex matches @{Old Title} or @{Old Title|Alias}
+  // The first group is the target, the second (optional) group is the alias part starting with |
+  const regex = new RegExp(`@\\{(${escapedOldTitle})(\\|.*?)?\\}`, 'g');
+  
+  return content.replace(regex, (match, target, alias) => {
+    return `@{${newTitle}${alias || ''}}`;
+  });
+}

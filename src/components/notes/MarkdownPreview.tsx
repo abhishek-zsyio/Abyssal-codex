@@ -75,8 +75,8 @@ const MarkdownPreview = memo(({
 
   const processedContent = useMemo(() => {
     if (!deferredContent) return "";
-    const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|@\{([\s\S]*?)\})/g;
-    return deferredContent.replace(combinedRegex, (match, linkContent) => {
+    const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|@\{([\s\S]*?)\}|!\[\[([\s\S]*?)\]\])/g;
+    return deferredContent.replace(combinedRegex, (match, linkContent, embedContent) => {
       if (linkContent !== undefined) {
         let target = linkContent;
         let alias = linkContent;
@@ -87,6 +87,21 @@ const MarkdownPreview = memo(({
         }
         return `[${alias}](note://${encodeURIComponent(target)})`;
       }
+      
+      if (embedContent !== undefined) {
+        const targetTitle = embedContent.trim();
+        const targetNote = allNotes.find(n => 
+          n.title.toLowerCase() === targetTitle.toLowerCase() || 
+          n.id === targetTitle ||
+          n.title.toLowerCase().endsWith('/' + targetTitle.toLowerCase())
+        );
+        
+        if (targetNote) {
+          return `\n\n> [!NOTE]\n> **Embedded: ${targetNote.title}**\n\n${targetNote.content}\n\n---\n\n`;
+        }
+        return `\n\n> [!WARNING]\n> EMBED_FAILED: [${targetTitle}]\n\n`;
+      }
+      
       return match;
     });
   }, [deferredContent]);
@@ -244,6 +259,63 @@ const MarkdownPreview = memo(({
               const codeString = String(children).replace(/\n$/, "");
               
               if (!inline && match) {
+                const lang = match[1].toLowerCase();
+                
+                // Data Table Rendering (JSON/CSV)
+                if (lang === 'json' || lang === 'csv') {
+                  try {
+                    let data: any[] = [];
+                    if (lang === 'json') {
+                      const parsed = JSON.parse(codeString);
+                      data = Array.isArray(parsed) ? parsed : [parsed];
+                    } else {
+                      // Simple CSV Parser
+                      const lines = codeString.split('\n').filter(l => l.trim());
+                      if (lines.length > 0) {
+                        const headers = lines[0].split(',').map(h => h.trim());
+                        data = lines.slice(1).map(line => {
+                          const values = line.split(',').map(v => v.trim());
+                          const obj: any = {};
+                          headers.forEach((h, i) => { obj[h] = values[i] || ''; });
+                          return obj;
+                        });
+                      }
+                    }
+
+                    if (data.length > 0 && typeof data[0] === 'object') {
+                      const headers = Object.keys(data[0]);
+                      return (
+                        <div className="my-8 overflow-x-auto border border-[var(--border)] bg-[var(--background)]">
+                          <div className="px-4 py-2 bg-[var(--card)]/50 border-b border-[var(--border)] flex items-center gap-2">
+                            <Database size={12} className="text-[var(--primary)]" />
+                            <span className="text-[9px] font-mono font-bold text-[var(--muted-foreground)] uppercase tracking-widest">Data_Table ({lang})</span>
+                          </div>
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="border-b border-[var(--border)] bg-[var(--card)]/20">
+                                {headers.map(h => (
+                                  <th key={h} className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--primary)]">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {data.map((row, i) => (
+                                <tr key={i} className="border-b border-[var(--border)]/30 hover:bg-[var(--primary)]/5 transition-colors">
+                                  {headers.map(h => (
+                                    <td key={h} className="px-4 py-2 text-[11px] font-mono text-[var(--foreground)] opacity-80">{String(row[h])}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    }
+                  } catch (e) {
+                    console.error("Data table parse error:", e);
+                  }
+                }
+
                 return (
                   <div className="my-8 border border-[var(--border)] bg-[var(--background)] group/code relative">
                     <div className="flex items-center justify-between px-4 py-2 bg-[var(--card)]/50 border-b border-[var(--border)]">

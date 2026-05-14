@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { createClient } from "@/utils/supabase/client";
 import { encryptNote, decryptNote } from "@/utils/encryption";
+import { updateLinksInContent } from "@/utils/wiki-links";
 
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -174,9 +175,23 @@ export function useNotes() {
   }, [folders, notes, saveToStorage, user, supabase, toast]);
 
   const updateNote = useCallback(async (id: string, updates: Partial<Note>) => {
-    const updatedNotes = notes.map((n) => 
+    const noteToUpdate = notes.find(n => n.id === id);
+    const oldTitle = noteToUpdate?.title;
+    const newTitle = updates.title;
+
+    let updatedNotes = notes.map((n) => 
       n.id === id ? { ...n, ...updates, updatedAt: Date.now() } : n
     );
+
+    // If title changed, update links in all other notes
+    if (oldTitle && newTitle && oldTitle !== newTitle) {
+      updatedNotes = updatedNotes.map(n => ({
+        ...n,
+        content: updateLinksInContent(n.content, oldTitle, newTitle)
+      }));
+      toast(`REFACTOR_COMPLETE: [LINKS_UPDATED]`, "system");
+    }
+
     setNotes(updatedNotes);
     saveToStorage(updatedNotes, folders);
 
@@ -190,23 +205,52 @@ export function useNotes() {
       if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
       dbUpdates.updated_at = new Date().toISOString();
 
+      // If links were updated, we need to sync those notes too
+      // For simplicity in this implementation, we'll focus on the main note sync
+      // and assume subsequent edits or a full sync will handle the others.
+      // But for a better UX, we'd batch update in Supabase too.
+      
       const { error } = await supabase
         .from("notes")
         .update(dbUpdates)
         .eq("id", id);
       if (error) console.error("Cloud Update Error:", error);
+
+      // Batch update links in Supabase if title changed
+      if (oldTitle && newTitle && oldTitle !== newTitle) {
+        for (const n of updatedNotes) {
+          const originalNote = notes.find(on => on.id === n.id);
+          if (n.id !== id && n.content !== originalNote?.content) { 
+             const encrypted = await encryptNote(n.content, user.id);
+             await supabase.from("notes").update({ content: encrypted }).eq("id", n.id);
+          }
+        }
+      }
     }
-  }, [notes, folders, user, supabase, saveToStorage]);
+  }, [notes, folders, user, supabase, saveToStorage, toast]);
 
   const renameFolder = useCallback(async (oldPath: string, newPath: string) => {
-    const notesToUpdate = notes.filter(n => n.title.startsWith(oldPath + "/") || n.title === oldPath);
-    const updatedNotes = notes.map(n => {
+    const notesToUpdateInFolder = notes.filter(n => n.title.startsWith(oldPath + "/") || n.title === oldPath);
+    
+    let updatedNotes = notes.map(n => {
       if (n.title.startsWith(oldPath + "/") || n.title === oldPath) {
         const relativePath = n.title.substring(oldPath.length);
         return { ...n, title: `${newPath}${relativePath}`, updatedAt: Date.now() };
       }
       return n;
     });
+
+    // Update links pointing to any note that was moved
+    for (const note of notesToUpdateInFolder) {
+      const relativePath = note.title.substring(oldPath.length);
+      const oldTitle = note.title;
+      const newTitle = `${newPath}${relativePath}`;
+      
+      updatedNotes = updatedNotes.map(n => ({
+        ...n,
+        content: updateLinksInContent(n.content, oldTitle, newTitle)
+      }));
+    }
 
     const updatedFolders = folders.map(f => {
       if (f.startsWith(oldPath + "/") || f === oldPath) {
@@ -222,16 +266,35 @@ export function useNotes() {
 
     if (user) {
       // Bulk update in Supabase
-      for (const note of notesToUpdate) {
+      for (const note of notesToUpdateInFolder) {
         const relativePath = note.title.substring(oldPath.length);
         const newTitle = `${newPath}${relativePath}`;
-        await supabase.from("notes").update({ title: newTitle, updated_at: new Date().toISOString() }).eq("id", note.id);
+        
+        // Find the updated content for this note in local state
+        const updatedNote = updatedNotes.find(un => un.id === note.id);
+        const encryptedContent = updatedNote ? await encryptNote(updatedNote.content, user.id) : undefined;
+        
+        const dbUpdates: any = { title: newTitle, updated_at: new Date().toISOString() };
+        if (encryptedContent) dbUpdates.content = encryptedContent;
+
+        await supabase.from("notes").update(dbUpdates).eq("id", note.id);
       }
+      
+      // Update links in all other notes in Supabase
+      for (const n of updatedNotes) {
+        const wasInFolder = notesToUpdateInFolder.find(fn => fn.id === n.id);
+        if (!wasInFolder) {
+          const encrypted = await encryptNote(n.content, user.id);
+          await supabase.from("notes").update({ content: encrypted }).eq("id", n.id);
+        }
+      }
+
       // Update folder record
       const { error } = await supabase.from("folders").update({ path: newPath }).eq("path", oldPath).eq("user_id", user.id);
       if (error) console.error("Cloud Folder Rename Error:", error);
     }
-  }, [notes, folders, user, supabase, saveToStorage]);
+    toast(`CLUSTER_REFACTORED: [LINKS_SYNCED]`, "system");
+  }, [notes, folders, user, supabase, saveToStorage, toast]);
 
   const deleteFolder = useCallback(async (path: string) => {
     if (!window.confirm(`WIPE_CLUSTER: [${path}] AND_ALL_INTERNAL_DATA?`)) return;
