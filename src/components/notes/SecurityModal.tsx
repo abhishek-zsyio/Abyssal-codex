@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ShieldAlert, Key, Copy, Upload, AlertTriangle } from "lucide-react";
+import { X, ShieldAlert, Key, Copy, Upload, AlertTriangle, Check, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { exportVaultKey, importVaultKey, resetVault } from "@/utils/encryption";
-import { Button } from "@/components/ui/Button";
 
 interface SecurityModalProps {
   isOpen: boolean;
@@ -38,7 +37,7 @@ export default function SecurityModal({ isOpen, onClose }: SecurityModalProps) {
   const handleCopyKey = () => {
     if (keyString) {
       navigator.clipboard.writeText(keyString);
-      toast("KEY_COPIED: [SECURE_BUFFER_FILLED]", "system");
+      toast("Key copied to buffer", "success");
     }
   };
 
@@ -46,12 +45,12 @@ export default function SecurityModal({ isOpen, onClose }: SecurityModalProps) {
     if (!importKeyInput) return;
     try {
       await importVaultKey(importKeyInput);
-      toast("KEY_REPLACED: [VAULT_RECONFIGURED]", "system");
+      toast("Vault reconfigured", "success");
       setImportKeyInput("");
       loadKey();
-      setTimeout(() => window.location.reload(), 1000); // Reload to apply new key
+      setTimeout(() => window.location.reload(), 800);
     } catch (_e) {
-      toast("IMPORT_FAILED: [INVALID_KEY_FORMAT]", "system");
+      toast("Invalid key format", "error");
     }
   };
 
@@ -61,10 +60,10 @@ export default function SecurityModal({ isOpen, onClose }: SecurityModalProps) {
       return;
     }
     await resetVault();
-    toast("VAULT_WIPED: [NEW_KEY_GENERATED]", "system");
+    toast("Vault wiped & reset", "info");
     setConfirmReset(false);
     loadKey();
-    setTimeout(() => window.location.reload(), 1000);
+    setTimeout(() => window.location.reload(), 800);
   };
 
   useEffect(() => {
@@ -78,137 +77,146 @@ export default function SecurityModal({ isOpen, onClose }: SecurityModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
           />
 
-          <div className="fixed inset-0 z-[201] flex items-center justify-center p-6 pointer-events-none">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="pointer-events-auto w-full max-w-2xl bg-[var(--background)] border border-[var(--border)] shadow-2xl flex flex-col overflow-hidden relative"
-            >
-              {/* Header */}
-              <div className="px-8 py-6 border-b border-dotted border-[var(--border)] flex items-center justify-between bg-[var(--card)]/30">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="relative w-full max-w-lg bg-[var(--background)] border border-[var(--border)] shadow-2xl flex flex-col overflow-hidden font-mono"
+          >
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/40">
+              <div className="flex items-center gap-3">
+                <ShieldAlert size={18} className="text-[var(--primary)]" />
                 <div>
-                  <span className="text-[8px] font-mono text-[var(--primary)] uppercase tracking-[0.4em] block mb-1">
-                    SECURITY_KERNEL // VAULT_ACCESS
-                  </span>
-                  <h2 className="text-xl font-bold font-mono text-[var(--foreground)] uppercase tracking-widest flex items-center gap-3">
-                    <ShieldAlert size={20} className="text-[var(--primary)]" />
-                    Security_Protocol
-                  </h2>
+                  <h2 className="text-[11px] font-bold text-[var(--foreground)] uppercase tracking-widest">Security_Protocol</h2>
+                  <span className="text-[7px] text-[var(--muted-foreground)] uppercase tracking-[0.2em] block">Vault_Access_Control</span>
                 </div>
-                <button onClick={onClose} className="p-2 text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors">
-                  <X size={20} />
-                </button>
+              </div>
+              <button onClick={onClose} className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar max-h-[70vh]">
+              {/* Vault Key */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[9px] font-bold text-[var(--foreground)] uppercase tracking-widest flex items-center gap-2">
+                    <Key size={11} className="text-[var(--primary)]" />
+                    Master_Key
+                  </h3>
+                  <div className="flex gap-1.5">
+                    <button 
+                      onClick={() => setShowKey(!showKey)}
+                      className="px-2 py-1 bg-[var(--card)] border border-[var(--border)] text-[8px] hover:text-[var(--primary)] transition-colors"
+                    >
+                      {showKey ? "Hide" : "Reveal"}
+                    </button>
+                    <button 
+                      onClick={handleCopyKey}
+                      className="px-2 py-1 bg-[var(--primary)] text-[var(--background)] border border-[var(--primary)] text-[8px] font-bold hover:brightness-110 transition-all flex items-center gap-1"
+                    >
+                      <Copy size={9} /> Copy
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="relative">
+                  <div className={cn(
+                    "w-full bg-[var(--card)]/20 border border-[var(--border)] p-4 text-[9px] break-all min-h-[60px] transition-all duration-300",
+                    !showKey && "blur-sm select-none opacity-20"
+                  )}>
+                    {keyString || "SYSTEM_BOOTING…"}
+                  </div>
+                  {!showKey && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-40">
+                       <span className="text-[7px] uppercase tracking-widest">Encrypted_View</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[8px] text-[var(--muted-foreground)] leading-relaxed opacity-60">
+                  Key required for decryption. <span className="text-[var(--primary)]">Loss of key results in total data loss.</span>
+                </p>
               </div>
 
-              {/* Content */}
-              <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
-                {/* Vault Key Display */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-mono font-bold text-[var(--foreground)] uppercase tracking-widest flex items-center gap-2">
-                      <Key size={12} className="text-[var(--primary)]" />
-                      Master_Encryption_Key
-                    </h3>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setShowKey(!showKey)} className="h-7 text-[8px] px-2">
-                        {showKey ? "HIDE_KEY" : "SHOW_KEY"}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={handleCopyKey} className="h-7 text-[8px] px-2">
-                        <Copy size={10} className="mr-1" /> COPY
-                      </Button>
-                    </div>
+              {/* Import */}
+              <div className="space-y-3 pt-6 border-t border-[var(--border)]/30">
+                <h3 className="text-[9px] font-bold text-[var(--foreground)] uppercase tracking-widest flex items-center gap-2 opacity-60">
+                  <Upload size={11} />
+                  Restore_Vault
+                </h3>
+                <div className="flex gap-2">
+                  <input 
+                    type="password"
+                    placeholder="Paste master key here…"
+                    value={importKeyInput}
+                    onChange={(e) => setImportKeyInput(e.target.value)}
+                    className="flex-1 bg-[var(--card)]/20 border border-[var(--border)] p-2 text-[10px] focus:outline-none focus:border-[var(--primary)]/50"
+                  />
+                  <button 
+                    onClick={handleImportKey}
+                    className="px-4 py-2 bg-[var(--card)] border border-[var(--border)] text-[9px] font-bold hover:text-[var(--primary)] hover:border-[var(--primary)]/50 transition-colors"
+                  >
+                    Restore
+                  </button>
+                </div>
+              </div>
+
+              {/* Reset */}
+              <div className="pt-6 border-t border-[var(--border)]/30">
+                <div className="p-4 bg-[var(--destructive)]/[0.03] border border-[var(--destructive)]/20 space-y-3">
+                  <div className="flex items-center gap-2 text-[var(--destructive)]">
+                     <AlertTriangle size={12} />
+                     <h3 className="text-[9px] font-bold uppercase tracking-widest">Danger_Zone</h3>
                   </div>
-                  
-                  <div className="relative group">
-                    <div className={cn(
-                      "w-full bg-[var(--card)]/20 border border-[var(--border)] p-4 font-mono text-[10px] break-all min-h-[80px] transition-all duration-500",
-                      !showKey && "blur-md select-none opacity-20"
-                    )}>
-                      {keyString || "INITIALIZING_VAULT..."}
-                    </div>
-                    {!showKey && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                         <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em]">ENCRYPTED_VIEW</span>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase leading-relaxed opacity-60">
-                    This key is stored locally in your browser. It is required to decrypt your notes. 
-                    <span className="text-[var(--primary)]"> If you lose this key, your notes are lost forever.</span>
+                  <p className="text-[8px] text-[var(--muted-foreground)] leading-relaxed opacity-60">
+                    Wiping the vault generates a new key. Existing notes will become permanently unreadable.
                   </p>
-                </div>
-
-                {/* Import Key */}
-                <div className="space-y-4 pt-6 border-t border-dotted border-[var(--border)]">
-                  <h3 className="text-[10px] font-mono font-bold text-[var(--foreground)] uppercase tracking-widest flex items-center gap-2">
-                    <Upload size={12} className="text-[var(--primary)]" />
-                    Import_Existing_Key
-                  </h3>
                   <div className="flex gap-2">
-                    <input 
-                      type="password"
-                      placeholder="PASTE_JWK_HERE..."
-                      value={importKeyInput}
-                      onChange={(e) => setImportKeyInput(e.target.value)}
-                      className="flex-1 bg-[var(--card)]/20 border border-[var(--border)] p-2 font-mono text-[10px] focus:outline-none focus:border-[var(--primary)]/50"
-                    />
-                    <Button onClick={handleImportKey} className="rounded-none h-10 px-4">IMPORT</Button>
-                  </div>
-                </div>
-
-                {/* Reset Vault */}
-                <div className="space-y-4 pt-6 border-t border-dotted border-[var(--border)]">
-                  <div className="p-4 bg-[var(--destructive)]/5 border border-[var(--destructive)]/20 flex flex-col gap-3">
-                    <div className="flex items-center gap-2 text-[var(--destructive)]">
-                       <AlertTriangle size={14} />
-                       <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest">DANGER_ZONE</h3>
-                    </div>
-                    <p className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase leading-relaxed">
-                      Generating a new key will make all currently stored notes unreadable. 
-                      Only do this if you want to start fresh and wipe all existing data.
-                    </p>
-                    <Button 
-                      variant="destructive" 
+                    <button 
                       onClick={handleResetVault}
                       className={cn(
-                        "w-full h-10 text-[10px] font-mono tracking-widest rounded-none",
-                        confirmReset && "animate-pulse"
+                        "flex-1 h-9 text-[9px] font-bold tracking-widest transition-all border",
+                        confirmReset 
+                          ? "bg-[var(--destructive)] text-white border-[var(--destructive)]" 
+                          : "text-[var(--destructive)] border-[var(--destructive)]/30 hover:bg-[var(--destructive)]/5"
                       )}
                     >
-                      {confirmReset ? "CONFIRM_DESTRUCTION?" : "GENERATE_NEW_VAULT_KEY"}
-                    </Button>
+                      {confirmReset ? "Confirm Wipe?" : "Wipe_Buffer"}
+                    </button>
                     {confirmReset && (
-                      <Button variant="outline" onClick={() => setConfirmReset(false)} className="w-full h-8 text-[8px] font-mono rounded-none">CANCEL</Button>
+                      <button 
+                        onClick={() => setConfirmReset(false)}
+                        className="px-4 h-9 border border-[var(--border)] text-[9px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                      >
+                        Cancel
+                      </button>
                     )}
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Footer */}
-              <div className="px-8 py-4 bg-[var(--card)]/50 border-t border-dotted border-[var(--border)] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[var(--primary)] rotate-45" />
-                  <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">
-                    AES-256-GCM // ZERO_KNOWLEDGE_ACTIVE
-                  </span>
-                </div>
-                <div className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase opacity-40">
-                  Securing technical documentation since 0x00
-                </div>
+            {/* Footer */}
+            <div className="px-6 h-10 bg-[var(--card)]/10 border-t border-[var(--border)] flex items-center justify-between opacity-50">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-1 bg-[var(--primary)] rounded-full" />
+                <span className="text-[7px] uppercase tracking-[0.2em]">AES_256_GCM</span>
               </div>
-            </motion.div>
-          </div>
-        </>
+              <span className="text-[7px] uppercase tracking-widest">Kernel_ID: 0xAF</span>
+            </div>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

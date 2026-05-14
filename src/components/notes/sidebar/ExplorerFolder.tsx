@@ -105,18 +105,21 @@ export const ExplorerFolder = memo(({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-colors group relative border-l-2",
-          isSelected ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-transparent",
-          isDragOver && "bg-[var(--primary)]/10 border-l-[var(--primary)]",
+          "flex items-center gap-1.5 cursor-pointer transition-colors group relative border-l-2",
+          isSelected ? "border-[var(--primary)]/60 bg-[var(--primary)]/5" : "border-transparent",
+          isDragOver && "bg-[var(--primary)]/5 border-[var(--primary)]/40",
           "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--card)]/30"
         )}
-        style={{ paddingLeft: `${(level * 12) + 8}px` }}
+        style={{ paddingLeft: `${(level * 12) + 8}px`, paddingTop: '5px', paddingBottom: '5px', paddingRight: '8px' }}
       >
         <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
           {isOpen ? <ChevronDown size={12} className="opacity-50 group-hover:opacity-100 transition-opacity" /> : <ChevronRight size={12} className="opacity-50 group-hover:opacity-100 transition-opacity" />}
         </div>
         <Folder size={14} className={cn("text-[var(--accent)] fill-[var(--accent)]/5", isOpen ? "opacity-90" : "opacity-60")} />
-        <span className={cn("text-[11px] font-mono uppercase tracking-tight truncate flex-1", isSelected && "text-[var(--primary)] font-bold")}>
+        <span className={cn(
+          "text-[11px] font-mono truncate flex-1",
+          isSelected && "text-[var(--primary)] font-semibold"
+        )}>
           {folder.name}
         </span>
         {onDeleteFolder && (
@@ -142,9 +145,9 @@ export const ExplorerFolder = memo(({
             transition={{ duration: 0.15, ease: "circOut" }}
             className="overflow-hidden relative"
           >
-            <div 
-              className={cn("absolute left-0 top-0 bottom-0 w-[1px]", isSelected ? "bg-[var(--primary)] opacity-40" : "bg-[var(--border)] opacity-60")} 
-              style={{ marginLeft: `${(level * 12) + 15}px` }}
+            <div
+              className={cn("absolute left-0 top-0 bottom-0 w-px opacity-40", isSelected ? "bg-[var(--primary)]" : "bg-[var(--border)]")}
+              style={{ marginLeft: `${(level * 12) + 10}px` }}
             />
             
             <NestedExplorer 

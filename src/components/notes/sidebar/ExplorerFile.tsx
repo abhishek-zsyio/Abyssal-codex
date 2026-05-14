@@ -90,20 +90,23 @@ export const ExplorerFile = memo(({
         onSelectFolder?.(parentPath || null);
       }}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-all group relative border-l-2",
-        isActive 
-          ? "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)] font-bold shadow-[inset_0_0_20px_rgba(var(--primary-rgb),0.05)]" 
-          : "border-transparent text-[var(--foreground)]/70 hover:bg-[var(--card)]/40 hover:text-[var(--foreground)]",
-        isDragOver && "bg-[var(--primary)]/5 ring-1 ring-inset ring-[var(--primary)]/20"
+        "flex items-center gap-1.5 cursor-pointer transition-colors group relative border-l-2",
+        isActive
+          ? "bg-[var(--primary)]/8 text-[var(--primary)] border-[var(--primary)]"
+          : "border-transparent text-[var(--foreground)]/70 hover:bg-[var(--card)]/30 hover:text-[var(--foreground)] hover:border-[var(--border)]",
+        isDragOver && "bg-[var(--primary)]/5 border-[var(--primary)]/40"
       )}
-      style={{ paddingLeft: `${(level * 12) + 24}px` }}
+      style={{ paddingLeft: `${(level * 12) + 12}px`, paddingTop: '5px', paddingBottom: '5px', paddingRight: '8px' }}
     >
       <div className="flex-shrink-0">
         {getFileIcon(file.name, isActive)}
       </div>
-      <div className="flex items-center gap-1.5 flex-1 overflow-hidden">
-        {file.note.isFavorite && <Star size={8} className="text-[var(--primary)] fill-[var(--primary)] flex-shrink-0" />}
-        <span className="text-[11px] font-mono truncate tracking-tight uppercase">
+      <div className="flex items-center gap-1.5 flex-1 overflow-hidden min-w-0">
+        {file.note.isFavorite && <div className="w-1 h-1 bg-[var(--primary)] rounded-full shrink-0" />}
+        <span className={cn(
+          "text-[11px] font-mono truncate",
+          isActive ? "font-semibold" : ""
+        )}>
           {file.name}
         </span>
       </div>

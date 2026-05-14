@@ -2,19 +2,23 @@
 
 import React from "react";
 
+// Shimmer animation via CSS keyframe in global.css
+// Renders slim file-row-shaped skeletons matching ExplorerFile row height
 export const SidebarSkeleton = () => (
-  <div className="space-y-0">
-    {[1, 2, 3, 4, 5].map(i => (
-      <div key={i} className="px-6 py-4 border-b border-dotted border-[var(--border)]/50">
-        <div className="flex justify-between mb-2">
-          <div className="h-3 w-2/3 bg-[var(--border)] rounded-sm opacity-50" />
-          <div className="h-3 w-4 bg-[var(--border)] rounded-sm opacity-30" />
-        </div>
-        <div className="h-2 w-full bg-[var(--border)] rounded-sm opacity-20 mb-2" />
-        <div className="flex gap-1">
-          <div className="h-3 w-10 bg-[var(--border)] rounded-sm opacity-10" />
-          <div className="h-3 w-12 bg-[var(--border)] rounded-sm opacity-10" />
-        </div>
+  <div className="py-1">
+    {[80, 55, 70, 45, 65, 50, 75].map((width, i) => (
+      <div
+        key={i}
+        className="flex items-center gap-2 px-3 py-[5px]"
+        style={{ paddingLeft: i % 3 === 0 ? '12px' : i % 3 === 1 ? '24px' : '20px' }}
+      >
+        {/* file icon placeholder */}
+        <div className="w-3.5 h-3.5 bg-[var(--border)]/40 rounded-sm shrink-0 animate-pulse" />
+        {/* filename placeholder */}
+        <div
+          className="h-2.5 bg-[var(--border)]/30 rounded-sm animate-pulse"
+          style={{ width: `${width}%`, animationDelay: `${i * 60}ms` }}
+        />
       </div>
     ))}
   </div>

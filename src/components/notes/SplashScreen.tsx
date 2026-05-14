@@ -56,15 +56,15 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
            style={{ backgroundImage: "radial-gradient(var(--primary) 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
       
-      <div className="w-full max-w-md relative">
-        <div className="flex justify-between items-center mb-12 opacity-50">
-          <div className="flex items-center gap-4">
-            <Cpu size={14} className="text-[var(--primary)]" />
-            <span className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-[0.2em]">System_v.4.0.1</span>
+      <div className="w-full max-w-sm relative">
+        <div className="flex justify-between items-center mb-10 opacity-40">
+          <div className="flex items-center gap-2">
+            <Cpu size={12} className="text-[var(--primary)]" />
+            <span className="text-[9px] text-[var(--muted-foreground)] uppercase tracking-[0.2em]">v4.0.1</span>
           </div>
-          <div className="flex items-center gap-4">
-            <ShieldCheck size={14} className="text-[var(--accent)]" />
-            <span className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-[0.2em]">Secure_Link</span>
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={12} className="text-[var(--accent)]" />
+            <span className="text-[9px] text-[var(--muted-foreground)] uppercase tracking-[0.2em]">Secure</span>
           </div>
         </div>
 
@@ -74,14 +74,14 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center"
         >
-          <div className="mb-8 relative">
-             <Image src="/logo.png" alt="Abyssal Codex Logo" width={80} height={80} className="relative z-10" />
+          <div className="mb-6 relative">
+             <Image src="/logo.png" alt="Abyssal Codex Logo" width={64} height={64} className="relative z-10" />
           </div>
 
-          <h1 className="text-2xl font-bold text-[var(--foreground)] tracking-[0.4em] uppercase mb-2">
+          <h1 className="text-xl font-bold text-[var(--foreground)] tracking-[0.4em] uppercase mb-1">
             ABYSSAL_CODEX
           </h1>
-          <div className="h-px w-24 bg-[var(--primary)]/30 mb-12" />
+          <div className="h-px w-16 bg-[var(--primary)]/30 mb-8" />
 
           <div className="w-full space-y-4">
             <div className="flex justify-between items-end text-[10px] font-bold">
@@ -110,21 +110,21 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
                 </motion.span>
             </div>
             
-            <div className="h-1 w-full bg-[var(--border)] overflow-hidden">
-                <motion.div 
-                  className="h-full bg-[var(--primary)]" 
+            <div className="h-px w-full bg-[var(--border)] overflow-hidden">
+                <motion.div
+                  className="h-full bg-[var(--primary)]"
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
                   transition={softSpring}
                 />
             </div>
 
-            <div className="flex justify-between items-center opacity-30 text-[8px] uppercase tracking-widest pt-2">
-               <div className="flex items-center gap-2">
-                 <Database size={10} />
-                 <span>Syncing_Local_Storage</span>
+            <div className="flex justify-between items-center opacity-25 text-[8px] uppercase tracking-widest pt-2">
+               <div className="flex items-center gap-1.5">
+                 <Database size={9} />
+                 <span>Local storage</span>
                </div>
-               <span>Hash: 0x82...f92</span>
+               <span>{progress}% loaded</span>
             </div>
           </div>
         </motion.div>

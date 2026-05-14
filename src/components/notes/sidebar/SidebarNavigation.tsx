@@ -2,7 +2,7 @@
 
 import React, { memo } from "react";
 import { motion } from "framer-motion";
-import { FileText, Package, Palette, ShieldCheck, HelpCircle, LucideIcon } from "lucide-react";
+import { FileText, Package, Palette, ShieldCheck, HelpCircle, Network, Terminal, LucideIcon, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarNavigationProps {
@@ -17,69 +17,53 @@ interface SidebarNavigationProps {
   isOpen?: boolean;
 }
 
-const NavItem = ({ 
-  icon: Icon, 
-  title, 
-  isActive, 
+const NavItem = ({
+  icon: Icon,
+  title,
+  isActive,
   isLoggedIn,
-  onClick, 
-}: { 
-  icon: LucideIcon, 
-  title: string, 
-  isActive?: boolean, 
-  isLoggedIn?: boolean,
-  onClick: () => void,
+  onClick,
+}: {
+  icon: LucideIcon;
+  title: string;
+  isActive?: boolean;
+  isLoggedIn?: boolean;
+  onClick: () => void;
 }) => (
   <button
     onClick={onClick}
+    title={title}
     className={cn(
-      "w-full h-14 flex flex-col items-center justify-center relative group transition-all duration-300 outline-none",
+      "relative w-full h-11 flex items-center justify-center group transition-colors outline-none",
       isActive ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
     )}
-    title={title}
   >
-    {/* Active Tab Indicator (VS Code style but glowing) */}
+    {/* Active Indicator */}
     {isActive && (
-      <motion.div 
-        layoutId="nav-tab"
-        className="absolute inset-y-3 left-0 w-1 bg-[var(--primary)] rounded-r-full shadow-[0_0_15px_var(--primary)] z-20"
+      <motion.div
+        layoutId="nav-indicator"
+        className="absolute left-0 w-0.5 h-6 bg-[var(--primary)] shadow-[0_0_8px_var(--primary)]"
         transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
       />
     )}
-    
-    {/* Background Glow */}
-    {isActive && (
-      <motion.div 
-        layoutId="nav-bg"
-        className="absolute inset-2 bg-[var(--primary)]/5 rounded-lg -z-10 blur-sm"
-        transition={{ duration: 0.3 }}
-      />
-    )}
 
-    {/* Subtle Hover Background */}
-    <div className={cn(
-      "absolute inset-2 rounded-lg -z-10 transition-all duration-300",
-      !isActive && "group-hover:bg-[var(--foreground)]/[0.03]"
-    )} />
-
-    <div className={cn(
-      "transition-all duration-500 relative z-10",
-      isActive ? "scale-110 drop-shadow-[0_0_10px_var(--primary)]" : "group-hover:scale-105",
-      isLoggedIn && "text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]"
-    )}>
-      <Icon size={20} strokeWidth={isActive ? 2.2 : 1.5} />
+    {/* Icon */}
+    <div className="relative z-10 transition-transform group-hover:scale-110 active:scale-95">
+      <Icon size={18} strokeWidth={isActive ? 2 : 1.5} />
       {isLoggedIn && (
-        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />
+        <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[var(--primary)] border border-[var(--background)] rounded-full animate-pulse" />
       )}
     </div>
-    
-    {/* Label Tooltip Alternative (Minimalist) */}
-    <div className={cn(
-      "absolute left-16 px-2 py-1 bg-[var(--card)] border border-[var(--border)] text-[9px] font-mono uppercase tracking-widest text-[var(--foreground)] opacity-0 pointer-events-none translate-x-[-10px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 z-[100] whitespace-nowrap shadow-2xl",
-    )}>
+
+    {/* Tooltip */}
+    <div className="absolute left-14 z-[100] px-2.5 py-1 bg-[var(--background)] border border-[var(--border)] text-[8px] font-mono uppercase tracking-[0.2em] text-[var(--foreground)] opacity-0 pointer-events-none translate-x-[-4px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap shadow-2xl">
       {title}
     </div>
   </button>
+);
+
+const Divider = () => (
+  <div className="w-6 h-px bg-[var(--border)]/30 my-2" />
 );
 
 export const SidebarNavigation = memo(({
@@ -89,52 +73,68 @@ export const SidebarNavigation = memo(({
   onToggleTerminal,
   onOpenAuth,
   onOpenSecurity,
+  onOpenGraph,
   isLoggedIn,
 }: SidebarNavigationProps) => {
   return (
-    <div className="w-14 h-full border-r border-[var(--border)] flex flex-col items-center py-4 bg-[var(--card)]/20 backdrop-blur-3xl relative z-50">
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
-      
-      {/* Decorative Top Node */}
-      <div className="mb-4 opacity-20">
-         <div className="w-1 h-1 bg-[var(--primary)]" />
+    <div className="w-12 h-full border-r border-[var(--border)] flex flex-col items-center py-2 bg-[var(--background)] relative z-50 shrink-0">
+      {/* Logo Mark */}
+      <div className="w-full h-12 flex items-center justify-center mb-2">
+        <div className="w-5 h-5 border border-[var(--primary)] flex items-center justify-center relative">
+          <div className="w-2 h-2 bg-[var(--primary)] rotate-45" />
+          <div className="absolute -top-0.5 -left-0.5 w-1 h-1 bg-[var(--primary)]" />
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center gap-1 w-full">
-        <NavItem 
+      {/* Main Nav */}
+      <div className="flex flex-col items-center w-full flex-1">
+        <NavItem
           icon={FileText}
           title="Explorer"
           isActive={activeView === "explorer"}
           onClick={() => setActiveView("explorer")}
         />
-
-        <NavItem 
+        <NavItem
           icon={Package}
           title="Plugins"
           isActive={activeView === "plugins"}
           onClick={() => setActiveView("plugins")}
         />
+        {onOpenGraph && (
+          <NavItem
+            icon={Network}
+            title="Graph_View"
+            onClick={onOpenGraph}
+          />
+        )}
       </div>
 
-      <div className="mt-auto flex flex-col items-center gap-1 w-full pb-4">
-        {/* Unified Identity Node */}
-        <NavItem 
-          icon={ShieldCheck}
-          title="Auth & Security"
+      {/* Bottom Nav */}
+      <div className="flex flex-col items-center w-full">
+        <Divider />
+        {onToggleTerminal && (
+          <NavItem
+            icon={Terminal}
+            title="Console"
+            onClick={onToggleTerminal}
+          />
+        )}
+        {onOpenThemes && (
+          <NavItem
+            icon={Palette}
+            title="Interface"
+            onClick={onOpenThemes}
+          />
+        )}
+        <NavItem
+          icon={isLoggedIn ? User : ShieldCheck}
+          title={isLoggedIn ? "Identity_Profile" : "Auth_Gateway"}
           isLoggedIn={isLoggedIn}
           onClick={onOpenAuth || onOpenSecurity || (() => {})}
         />
-
-        {/* Unified System Node */}
-        <NavItem 
-          icon={Palette}
-          title="Themes & Terminal"
-          onClick={onOpenThemes || onToggleTerminal || (() => {})}
-        />
-
-        <NavItem 
+        <NavItem
           icon={HelpCircle}
-          title="Manual"
+          title="Protocol_Docs"
           isActive={activeView === "help"}
           onClick={() => setActiveView("help")}
         />

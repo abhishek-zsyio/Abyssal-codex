@@ -166,9 +166,9 @@ const Sidebar = memo(({
   return (
     <aside className={cn(
       "h-full flex border-r border-[var(--border)] bg-[var(--background)] relative transition-all duration-300 ease-in-out",
-      isOpen ? "w-80" : "w-14"
+      isOpen ? "w-[268px]" : "w-12"
     )}>
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+
       <SidebarNavigation 
         activeView={activeView}
         setActiveView={(view) => {
@@ -231,31 +231,27 @@ const Sidebar = memo(({
                 ) : (
                   <>
                     <div>
-                      <div 
+                      <div
                         onClick={() => setSelectedFolderPath(null)}
                         onDragOver={(e) => {
                           e.preventDefault();
-                          e.currentTarget.classList.add("bg-[var(--primary)]/10");
+                          e.currentTarget.classList.add("bg-[var(--primary)]/5");
                         }}
                         onDragLeave={(e) => {
-                          e.currentTarget.classList.remove("bg-[var(--primary)]/10");
+                          e.currentTarget.classList.remove("bg-[var(--primary)]/5");
                         }}
                         onDrop={(e) => {
                           e.preventDefault();
-                          e.currentTarget.classList.remove("bg-[var(--primary)]/10", "border-[var(--primary)]");
+                          e.currentTarget.classList.remove("bg-[var(--primary)]/5");
                           const noteId = e.dataTransfer.getData("noteId");
                           const folderPath = e.dataTransfer.getData("folderPath");
-                          
-                          if (noteId) {
-                            handleMoveNote(noteId, "");
-                          } else if (folderPath) {
-                            handleMoveFolder(folderPath, "");
-                          }
+                          if (noteId) handleMoveNote(noteId, "");
+                          else if (folderPath) handleMoveFolder(folderPath, "");
                         }}
-                        className="px-4 py-1.5 text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] bg-[var(--card)]/30 flex items-center justify-between border-y border-dotted border-[var(--border)]/30 transition-all group"
+                        className="px-3 py-1 flex items-center justify-between cursor-default"
                       >
-                         <span className="group-hover:text-[var(--foreground)] transition-colors font-bold">Workspace</span>
-                         <Badge variant="outline" className="text-[8px] h-4 px-1 opacity-50">{isFiltering ? displayNotes.length : regularNotes.length}</Badge>
+                        <span className="text-[8px] font-mono text-[var(--muted-foreground)]/50 uppercase tracking-[0.2em]">Workspace</span>
+                        <span className="text-[8px] font-mono text-[var(--muted-foreground)]/30">{isFiltering ? displayNotes.length : regularNotes.length}</span>
                       </div>
                       
                       <div className="py-2 overflow-y-auto custom-scrollbar flex-1">

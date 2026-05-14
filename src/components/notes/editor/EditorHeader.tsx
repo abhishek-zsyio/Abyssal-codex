@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Star, Globe, Download, Maximize2, PanelRight, Edit3, Eye, Copy, Check, Hash } from "lucide-react";
+import { Star, Globe, Download, Maximize2, PanelRight, Edit3, Eye, Copy, Check, Hash, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePlugins } from "@/hooks/use-plugins";
 
@@ -47,21 +47,15 @@ export const EditorHeader = ({
   isSaving
 }: EditorHeaderProps) => {
   const { isEnabled } = usePlugins();
+  
   return (
-    <header className="h-14 border-b border-[var(--border)] flex items-center justify-between px-6 bg-[var(--background)] select-none">
-      {/* Left: Identification & Path */}
-      <div className="flex items-center gap-4 min-w-0 flex-1">
-        <div className="flex items-center gap-2 px-2 py-1 bg-[var(--card)] border border-[var(--border)] rounded-sm shrink-0">
-          <Hash size={10} className="text-[var(--primary)] opacity-50" />
-          <span className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-tighter">
-            {id.split('-')[0]}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--muted-foreground)] uppercase whitespace-nowrap opacity-60 group-hover:opacity-100 transition-opacity">
-            <span>{title.split('/').slice(0, -1).join(' / ') || 'root'}</span>
-            {title.includes('/') && <span className="text-[var(--primary)] mx-0.5">/</span>}
+    <header className="h-10 border-b border-[var(--border)] flex items-center justify-between px-3 bg-[var(--background)] select-none">
+      {/* Left: Path / Title */}
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <div className="flex items-center gap-1 text-[9px] font-mono text-[var(--muted-foreground)] uppercase whitespace-nowrap opacity-40">
+            <span>{title.split('/').slice(0, -1).join(' / ') || 'vault'}</span>
+            <span className="mx-0.5 opacity-20">/</span>
           </div>
           <input
             type="text"
@@ -71,98 +65,96 @@ export const EditorHeader = ({
               parts[parts.length - 1] = e.target.value.replace(/\//g, '');
               onUpdateTitle?.(parts.join('/'));
             }}
-            className="bg-transparent border-none outline-none text-[13px] font-bold text-[var(--foreground)] w-full focus:text-[var(--primary)] transition-colors placeholder:opacity-20 truncate"
+            className="bg-transparent border-none outline-none text-[11px] font-bold text-[var(--foreground)] w-full focus:text-[var(--primary)] transition-colors placeholder:opacity-20 truncate uppercase tracking-tight"
             placeholder="Untitled"
           />
         </div>
+
+        {/* Sync Status */}
+        <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-[var(--card)]/30 border border-[var(--border)]/50 shrink-0">
+          <div className={cn("w-1 h-1 rounded-full", isSaving ? "bg-[var(--primary)] animate-pulse" : "bg-[var(--accent)]/40")} />
+          <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">
+            {isSaving ? "Syncing" : "Static"}
+          </span>
+        </div>
       </div>
 
-      {/* Right: Functional Groups */}
-      <div className="flex items-center gap-6 shrink-0">
-        {/* Status Indicators */}
-        <div className="flex items-center gap-4 border-r border-[var(--border)] pr-6">
-          <button 
-            onClick={onToggleFavorite} 
-            className={cn("transition-colors", isFavorite ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
-          >
-            <Star size={14} className={cn(isFavorite && "fill-current")} />
-          </button>
-          
-          <button 
-            onClick={onTogglePublic} 
-            className={cn("transition-colors", isPublic ? "text-[var(--accent)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
-          >
-            {copiedShareLink ? <Check size={14} className="text-[var(--accent)]" /> : <Globe size={14} />}
-          </button>
+      {/* Right: Actions */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* Favorite/Public */}
+        <button 
+          onClick={onToggleFavorite} 
+          className={cn("w-8 h-8 flex items-center justify-center transition-colors", isFavorite ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
+        >
+          <Star size={13} className={cn(isFavorite && "fill-current")} />
+        </button>
+        
+        <button 
+          onClick={onTogglePublic} 
+          className={cn("w-8 h-8 flex items-center justify-center transition-colors", isPublic ? "text-[var(--accent)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}
+        >
+          {copiedShareLink ? <Check size={13} className="text-[var(--accent)]" /> : <Globe size={13} />}
+        </button>
 
-          <div className="flex items-center gap-2 px-2 py-1 bg-[var(--card)] border border-[var(--border)]">
-             <div className={cn("w-1.5 h-1.5 rounded-full", isSaving ? "bg-[var(--primary)] animate-pulse" : "bg-[var(--accent)]/40")} />
-             <span className="text-[8px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">
-               {isSaving ? "Syncing" : "Saved"}
-             </span>
-          </div>
-        </div>
+        <div className="w-px h-4 bg-[var(--border)]/40 mx-1" />
 
-        {/* View Switcher (Minimalist) */}
-        <div className="flex items-center gap-1">
-          <button 
-            onClick={() => onToggleEdit(true)}
-            className={cn(
-              "p-2 rounded-sm transition-all",
-              isEditing ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            )}
-          >
-            <Edit3 size={14} />
-          </button>
-          <button 
-            onClick={() => onToggleEdit(false)}
-            className={cn(
-              "p-2 rounded-sm transition-all",
-              !isEditing ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            )}
-          >
-            <Eye size={14} />
-          </button>
-          
-          {isEnabled("zen-mode") && (
-            <button 
-              onClick={onToggleZen}
-              className={cn(
-                "p-2 rounded-sm transition-all text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10",
-                isZenMode && "text-[var(--primary)] bg-[var(--primary)]/10"
-              )}
-              title="Toggle Zen Mode (⌘+B)"
-            >
-              <Maximize2 size={14} />
-            </button>
+        {/* View Toggles */}
+        <button 
+          onClick={() => onToggleEdit(true)}
+          className={cn(
+            "w-8 h-8 flex items-center justify-center transition-all",
+            isEditing ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
           )}
-        </div>
+        >
+          <Edit3 size={13} />
+        </button>
+        <button 
+          onClick={() => onToggleEdit(false)}
+          className={cn(
+            "w-8 h-8 flex items-center justify-center transition-all",
+            !isEditing ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+          )}
+        >
+          <Eye size={13} />
+        </button>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1 border-l border-[var(--border)] pl-6">
+        <div className="w-px h-4 bg-[var(--border)]/40 mx-1" />
+
+        {/* Utilities */}
+        {isEnabled("zen-mode") && (
           <button 
-            onClick={onToggleRightSidebar}
+            onClick={onToggleZen}
             className={cn(
-              "p-2 rounded-sm transition-all",
-              isRightSidebarOpen ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              "w-8 h-8 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)]",
+              isZenMode && "text-[var(--primary)] bg-[var(--primary)]/10"
             )}
-            title="Toggle Index Buffer (TOC)"
           >
-            <PanelRight size={14} />
+            <Maximize2 size={13} />
           </button>
-          <button onClick={onDownload} className="p-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-            <Download size={14} />
-          </button>
-          <button onClick={onCopy} className="p-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
-            <Copy size={14} />
-          </button>
-          <button 
-            onClick={onCommit}
-            className="ml-2 px-4 py-1.5 bg-[var(--primary)] text-[var(--background)] font-bold text-[10px] uppercase tracking-wider hover:bg-[var(--primary)]/90 transition-colors"
-          >
-            Commit
-          </button>
-        </div>
+        )}
+
+        <button 
+          onClick={onToggleRightSidebar}
+          className={cn(
+            "w-8 h-8 flex items-center justify-center transition-all",
+            isRightSidebarOpen ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+          )}
+        >
+          <PanelRight size={13} />
+        </button>
+
+        <div className="w-px h-4 bg-[var(--border)]/40 mx-1" />
+
+        <button onClick={onDownload} className="w-8 h-8 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
+          <Download size={13} />
+        </button>
+
+        <button 
+          onClick={onCommit}
+          className="ml-2 h-7 px-3 bg-[var(--primary)] text-[var(--background)] font-bold text-[9px] uppercase tracking-widest hover:brightness-110 transition-all flex items-center gap-1.5"
+        >
+          <Save size={10} /> Commit
+        </button>
       </div>
     </header>
   );

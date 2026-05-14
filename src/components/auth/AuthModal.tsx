@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, LogIn, Mail, Lock, Loader2, ShieldCheck, 
   UserPlus, LogOut, User as UserIcon, Terminal,
-  Shield, Fingerprint
+  Shield, Fingerprint, Cpu, Key
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -48,10 +48,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           }
         });
         if (error) throw error;
-        setMessage("Check your email for the confirmation link.");
+        setMessage("Verification link sent to email.");
       }
     } catch (err: any) {
-      setError(err.message || "An authentication error occurred.");
+      setError(err.message || "Auth error.");
     } finally {
       setLoading(false);
     }
@@ -67,238 +67,156 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[300] bg-black/95"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
           />
 
-          <div className="fixed inset-0 z-[301] flex items-center justify-center p-4 pointer-events-none">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="pointer-events-auto w-full max-w-md bg-[var(--background)] border border-[var(--border)] shadow-[20px_20px_0px_rgba(0,0,0,0.4)] flex flex-col overflow-hidden relative"
-            >
-              {/* Corner brackets - Minimalist version */}
-              <div className="absolute top-0 left-0 w-3 h-3 border-l-2 border-t-2 border-[var(--primary)]" />
-              <div className="absolute top-0 right-0 w-3 h-3 border-r-2 border-t-2 border-[var(--primary)]" />
-              <div className="absolute bottom-0 left-0 w-3 h-3 border-l-2 border-b-2 border-[var(--primary)]" />
-              <div className="absolute bottom-0 right-0 w-3 h-3 border-r-2 border-b-2 border-[var(--primary)]" />
-
-              {/* Header */}
-              <div className="px-8 py-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/30">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <Shield size={12} className="text-[var(--primary)]" />
-                    <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] font-bold">
-                      Auth_Gateway
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-bold font-mono text-[var(--foreground)] uppercase tracking-widest overflow-hidden">
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={user ? 'vault' : (isLogin ? 'login' : 'register')}
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: -20, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="block"
-                      >
-                        {user ? 'Vault_Status' : (isLogin ? 'Login_Sequence' : 'Register_Agent')}
-                      </motion.span>
-                    </AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="relative w-full max-w-sm bg-[var(--background)] border border-[var(--border)] shadow-2xl flex flex-col overflow-hidden font-mono"
+          >
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/40">
+              <div className="flex items-center gap-3">
+                <Shield size={18} className="text-[var(--primary)]" />
+                <div>
+                  <h2 className="text-[11px] font-bold text-[var(--foreground)] uppercase tracking-widest">
+                    {user ? 'Subject_Status' : (isLogin ? 'Login_Sequence' : 'Enroll_Agent')}
                   </h2>
+                  <span className="text-[7px] text-[var(--muted-foreground)] uppercase tracking-[0.2em] block">Uplink_Gateway</span>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors border border-transparent hover:border-[var(--primary)]/20"
-                >
-                  <X size={20} />
-                </button>
               </div>
+              <button onClick={onClose} className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+                <X size={16} />
+              </button>
+            </div>
 
-              {/* Body */}
-              <div className="p-8">
-                {user ? (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
-                  >
-                    <div className="p-6 bg-[var(--card)] border border-[var(--border)] relative group">
-                      <div className="absolute -top-px -left-px w-1 h-4 bg-[var(--primary)]" />
-                      <span className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest block mb-2">Subject_Identity</span>
-                      <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 bg-[var(--primary)]/5 border border-[var(--primary)]/20 flex items-center justify-center">
-                           <Fingerprint size={20} className="text-[var(--primary)]" />
+            {/* Content */}
+            <div className="p-6">
+              {user ? (
+                <div className="space-y-6">
+                  <div className="p-4 bg-[var(--card)]/20 border border-[var(--border)] relative group">
+                    <span className="text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest block mb-3">Identity_Confirmed</span>
+                    <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 bg-[var(--primary)]/5 border border-[var(--primary)]/20 flex items-center justify-center shrink-0">
+                         <Fingerprint size={20} className="text-[var(--primary)]" />
+                       </div>
+                       <div className="min-w-0">
+                         <div className="text-[12px] font-bold text-[var(--foreground)] truncate uppercase tracking-tight">
+                           {user.user_metadata?.username || 'ANONYMOUS'}
                          </div>
-                         <div className="flex-1 overflow-hidden">
-                           <div className="text-sm font-mono font-bold text-[var(--foreground)] truncate">
-                             {user.user_metadata?.username || 'ANONYMOUS'}
-                           </div>
-                           <div className="text-[10px] font-mono text-[var(--muted-foreground)] opacity-60">
-                             {user.email}
-                           </div>
+                         <div className="text-[9px] font-mono text-[var(--muted-foreground)] opacity-60 truncate">
+                           {user.email}
                          </div>
-                      </div>
+                       </div>
                     </div>
+                  </div>
+
+                  <button
+                    onClick={handleLogout}
+                    disabled={loading}
+                    className="w-full h-11 border-2 border-[var(--destructive)]/50 text-[var(--destructive)] hover:bg-[var(--destructive)] hover:text-white font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                  >
+                    {loading ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
+                    Terminate_Session
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {error && (
+                    <div className="p-3 bg-[var(--destructive)]/5 border border-[var(--destructive)]/20 text-[var(--destructive)] text-[9px] font-bold uppercase tracking-wider">
+                      Error // {error}
+                    </div>
+                  )}
+
+                  {message && (
+                    <div className="p-3 bg-[var(--primary)]/5 border border-[var(--primary)]/20 text-[var(--primary)] text-[9px] font-bold uppercase tracking-wider">
+                      System // {message}
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {!isLogin && (
+                      <div className="space-y-1">
+                        <label className="text-[7px] font-mono uppercase tracking-[0.2em] text-[var(--muted-foreground)] ml-1">Codename</label>
+                        <input
+                          type="text"
+                          required
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          className="w-full bg-[var(--card)]/20 border border-[var(--border)] focus:border-[var(--primary)]/50 outline-none px-3 py-2.5 text-[11px] placeholder:text-[var(--muted-foreground)]/20"
+                          placeholder="OPERATOR_X"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="text-[7px] font-mono uppercase tracking-[0.2em] text-[var(--muted-foreground)] ml-1">Identity_Link</label>
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-[var(--card)]/20 border border-[var(--border)] focus:border-[var(--primary)]/50 outline-none px-3 py-2.5 text-[11px] placeholder:text-[var(--muted-foreground)]/20"
+                        placeholder="email@abyssal.dev"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[7px] font-mono uppercase tracking-[0.2em] text-[var(--muted-foreground)] ml-1">Access_Token</label>
+                      <input
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full bg-[var(--card)]/20 border border-[var(--border)] focus:border-[var(--primary)]/50 outline-none px-3 py-2.5 text-[11px] placeholder:text-[var(--muted-foreground)]/20"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full h-11 bg-[var(--primary)] text-black font-bold text-[10px] uppercase tracking-widest hover:brightness-110 active:translate-y-px transition-all flex items-center justify-center gap-2"
+                    >
+                      {loading ? <Loader2 size={16} className="animate-spin" /> : (isLogin ? <LogIn size={16} /> : <UserPlus size={16} />)}
+                      {isLogin ? 'Execute_Login' : 'Begin_Enrollment'}
+                    </button>
 
                     <button
-                      onClick={handleLogout}
-                      disabled={loading}
-                      className="w-full relative group flex items-center justify-center gap-2 border-2 border-[var(--destructive)] text-[var(--destructive)] hover:bg-[var(--destructive)] hover:text-white font-bold font-mono py-3.5 uppercase tracking-[0.2em] transition-all"
+                      type="button"
+                      onClick={() => setIsLogin(!isLogin)}
+                      className="w-full text-[8px] uppercase tracking-[0.3em] text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-all pt-2"
                     >
-                      {loading ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : (
-                        <>
-                          <LogOut size={18} />
-                          <span>Terminate_Session</span>
-                        </>
-                      )}
+                      {isLogin ? "[ Request_New_Identity ]" : "[ Access_Existing_Vault ]"}
                     </button>
-                  </motion.div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <AnimatePresence mode="wait">
-                      {error && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                          animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
-                          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                          className="p-3 bg-red-950/20 border border-red-500/30 text-red-400 text-[10px] font-mono font-bold uppercase tracking-wider overflow-hidden"
-                        >
-                          [ERROR] {">>"} {error}
-                        </motion.div>
-                      )}
-
-                      {message && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                          animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
-                          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                          className="p-3 bg-[var(--primary)]/5 border border-[var(--primary)]/30 text-[var(--primary)] text-[10px] font-mono font-bold uppercase tracking-wider overflow-hidden"
-                        >
-                          [SYSTEM] {">>"} {message}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <motion.div layout className="space-y-4">
-                      <AnimatePresence mode="popLayout">
-                        {!isLogin && (
-                          <motion.div 
-                            key="username-field"
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            className="space-y-1"
-                          >
-                            <label className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--muted-foreground)] ml-1">
-                              Agent_Codename
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={username}
-                              onChange={(e) => setUsername(e.target.value)}
-                              className="w-full bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none px-4 py-3 font-mono text-sm transition-all placeholder:text-[var(--muted-foreground)]/30"
-                              placeholder="OPERATOR_01"
-                            />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--muted-foreground)] ml-1">
-                          Email_Identity
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="w-full bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none px-4 py-3 font-mono text-sm transition-all placeholder:text-[var(--muted-foreground)]/30"
-                          placeholder="user@abyssal.net"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--muted-foreground)] ml-1">
-                          Security_Token
-                        </label>
-                        <input
-                          type="password"
-                          required
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="w-full bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none px-4 py-3 font-mono text-sm transition-all placeholder:text-[var(--muted-foreground)]/30"
-                          placeholder="••••••••"
-                        />
-                      </div>
-                    </motion.div>
-
-                    <div className="space-y-4">
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full group relative flex items-center justify-center gap-2 bg-[var(--primary)] text-black font-bold font-mono py-4 uppercase tracking-[0.3em] transition-all hover:bg-[var(--primary)]/90 active:translate-y-px overflow-hidden"
-                      >
-                        <motion.div
-                          key={isLogin ? 'login' : 'register'}
-                          initial={{ y: 20, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          className="flex items-center gap-2"
-                        >
-                          {loading ? (
-                            <Loader2 size={18} className="animate-spin" />
-                          ) : (
-                            <>
-                              {isLogin ? <LogIn size={18} /> : <UserPlus size={18} />}
-                              <span>{isLogin ? 'Initialize' : 'Register'}</span>
-                            </>
-                          )}
-                        </motion.div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setIsLogin(!isLogin)}
-                        className="w-full text-[9px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-all text-center pt-2"
-                      >
-                        <motion.span
-                          key={isLogin ? 'req-new' : 'acc-ext'}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                        >
-                          {isLogin ? "[ Request_New_Identity ]" : "[ Access_Existing_Vault ]"}
-                        </motion.span>
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-
-              {/* Minimal Footer */}
-              <div className="px-8 py-4 bg-[var(--card)]/20 border-t border-[var(--border)] flex items-center justify-between opacity-60">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 bg-[var(--primary)] rounded-full" />
-                    <span className="text-[8px] font-mono tracking-widest">UPLINK_STABLE</span>
                   </div>
-                </div>
-                <div className="text-[8px] font-mono tracking-widest flex items-center gap-2">
-                  <ShieldCheck size={10} />
-                  <span>v2.5 // GATEWAY</span>
-                </div>
+                </form>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 h-10 bg-[var(--card)]/10 border-t border-[var(--border)] flex items-center justify-between opacity-50">
+              <div className="flex items-center gap-2">
+                <Cpu size={10} className="text-[var(--primary)]" />
+                <span className="text-[7px] uppercase tracking-widest">Secured_Uplink</span>
               </div>
-            </motion.div>
-          </div>
-        </>
+              <div className="flex items-center gap-2">
+                <Key size={10} />
+                <span className="text-[7px] uppercase tracking-widest">TLS_1.3</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

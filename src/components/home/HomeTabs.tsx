@@ -104,45 +104,62 @@ interface HomeTabsProps {
   handleSelectNote: (id: string) => void;
   handleOpenToSide: (id: string) => void;
   handleCloseNote: (id: string) => void;
+  onCloseAll?: () => void;
 }
 
 export const HomeTabs = ({
   openNoteIds, notes, activeNoteId, secondaryNoteId,
-  focusedPane, handleSelectNote, handleOpenToSide, handleCloseNote,
+  focusedPane, handleSelectNote, handleOpenToSide, handleCloseNote, onCloseAll
 }: HomeTabsProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   if (openNoteIds.length === 0) return null;
 
   return (
-    <div
-      ref={scrollRef}
-      className="flex bg-[var(--card)]/10 border-b border-[var(--border)] overflow-x-auto custom-scrollbar min-h-[36px] max-h-[36px] relative z-20"
-    >
-      {/* fade gradients for scroll indicator */}
-      <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[var(--background)] to-transparent z-10 pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[var(--background)] to-transparent z-10 pointer-events-none" />
+    <div className="flex bg-[var(--card)]/10 border-b border-[var(--border)] min-h-[36px] max-h-[36px] relative z-20">
+      <div
+        ref={scrollRef}
+        className="flex-1 flex overflow-x-auto custom-scrollbar relative no-scrollbar"
+      >
+        {/* fade gradients for scroll indicator */}
+        <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[var(--background)] to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[var(--background)] to-transparent z-10 pointer-events-none" />
 
-      {openNoteIds.map((id) => {
-        const note = notes.find((n) => n.id === id);
-        if (!note) return null;
-        const isPrimary = activeNoteId === id;
-        const isSecondary = secondaryNoteId === id;
-        const isFocused =
-          (isPrimary && focusedPane === "left") ||
-          (isSecondary && focusedPane === "right");
-        return (
-          <Tab
-            key={id}
-            id={id}
-            title={note.title || "Untitled"}
-            isActive={isPrimary || isSecondary}
-            isFocused={isFocused}
-            onSelect={() => handleSelectNote(id)}
-            onClose={(e) => { e.stopPropagation(); handleCloseNote(id); }}
-            onOpenToSide={handleOpenToSide}
-          />
-        );
-      })}
+        {openNoteIds.map((id) => {
+          const note = notes.find((n) => n.id === id);
+          if (!note) return null;
+          const isPrimary = activeNoteId === id;
+          const isSecondary = secondaryNoteId === id;
+          const isFocused =
+            (isPrimary && focusedPane === "left") ||
+            (isSecondary && focusedPane === "right");
+          return (
+            <Tab
+              key={id}
+              id={id}
+              title={note.title || "Untitled"}
+              isActive={isPrimary || isSecondary}
+              isFocused={isFocused}
+              onSelect={() => handleSelectNote(id)}
+              onClose={(e) => { e.stopPropagation(); handleCloseNote(id); }}
+              onOpenToSide={handleOpenToSide}
+            />
+          );
+        })}
+      </div>
+
+      {/* Close All Button (Fixed at end) */}
+      {openNoteIds.length > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onCloseAll) onCloseAll();
+          }}
+          className="flex items-center gap-1.5 px-3 h-full border-l border-[var(--border)] bg-[var(--background)] hover:bg-[var(--destructive)]/10 hover:text-[var(--destructive)] transition-all group shrink-0"
+        >
+          <X size={10} className="group-hover:rotate-90 transition-transform duration-300" />
+          <span className="text-[8px] font-mono font-bold uppercase tracking-widest opacity-40 group-hover:opacity-100">Close_All</span>
+        </button>
+      )}
     </div>
   );
 };

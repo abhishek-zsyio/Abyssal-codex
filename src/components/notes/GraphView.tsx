@@ -535,32 +535,34 @@ export default function GraphView({
               className="fixed inset-0 z-[400] bg-black/75 backdrop-blur-md"
             />
           )}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            <motion.div
+            initial={{ opacity: 0, scale: 0.99, y: 0 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 8 }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            exit={{ opacity: 0, scale: 0.99, y: 0 }}
+            transition={{ duration: 0.2 }}
             className={cn(
-              "flex flex-col bg-[var(--background)] border border-[var(--border)]/60 shadow-2xl overflow-hidden",
+              "flex flex-col bg-[var(--background)] border border-[var(--border)] shadow-2xl overflow-hidden",
               variant === "modal"
-                ? "fixed inset-4 md:inset-10 z-[401] rounded-2xl"
+                ? "fixed inset-4 md:inset-10 z-[401] rounded-none"
                 : "relative w-full h-full border-none rounded-none",
             )}
           >
             {/* ── HEADER ──────────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]/50 bg-[var(--card)]/30 backdrop-blur-xl shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--destructive)]/70" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+            <div className="flex items-center justify-between px-5 h-12 border-b border-[var(--border)] bg-[var(--card)]/10 shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="flex gap-1">
+                  <div className="w-2.5 h-2.5 bg-[var(--destructive)]/70" />
+                  <div className="w-2.5 h-2.5 bg-yellow-500/70" />
+                  <div className="w-2.5 h-2.5 bg-[var(--primary)]/70" />
                 </div>
-                <span className="text-[11px] font-semibold font-mono text-[var(--foreground)] opacity-70 tracking-widest uppercase ml-1">
-                  Knowledge Graph
-                </span>
-                <span className="text-[10px] font-mono text-[var(--muted-foreground)] opacity-40">
-                  {folderCount} folders · {noteCount} notes · {linkCount} links
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black font-mono text-[var(--foreground)] tracking-[0.2em] uppercase">
+                    Neural_Graph_Engine
+                  </span>
+                  <span className="text-[7px] font-mono text-[var(--muted-foreground)] opacity-40 uppercase tracking-widest">
+                    {folderCount} DIR · {noteCount} NODE · {linkCount} EDGE
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center gap-1">
@@ -572,11 +574,11 @@ export default function GraphView({
                       animate={{ width: 180, opacity: 1 }}
                       exit={{ width: 0, opacity: 0 }}
                       type="text"
-                      placeholder="Search nodes…"
+                      placeholder="FILTER_NODES..."
                       autoFocus
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="h-7 px-3 text-[11px] font-mono bg-[var(--background)] border border-[var(--border)] rounded-md focus:outline-none focus:border-[var(--primary)]/50 text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/40 mr-1"
+                      className="h-8 px-3 text-[10px] font-mono bg-[var(--background)] border border-[var(--border)] rounded-none focus:outline-none focus:border-[var(--primary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/30 mr-1 uppercase"
                     />
                   )}
                 </AnimatePresence>
@@ -635,13 +637,13 @@ export default function GraphView({
                     onClick={action}
                     title={tip}
                     className={cn(
-                      "w-7 h-7 flex items-center justify-center rounded-lg transition-all",
+                      "w-8 h-8 flex items-center justify-center transition-all border border-transparent",
                       active
-                        ? "bg-[var(--primary)]/15 text-[var(--primary)]"
+                        ? "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30"
                         : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5",
                     )}
                   >
-                    <Icon size={14} strokeWidth={1.8} />
+                    <Icon size={13} />
                   </button>
                 ))}
                 {/* Filter toggles */}
@@ -649,28 +651,28 @@ export default function GraphView({
                 <button
                   onClick={() => setHideOrphans(v => !v)}
                   title={hideOrphans ? "Show orphan nodes" : "Hide orphan nodes"}
-                  className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-all",
-                    hideOrphans ? "bg-[var(--primary)]/15 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5"
+                  className={cn("w-8 h-8 flex items-center justify-center transition-all border border-transparent",
+                    hideOrphans ? "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5"
                   )}
                 >
-                  <Filter size={13} strokeWidth={1.8} />
+                  <Filter size={13} />
                 </button>
                 <button
                   onClick={() => setFoldersOnly(v => !v)}
                   title={foldersOnly ? "Show all nodes" : "Folders only"}
-                  className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-all",
-                    foldersOnly ? "bg-[var(--primary)]/15 text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5"
+                  className={cn("w-8 h-8 flex items-center justify-center transition-all border border-transparent",
+                    foldersOnly ? "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5"
                   )}
                 >
-                  <FolderOpen size={13} strokeWidth={1.8} />
+                  <FolderOpen size={13} />
                 </button>
                 {variant === "modal" && (
                   <button
                     onClick={onClose}
                     title="Close"
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-all ml-1"
+                    className="w-8 h-8 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-all ml-1"
                   >
-                    <X size={14} strokeWidth={1.8} />
+                    <X size={13} />
                   </button>
                 )}
               </div>
@@ -693,12 +695,12 @@ export default function GraphView({
                     initial={{ y: -40, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -40, opacity: 0 }}
-                    className="absolute top-4 left-1/2 -translate-x-1/2 bg-[var(--primary)]/10 border border-[var(--primary)]/30 backdrop-blur-xl rounded-full px-5 py-2 flex items-center gap-3 text-[11px] font-mono text-[var(--primary)]"
+                    className="absolute top-4 left-1/2 -translate-x-1/2 bg-[var(--background)] border border-[var(--primary)] px-5 h-10 flex items-center gap-3 text-[9px] font-mono text-[var(--primary)] uppercase tracking-widest"
                   >
-                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse" />
+                    <div className="w-1.5 h-1.5 bg-[var(--primary)] animate-pulse shadow-[0_0_8px_var(--primary)]" />
                     {!linkSource
-                      ? "Click a note to start a link"
-                      : "Now click the target note"}
+                      ? "Select source document"
+                      : "Select target document"}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -743,41 +745,49 @@ export default function GraphView({
                     transition={{ duration: 0.15 }}
                     className="absolute top-4 right-4 w-56 pointer-events-none select-none"
                   >
-                    <div className="bg-[var(--card)]/70 backdrop-blur-xl border border-[var(--border)]/50 p-3 shadow-xl">
+                    <div className="bg-[var(--background)] border border-[var(--border)] p-4 shadow-2xl relative">
+                      <div className="absolute top-0 right-0 p-2 opacity-20">
+                        <Hash size={10} className="text-[var(--primary)]" />
+                      </div>
                       {/* title */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: hoveredNode.color }} />
-                        <span className="text-[11px] font-semibold font-mono text-[var(--foreground)] truncate">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-2 h-2 rotate-45 shrink-0" style={{ backgroundColor: hoveredNode.color }} />
+                        <span className="text-[10px] font-black font-mono text-[var(--foreground)] truncate uppercase tracking-tight">
                           {hoveredNode.title}
                         </span>
                       </div>
                       {/* stats row */}
-                      <div className="flex gap-3 mb-2">
-                        <span className="text-[9px] font-mono text-[var(--muted-foreground)]/70 uppercase">
-                          {hoveredConnections.filter(c => c.type === 'wiki').length} links
-                        </span>
-                        <span className="text-[9px] font-mono text-[var(--muted-foreground)]/40">·</span>
-                        <span className="text-[9px] font-mono text-[var(--muted-foreground)]/70 uppercase">
-                          {hoveredNode.isFolder ? 'folder' : hoveredNode.isGhost ? 'unresolved' : 'note'}
-                        </span>
+                      <div className="flex gap-4 mb-5 border-y border-[var(--border)]/30 py-2">
+                        <div className="flex flex-col">
+                          <span className="text-[6px] font-mono text-[var(--muted-foreground)] uppercase">Connections</span>
+                          <span className="text-[9px] font-mono font-bold text-[var(--foreground)] uppercase">
+                            {hoveredConnections.filter(c => c.type === 'wiki').length} UNITS
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[6px] font-mono text-[var(--muted-foreground)] uppercase">Classification</span>
+                          <span className="text-[9px] font-mono font-bold text-[var(--primary)] uppercase">
+                            {hoveredNode.isFolder ? 'DIRECTORY' : hoveredNode.isGhost ? 'REFERENCE' : 'DATA_NODE'}
+                          </span>
+                        </div>
                       </div>
                       {/* connections list */}
                       {hoveredConnections.length > 0 && (
-                        <div className="flex flex-col gap-0.5 border-t border-[var(--border)]/30 pt-2">
-                          {hoveredConnections.slice(0, 6).map(({ node: cn, type }) => (
-                            <div key={cn.id} className="flex items-center gap-1.5">
-                              <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: cn.color }} />
-                              <span className="text-[9px] font-mono text-[var(--muted-foreground)]/60 truncate">
+                        <div className="space-y-1.5">
+                          {hoveredConnections.slice(0, 5).map(({ node: cn, type }) => (
+                            <div key={cn.id} className="flex items-center gap-2 group/conn">
+                              <div className="w-1 h-1 bg-[var(--border)] shrink-0 group-hover/conn:bg-[var(--primary)]" />
+                              <span className="text-[8px] font-mono text-[var(--muted-foreground)] truncate uppercase tracking-tighter">
                                 {cn.title}
                               </span>
-                              <span className="text-[8px] font-mono text-[var(--muted-foreground)]/30 ml-auto shrink-0">
-                                {type === 'wiki' ? '↔' : '⊂'}
+                              <span className="text-[7px] font-mono text-[var(--muted-foreground)]/20 ml-auto shrink-0 uppercase tracking-tighter">
+                                {type === 'wiki' ? 'LINK' : 'CHILD'}
                               </span>
                             </div>
                           ))}
-                          {hoveredConnections.length > 6 && (
-                            <span className="text-[8px] font-mono text-[var(--muted-foreground)]/30 mt-0.5">
-                              +{hoveredConnections.length - 6} more
+                          {hoveredConnections.length > 5 && (
+                            <span className="text-[7px] font-mono text-[var(--primary)]/60 mt-2 block uppercase tracking-widest text-center border-t border-[var(--border)]/20 pt-1">
+                              +{hoveredConnections.length - 5} ADDITIONAL_NODES
                             </span>
                           )}
                         </div>
@@ -800,21 +810,22 @@ export default function GraphView({
                       transition={{ duration: 0.15 }}
                       className="absolute bottom-16 left-1/2 -translate-x-1/2 w-80 pointer-events-none select-none"
                     >
-                      <div className="bg-[var(--card)]/80 backdrop-blur-2xl border border-[var(--border)]/60 rounded-xl p-4 shadow-2xl">
-                        <div className="flex items-center gap-2.5 mb-2">
+                      <div className="bg-[var(--background)]/90 backdrop-blur-md border border-[var(--border)] p-4 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-[var(--primary)] opacity-40" />
+                        <div className="flex items-center gap-3 mb-3">
                           <div
-                            className="w-2 h-2 rounded-full shrink-0"
+                            className="w-1.5 h-1.5 rotate-45 shrink-0"
                             style={{ backgroundColor: selectedPreview.color }}
                           />
-                          <span className="text-[12px] font-semibold text-[var(--foreground)] truncate">
+                          <span className="text-[11px] font-bold text-[var(--foreground)] uppercase tracking-widest truncate">
                             {selectedPreview.title}
                           </span>
                         </div>
-                        <p className="text-[10px] text-[var(--muted-foreground)] line-clamp-3 leading-relaxed font-mono">
+                        <p className="text-[9px] text-[var(--muted-foreground)] line-clamp-3 leading-relaxed font-mono uppercase opacity-70">
                           {selectedPreview.content
                             .replace(/#{1,6} /g, "")
                             .replace(/\*\*/g, "")
-                            .slice(0, 200) || "No content yet"}
+                            .slice(0, 150) || "EMPTY_BUFFER"}
                         </p>
                       </div>
                     </motion.div>

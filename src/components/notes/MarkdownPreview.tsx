@@ -4,13 +4,13 @@ import React, { useState, useMemo, memo, useDeferredValue } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import { Check, FileCode, CornerDownRight } from "lucide-react";
+import { Check, FileCode, CornerDownRight, Hash, Database, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 
 const SyntaxHighlighter = dynamic(() => import("react-syntax-highlighter").then(mod => mod.PrismLight), {
   ssr: false,
-  loading: () => <div className="p-4 animate-pulse bg-[var(--background)] h-32" />
+  loading: () => <div className="p-4 animate-pulse bg-[var(--background)] h-32 border border-[var(--border)]" />
 });
 
 import { 
@@ -18,14 +18,11 @@ import {
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 const getHighlightStyle = (theme: string) => {
-  return gruvboxDark; // Simplified for now to avoid large bundle of themes
+  return gruvboxDark; 
 };
 
-import { Button } from "@/components/ui/Button";
 import { splitMarkdown } from "@/utils/markdown-splitter";
-
 import { Note } from "@/types/note";
-
 import { PluginMetadata } from "@/types/plugin";
 
 interface MarkdownPreviewProps {
@@ -78,14 +75,8 @@ const MarkdownPreview = memo(({
 
   const processedContent = useMemo(() => {
     if (!deferredContent) return "";
-    
-    // We want to avoid replacing wikilinks inside code blocks or inline code.
-    // This regex matches code blocks, inline code, and wikilinks in order.
-    // Since it's global, it will consume code blocks before looking for wikilinks.
     const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|\[\[([\s\S]*?)\]\])/g;
-    
     return deferredContent.replace(combinedRegex, (match, linkContent) => {
-      // If linkContent (the first capture group) is defined, it means we matched [[...]]
       if (linkContent !== undefined) {
         let target = linkContent;
         let alias = linkContent;
@@ -96,7 +87,6 @@ const MarkdownPreview = memo(({
         }
         return `[${alias}](note://${encodeURIComponent(target)})`;
       }
-      // Otherwise, it's a code block or inline code, return it untouched
       return match;
     });
   }, [deferredContent]);
@@ -124,34 +114,33 @@ const MarkdownPreview = memo(({
       ref={containerRef}
       onContextMenu={onContextMenu}
       className={cn(
-        "flex-1 w-full relative bg-[var(--card)]/50 tech-grid selection:bg-[var(--primary)] selection:text-[var(--background)]",
+        "flex-1 w-full relative bg-[var(--background)] selection:bg-[var(--primary)] selection:text-[var(--background)]",
         isScrollable ? "h-full overflow-y-auto custom-scrollbar" : "h-auto"
       )}
     >
-      {/* Atmospheric Accents */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-20">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,var(--primary)_0%,transparent_70%)] opacity-[0.03]" />
-        <div className="absolute top-4 left-4 w-24 h-24 border-l border-t border-[var(--primary)]/30" />
-        <div className="absolute bottom-4 right-4 w-24 h-24 border-r border-b border-[var(--primary)]/30" />
-      </div>
-
-      <div className="prose px-8 lg:px-16 py-16 max-w-4xl mx-auto relative z-10">
+      <div className="prose prose-invert px-8 lg:px-12 py-12 max-w-4xl mx-auto relative z-10 font-sans">
         {contentChunks.length > 1 && !showAllChunks && (
-          <div className="mb-12 flex items-center justify-between bg-[var(--background)] border border-[var(--border)] p-4 shadow-[4px_4px_0_rgba(0,0,0,0.2)]">
+          <div className="mb-10 p-4 border border-[var(--border)] bg-[var(--card)]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-col">
-              <span className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.2em] mb-1">Stream_Segmentation</span>
-              <div className="flex items-center gap-4">
-                <span className="text-xs font-mono font-bold text-[var(--primary)] uppercase">Segment [{currentChunkIndex + 1}/{contentChunks.length}]</span>
+              <div className="flex items-center gap-2 mb-1 opacity-40">
+                <Layers size={10} className="text-[var(--primary)]" />
+                <span className="text-[8px] font-mono uppercase tracking-[0.2em]">Stream_Segmentation</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-mono font-bold text-[var(--foreground)] uppercase">Segment [{currentChunkIndex + 1}/{contentChunks.length}]</span>
                 <div className="flex gap-1">
                   {contentChunks.map((_, i) => (
-                    <div key={i} className={cn("w-2 h-1 transition-all", i === currentChunkIndex ? "bg-[var(--primary)] w-4" : "bg-[var(--border)]")} />
+                    <div key={i} className={cn("h-0.5 transition-all", i === currentChunkIndex ? "bg-[var(--primary)] w-4" : "bg-[var(--border)] w-2")} />
                   ))}
                 </div>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowAllChunks(true)} className="text-[9px] h-8">
-              FLUSH_FULL_STREAM
-            </Button>
+            <button 
+              onClick={() => setShowAllChunks(true)} 
+              className="px-3 h-7 border border-[var(--border)] bg-[var(--card)]/40 text-[9px] font-mono font-bold uppercase tracking-widest hover:text-[var(--primary)] hover:border-[var(--primary)]/50 transition-all"
+            >
+              Flush_Stream
+            </button>
           </div>
         )}
 
@@ -161,22 +150,19 @@ const MarkdownPreview = memo(({
           urlTransform={(url) => url}
           components={{
             details: ({ children, ...props }: any) => (
-              <details className="my-6 border border-[var(--border)] bg-[var(--background)]/30 group transition-all [&>*:not(summary)]:px-6 [&>*:not(summary)]:pb-6" {...props}>
+              <details className="my-6 border border-[var(--border)] bg-[var(--card)]/10 group [&>*:not(summary)]:px-4 [&>*:not(summary)]:pb-4" {...props}>
                 {children}
               </details>
             ),
             summary: ({ children, ...props }: any) => (
-              <summary className="px-6 py-4 cursor-pointer font-black text-[var(--primary)] uppercase tracking-[0.2em] text-[10px] bg-[var(--card)]/50 hover:bg-[var(--primary)]/5 transition-all list-none flex items-center gap-3 border-b border-transparent group-open:border-[var(--border)] group-open:bg-[var(--primary)]/5" {...props}>
+              <summary className="px-4 py-3 cursor-pointer font-bold text-[var(--foreground)] uppercase tracking-widest text-[9px] bg-[var(--card)]/20 hover:bg-[var(--primary)]/5 transition-all list-none flex items-center gap-3 border-b border-transparent group-open:border-[var(--border)]" {...props}>
                 <div className="w-1.5 h-1.5 bg-[var(--primary)] group-open:rotate-90 transition-transform" />
                 {children}
               </summary>
             ),
-            h1: ({ children, node, ...props }: any) => <h1 id={slugify(extractText(children))} className="group" {...props}>{children}</h1>,
-            h2: ({ children, node, ...props }: any) => <h2 id={slugify(extractText(children))} className="group" {...props}>{children}</h2>,
-            h3: ({ children, node, ...props }: any) => <h3 id={slugify(extractText(children))} className="group" {...props}>{children}</h3>,
-            h4: ({ children, node, ...props }: any) => <h4 id={slugify(extractText(children))} className="group" {...props}>{children}</h4>,
-            h5: ({ children, node, ...props }: any) => <h5 id={slugify(extractText(children))} className="group" {...props}>{children}</h5>,
-            h6: ({ children, node, ...props }: any) => <h6 id={slugify(extractText(children))} className="group" {...props}>{children}</h6>,
+            h1: ({ children, node, ...props }: any) => <h1 id={slugify(extractText(children))} className="group uppercase tracking-tight" {...props}>{children}</h1>,
+            h2: ({ children, node, ...props }: any) => <h2 id={slugify(extractText(children))} className="group uppercase tracking-tight" {...props}>{children}</h2>,
+            h3: ({ children, node, ...props }: any) => <h3 id={slugify(extractText(children))} className="group uppercase" {...props}>{children}</h3>,
             a: ({ href, children, node, ...props }: any) => {
               const isAnchor = href?.startsWith("#");
               if (isAnchor) {
@@ -186,13 +172,8 @@ const MarkdownPreview = memo(({
                     onClick={(e) => {
                       e.preventDefault();
                       const id = href.substring(1);
-                      
-                      // Try to find in current view
                       let element = containerRef.current?.querySelector(`[id="${id}"]`);
-                      
                       if (!element && !showAllChunks) {
-                         // Not found and we are in segmented view
-                         // Show all chunks and then scroll
                          setShowAllChunks(true);
                          setTimeout(() => {
                            const el = containerRef.current?.querySelector(`[id="${id}"]`);
@@ -202,7 +183,7 @@ const MarkdownPreview = memo(({
                         element.scrollIntoView({ behavior: "smooth", block: "start" });
                       }
                     }}
-                    className="text-[var(--primary)] hover:underline transition-all"
+                    className="text-[var(--primary)] hover:underline decoration-dashed transition-all"
                     {...props}
                   >
                     {children}
@@ -211,11 +192,9 @@ const MarkdownPreview = memo(({
               }
               const isNoteLink = href?.includes("note:");
               if (isNoteLink) {
-                // Extract title even if prefixed (e.g. http://localhost:3000/note://Title)
                 const parts = href.split("note:");
                 const targetTitle = decodeURIComponent(parts[parts.length - 1].replace(/^\/\//, ""));
                 const targetLower = targetTitle.toLowerCase().trim();
-                
                 const targetNote = allNotes.find((n: any) => {
                   const noteTitle = n.title?.toLowerCase().trim();
                   const noteId = n.id?.toLowerCase().trim();
@@ -228,43 +207,33 @@ const MarkdownPreview = memo(({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (targetNote) {
-                        window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                          detail: { message: `REDIRECTION_PROCEDURE_INITIATED: [[${targetTitle}]]`, type: 'success' } 
-                        }));
-                        onNavigate?.(targetNote.id);
-                      } else {
-                        window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                          detail: { message: `NAVIGATION_FAILURE: NOTE_"${targetTitle}"_NOT_FOUND`, type: 'error' } 
-                        }));
-                      }
+                      if (targetNote) onNavigate?.(targetNote.id);
                     }}
                     className={cn(
-                      "text-[var(--accent)] hover:text-[var(--primary)] border-b border-dashed border-[var(--accent)] hover:border-solid hover:border-[var(--primary)] transition-all font-mono text-left inline-block bg-transparent p-0 border-0 cursor-pointer", 
-                      !targetNote && "opacity-50 line-through cursor-not-allowed"
+                      "text-[var(--accent)] hover:text-[var(--primary)] border-b border-dashed border-[var(--accent)] hover:border-solid hover:border-[var(--primary)] transition-all font-mono text-left inline-block bg-transparent p-0 border-0 cursor-pointer uppercase tracking-tight", 
+                      !targetNote && "opacity-40 line-through cursor-not-allowed"
                     )}
-                    title={targetNote ? `Navigate to ${targetTitle}` : `Note "${targetTitle}" not found`}
                   >
                     {children}
                   </button>
                 );
               }
-              return <a href={href} target={href?.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" {...props}>{children}</a>;
+              return <a href={href} target={href?.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="text-[var(--primary)] underline decoration-[var(--primary)]/30 hover:decoration-[var(--primary)] transition-all" {...props}>{children}</a>;
             },
             li: ({ children, checked, node, ...props }: any) => {
               if (checked !== null && checked !== undefined) {
                 return (
-                  <li className="list-none flex items-start gap-4 -ml-2 group py-1">
+                  <li className="list-none flex items-start gap-3 -ml-1 py-1">
                     <div className="relative mt-1">
                       <input 
                         type="checkbox" 
                         checked={checked} 
                         readOnly
-                        className="h-4 w-4 rounded-none border-2 border-[var(--border)] bg-transparent text-[var(--primary)] focus:ring-0 cursor-pointer appearance-none checked:bg-[var(--primary)] checked:border-[var(--primary)] transition-all"
+                        className="h-3.5 w-3.5 border border-[var(--border)] bg-[var(--card)]/40 text-[var(--primary)] focus:ring-0 cursor-pointer appearance-none checked:bg-[var(--primary)] checked:border-[var(--primary)] transition-all"
                       />
-                      {checked && <Check size={10} className="absolute top-0.5 left-0.5 text-[var(--background)]" />}
+                      {checked && <Check size={10} className="absolute top-0 left-0 text-[var(--background)]" />}
                     </div>
-                    <span className={cn("flex-1 transition-all font-medium", checked && "opacity-40 line-through text-[var(--muted-foreground)]")}>{children}</span>
+                    <span className={cn("flex-1 transition-all", checked && "opacity-30 line-through")}>{children}</span>
                   </li>
                 );
               }
@@ -276,118 +245,89 @@ const MarkdownPreview = memo(({
               
               if (!inline && match) {
                 return (
-                  <div className="my-10 rounded-sm overflow-hidden border border-[var(--border)] bg-[var(--background)] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group/code relative">
-                    <div className="flex items-center justify-between px-5 py-2.5 bg-[#282828] border-b border-dotted border-[var(--border)]">
-                      <div className="flex items-center gap-3">
-                        <div className="flex gap-1.5">
-                          <div className="w-1.5 h-1.5 bg-[#fb4934]" />
-                          <div className="w-1.5 h-1.5 bg-[#fabd2f]" />
-                          <div className="w-1.5 h-1.5 bg-[#b8bb26]" />
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-[var(--muted-foreground)] uppercase tracking-[0.25em] ml-2 flex items-center gap-2">
-                          <FileCode size={12} className="text-[var(--primary)]/50" />
+                  <div className="my-8 border border-[var(--border)] bg-[var(--background)] group/code relative">
+                    <div className="flex items-center justify-between px-4 py-2 bg-[var(--card)]/50 border-b border-[var(--border)]">
+                      <div className="flex items-center gap-2">
+                        <FileCode size={12} className="text-[var(--primary)]" />
+                        <span className="text-[9px] font-mono font-bold text-[var(--muted-foreground)] uppercase tracking-widest">
                           {match[1]}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <button 
-                          onClick={() => {
-                            navigator.clipboard.writeText(codeString);
-                            const btn = document.activeElement as HTMLButtonElement;
-                            if (btn) btn.innerHTML = "COPIED";
-                            setTimeout(() => { if (btn) btn.innerHTML = "COPY"; }, 2000);
-                          }}
-                          className="text-[9px] font-mono font-bold text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-all uppercase tracking-widest bg-[var(--background)] px-2 py-1 border border-[var(--border)] hover:border-[var(--primary)]/30"
-                        >
-                          COPY
-                        </button>
-                        {Array.isArray(availablePlugins) && availablePlugins.map((plugin: any) => {
-                          if (isEnabled(plugin.id) && plugin.hooks?.codeBlockHeader) {
-                            const Hook = plugin.hooks.codeBlockHeader;
-                            if (typeof Hook === 'function' || (typeof Hook === 'object' && Hook !== null)) {
-                               return <Hook key={plugin.id} language={match[1]} code={codeString} />;
-                            }
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(codeString);
+                          const btn = document.activeElement as HTMLButtonElement;
+                          if (btn) {
+                            const oldText = btn.innerHTML;
+                            btn.innerHTML = "COPIED";
+                            setTimeout(() => { btn.innerHTML = oldText; }, 2000);
                           }
-                          return null;
-                        })}
-                      </div>
+                        }}
+                        className="text-[8px] font-mono font-bold text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-all uppercase px-2 py-0.5 border border-[var(--border)]"
+                      >
+                        Copy
+                      </button>
                     </div>
                     <div className="relative">
-                      <div className="absolute top-0 left-0 w-8 h-full bg-[#282828]/30 border-r border-dotted border-[var(--border)] pointer-events-none" />
+                      <div className="absolute top-0 left-0 w-8 h-full bg-[var(--card)]/20 border-r border-[var(--border)]/30 pointer-events-none" />
                       <SyntaxHighlighter 
                         style={getHighlightStyle(theme)} 
                         language={match[1]} 
                         PreTag="div" 
-                        customStyle={{ margin: 0, padding: '1.5rem 1.5rem 1.5rem 2.5rem', background: 'transparent', fontSize: '13px', lineHeight: '1.6', fontFamily: 'var(--font-mono)' }}
+                        customStyle={{ margin: 0, padding: '1.25rem 1.25rem 1.25rem 2.5rem', background: 'transparent', fontSize: '12px', lineHeight: '1.6', fontFamily: 'var(--font-jetbrains-mono)' }}
                         codeTagProps={{ style: { background: 'transparent' } }}
                       >
                         {codeString}
                       </SyntaxHighlighter>
                     </div>
-                    <div className="corner-accent corner-tl opacity-20" />
-                    <div className="corner-accent corner-br opacity-20" />
                   </div>
                 );
               }
-              return <code className={cn(className)} {...props}>{children}</code>;
+              return <code className={cn("px-1.5 py-0.5 bg-[var(--card)]/40 border border-[var(--border)] rounded-sm text-[var(--primary)] font-mono text-[0.9em]", className)} {...props}>{children}</code>;
             }
           }}
         >
-          {showAllChunks ? contentChunks.join("\n\n") : activeChunk || "*_NO_CONTENT_INITIALIZED_*"}
+          {showAllChunks ? contentChunks.join("\n\n") : activeChunk || "*_Buffer_Empty_*"}
         </ReactMarkdown>
 
         {contentChunks.length > 1 && !showAllChunks && (
-          <div className="mt-16 flex items-center justify-between border-t border-dotted border-[var(--border)] pt-12">
-            <Button 
-              variant="outline" 
+          <div className="mt-12 flex items-center justify-between border-t border-[var(--border)] pt-8">
+            <button 
               disabled={currentChunkIndex === 0}
-              onClick={() => {
-                setCurrentChunkIndex(prev => prev - 1);
-                scrollToTop();
-              }}
-              className="gap-2 font-mono text-[10px] uppercase tracking-widest"
+              onClick={() => { setCurrentChunkIndex(prev => prev - 1); scrollToTop(); }}
+              className="flex items-center gap-2 px-3 h-8 border border-[var(--border)] bg-[var(--card)]/20 text-[9px] font-mono font-bold uppercase tracking-widest hover:text-[var(--primary)] disabled:opacity-20 disabled:cursor-not-allowed"
             >
-              <CornerDownRight size={14} className="rotate-180" /> PREV_SEGMENT
-            </Button>
+              <CornerDownRight size={12} className="rotate-180" /> Prev_Seg
+            </button>
 
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase mb-2">Location: {currentChunkIndex + 1} / {contentChunks.length}</span>
-              <div className="flex gap-1.5">
-                {contentChunks.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setCurrentChunkIndex(i);
-                      scrollToTop();
-                    }}
-                    className={cn(
-                      "w-3 h-3 rotate-45 border transition-all",
-                      i === currentChunkIndex ? "bg-[var(--primary)] border-[var(--primary)] scale-110 shadow-[0_0_10px_var(--primary)]" : "bg-transparent border-[var(--border)] hover:border-[var(--primary)]"
-                    )}
-                  />
-                ))}
-              </div>
+            <div className="flex gap-1.5">
+              {contentChunks.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setCurrentChunkIndex(i); scrollToTop(); }}
+                  className={cn(
+                    "w-2 h-2 rotate-45 border transition-all",
+                    i === currentChunkIndex ? "bg-[var(--primary)] border-[var(--primary)]" : "bg-transparent border-[var(--border)] hover:border-[var(--primary)]/40"
+                  )}
+                />
+              ))}
             </div>
 
-            <Button 
-              variant="primary" 
+            <button 
               disabled={currentChunkIndex === contentChunks.length - 1}
-              onClick={() => {
-                setCurrentChunkIndex(prev => prev + 1);
-                scrollToTop();
-              }}
-              className="gap-2 font-mono text-[10px] uppercase tracking-widest"
+              onClick={() => { setCurrentChunkIndex(prev => prev + 1); scrollToTop(); }}
+              className="flex items-center gap-2 px-3 h-8 bg-[var(--primary)] text-black font-bold text-[9px] font-mono uppercase tracking-widest hover:brightness-110 disabled:opacity-20 disabled:cursor-not-allowed"
             >
-              NEXT_SEGMENT <CornerDownRight size={14} />
-            </Button>
+              Next_Seg <CornerDownRight size={12} />
+            </button>
           </div>
         )}
 
         {showAllChunks && (
-          <div className="mt-12 text-center">
-            <Button variant="ghost" size="sm" onClick={() => setShowAllChunks(false)} className="text-[9px] text-[var(--muted-foreground)] hover:text-[var(--primary)]">
-              RESTORE_SEGMENTATION
-            </Button>
+          <div className="mt-8 pt-8 border-t border-[var(--border)] text-center">
+            <button onClick={() => setShowAllChunks(false)} className="text-[8px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] hover:text-[var(--primary)]">
+              Restore_Segmentation
+            </button>
           </div>
         )}
       </div>

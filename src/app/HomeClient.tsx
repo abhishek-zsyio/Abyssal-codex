@@ -312,7 +312,23 @@ function HomeContent() {
                 </div>
               ) : (
                 <motion.div key="editor-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="absolute inset-0 flex flex-col">
-                  <HomeTabs openNoteIds={openNoteIds} notes={notes} activeNoteId={activeNoteId} secondaryNoteId={secondaryNoteId} focusedPane={focusedPane} handleSelectNote={handleSelectNote} handleOpenToSide={handleOpenToSide} handleCloseNote={handleCloseNote} />
+                  <HomeTabs 
+                    openNoteIds={openNoteIds} 
+                    notes={notes} 
+                    activeNoteId={activeNoteId} 
+                    secondaryNoteId={secondaryNoteId} 
+                    focusedPane={focusedPane} 
+                    handleSelectNote={handleSelectNote} 
+                    handleOpenToSide={handleOpenToSide} 
+                    handleCloseNote={handleCloseNote}
+                    onCloseAll={() => {
+                      setOpenNoteIds([]);
+                      setActiveNoteId(null);
+                      setSecondaryNoteId(null);
+                      setIsSplitPane(false);
+                      router.push('/', { scroll: false });
+                    }}
+                  />
                   <div className="flex-1 flex min-h-0 relative">
                     <AnimatePresence mode="wait">
                       {activeNote ? (

@@ -2,9 +2,8 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Link, ShieldAlert, Trash2, List } from "lucide-react";
+import { Clock, Link as LinkIcon, ShieldAlert, Trash2, List, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
 import { Note } from "@/types/note";
 
 interface EditorSidebarProps {
@@ -27,7 +26,6 @@ export const EditorSidebar = ({
   onDelete
 }: EditorSidebarProps) => {
   const tocItems = React.useMemo(() => {
-    // Find the Table of Contents heading
     const lines = content.split('\n');
     const tocHeadingIndex = lines.findIndex(line => 
       line.toLowerCase().includes('table of contents') && line.startsWith('#')
@@ -36,20 +34,15 @@ export const EditorSidebar = ({
     if (tocHeadingIndex === -1) return null;
     
     const items = [];
-    // Search for list items following the heading
     for (let i = tocHeadingIndex + 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line && items.length === 0) continue;
-      
-      // Match markdown list items with links: - [Title](target)
       const match = line.match(/^[-*+]\s+\[(.*?)\]\((.*?)\)/);
       if (match) {
         items.push({ text: match[1], url: match[2] });
       } else if (line.startsWith('#')) {
-        // Stop if we hit another heading
         break;
       } else if (line && !line.match(/^[-*+]/) && items.length > 0) {
-        // Stop if we hit a non-list line after starting the list
         break;
       }
     }
@@ -61,24 +54,42 @@ export const EditorSidebar = ({
       {isOpen && (
         <motion.aside 
           initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 360, opacity: 1 }}
+          animate={{ width: 300, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="bg-[var(--background)] overflow-y-auto overflow-x-hidden hidden xl:block border-l border-dotted border-[var(--border)] shrink-0 custom-scrollbar relative"
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="bg-[var(--background)] overflow-hidden hidden xl:flex border-l border-[var(--border)] shrink-0 flex-col relative"
         >
-          <div className="w-[360px] p-8 h-full flex flex-col">
-            <section className="space-y-12">
-              {/* Table of Contents / Index Buffer */}
+          <div className="w-[300px] h-full flex flex-col custom-scrollbar overflow-y-auto">
+            {/* Header / Info */}
+            <div className="p-4 border-b border-[var(--border)] bg-[var(--card)]/10">
+              <div className="flex items-center gap-2 mb-3 opacity-40">
+                <Hash size={10} className="text-[var(--primary)]" />
+                <span className="text-[8px] font-mono uppercase tracking-[0.3em]">Module_Properties</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 border border-[var(--border)] bg-[var(--background)]/50">
+                  <span className="block text-[7px] font-mono text-[var(--muted-foreground)] uppercase mb-1">ID_Hash</span>
+                  <span className="block text-[9px] font-mono text-[var(--foreground)] truncate uppercase tracking-tight">{note.id.split('-')[0]}</span>
+                </div>
+                <div className="p-2 border border-[var(--border)] bg-[var(--background)]/50">
+                  <span className="block text-[7px] font-mono text-[var(--muted-foreground)] uppercase mb-1">Status</span>
+                  <span className="block text-[9px] font-mono text-[var(--accent)] uppercase font-bold tracking-tighter">Verified</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 p-4 space-y-8">
+              {/* Index Buffer (TOC) */}
               {tocItems && (
                 <div>
-                  <div className="flex items-center justify-between border-b border-dotted border-[var(--border)] pb-2 mb-6">
-                    <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] flex items-center gap-2">
-                      <List size={12} className="text-[var(--primary)]" /> Index_Buffer
-                    </span>
-                    <span className="text-[8px] font-mono text-[var(--muted-foreground)] bg-[var(--card)] px-1 border border-[var(--border)]">{tocItems.length}</span>
+                  <div className="flex items-center justify-between mb-3 opacity-60">
+                    <div className="flex items-center gap-1.5">
+                      <List size={11} className="text-[var(--primary)]" />
+                      <span className="text-[9px] font-mono font-bold uppercase tracking-widest">Index_Buffer</span>
+                    </div>
+                    <span className="text-[8px] font-mono opacity-40">[{tocItems.length}]</span>
                   </div>
-                  
-                  <div className="space-y-0.5 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                  <div className="space-y-1">
                     {tocItems.map((item, idx) => (
                       <button
                         key={idx}
@@ -86,26 +97,17 @@ export const EditorSidebar = ({
                           if (item.url.startsWith("#")) {
                             const id = item.url.substring(1);
                             const el = document.getElementById(id);
-                            if (el) {
-                              el.scrollIntoView({ behavior: "smooth", block: "start" });
-                            } else {
-                              // Fallback for Edit mode: Emit event to scroll editor
-                              window.dispatchEvent(new CustomEvent('abyssal-toc-scroll', { 
-                                detail: { id } 
-                              }));
-                            }
+                            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                            else window.dispatchEvent(new CustomEvent('abyssal-toc-scroll', { detail: { id } }));
                           } else if (item.url.includes("note://")) {
                             const target = decodeURIComponent(item.url.split("note://")[1].replace(/^\/\//, ""));
-                            window.dispatchEvent(new CustomEvent('abyssal-toc-navigate', { 
-                              detail: { target } 
-                            }));
+                            window.dispatchEvent(new CustomEvent('abyssal-toc-navigate', { detail: { target } }));
                           }
                         }}
                         className="w-full text-left py-1.5 px-2 hover:bg-[var(--primary)]/5 transition-all group flex items-start gap-3 border-l border-transparent hover:border-[var(--primary)]/30"
-                        title={item.text}
                       >
-                         <div className="mt-1.5 w-1 h-1 rotate-45 border bg-transparent border-[var(--primary)]/30 group-hover:border-[var(--primary)] group-hover:bg-[var(--primary)]/20 transition-all duration-300" />
-                         <span className="text-[9px] font-mono uppercase tracking-wider truncate text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors">
+                         <span className="text-[7px] font-mono text-[var(--muted-foreground)] opacity-20 mt-1 uppercase">0x{idx.toString(16).padStart(2, '0')}</span>
+                         <span className="text-[10px] font-mono uppercase tracking-tight truncate text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors">
                            {item.text}
                          </span>
                       </button>
@@ -114,90 +116,80 @@ export const EditorSidebar = ({
                 </div>
               )}
 
-              {/* Stats Module */}
+              {/* Timeline */}
               <div>
-                <div className="flex items-center justify-between border-b border-dotted border-[var(--border)] pb-2 mb-6">
-                  <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] flex items-center gap-2">
-                    <Clock size={12} className="text-[var(--accent)]" /> Timeline
-                  </span>
+                <div className="flex items-center gap-1.5 mb-5 opacity-60">
+                  <Clock size={11} className="text-[var(--accent)]" />
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-widest">Temporal_Audit</span>
                 </div>
-                
-                <div className="relative pl-10 space-y-10 before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-[1px] before:bg-gradient-to-b before:from-[var(--border)] before:via-[var(--primary)]/30 before:to-[var(--border)] before:border-dotted before:border-l">
-                  {/* Genesis / Init Deployment */}
-                  <div className="relative group/time">
-                    <div className={cn(
-                      "absolute -left-[30px] top-1.5 w-2.5 h-2.5 rotate-45 border transition-all duration-300 z-10",
-                      note.createdAt ? "bg-[var(--background)] border-[var(--primary)]" : "bg-[var(--border)] border-[var(--border)] opacity-50"
-                    )} />
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[8px] text-[var(--muted-foreground)] font-mono uppercase tracking-wider">Init_Deployment</span>
-                        <span className="text-[7px] font-mono px-1 bg-[var(--card)] text-[var(--muted-foreground)] border border-[var(--border)]">v1.0.0</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-[var(--foreground)] font-mono font-bold bg-[var(--card)] px-2 py-0.5 rounded-sm border border-[var(--border)]/50">
-                          {note.createdAt ? new Date(note.createdAt).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' }) : "GENESIS_UNKNOWN"}
-                        </span>
-                        {!note.createdAt && <span className="text-[8px] text-[var(--destructive)] font-mono">LEGACY_SYNC</span>}
-                      </div>
-                      <span className="text-[7px] text-[var(--muted-foreground)] font-mono opacity-40">ID: {note.id.split('-')[0]}...0x01</span>
+                <div className="space-y-6 ml-1.5 border-l border-[var(--border)] relative">
+                  {/* Genesis Node */}
+                  <div className="relative pl-6">
+                    <div className="absolute left-[-4.5px] top-1.5 w-2 h-2 bg-[var(--background)] border border-[var(--border)] rotate-45" />
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="block text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-wider">Deployment</span>
+                      <span className="text-[6px] font-mono opacity-30 uppercase tracking-tighter">Genesis_Node</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[11px] font-mono text-[var(--foreground)] uppercase font-black tracking-tight">
+                        {note.createdAt ? new Date(note.createdAt).toLocaleDateString([], { day: '2-digit', month: 'short', year: '2-digit' }) : "UNKNOWN"}
+                      </span>
+                      <span className="text-[8px] font-mono text-[var(--muted-foreground)] opacity-40 uppercase">/ INIT_SYNC</span>
                     </div>
                   </div>
 
-                  {/* Last Buffer Sync */}
-                  <div className="relative group/time">
-                    <div className="absolute -left-[30px] top-1.5 w-2.5 h-2.5 rotate-45 bg-[var(--primary)] shadow-[0_0_12px_rgba(250,189,47,0.6)] border border-[var(--primary)] z-10" />
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[8px] text-[var(--primary)] font-mono uppercase tracking-wider font-bold">Last_Buffer_Sync</span>
-                        <span className="text-[7px] font-mono px-1 bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30">HEAD</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-[var(--primary)] font-mono font-bold bg-[var(--primary)]/5 px-2 py-0.5 rounded-sm border border-[var(--primary)]/20 shadow-[inset_0_0_10px_rgba(250,189,47,0.05)]">
-                          {new Date(note.updatedAt).toLocaleString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
-                        </span>
-                        <div className="flex gap-0.5">
-                          <div className="w-1 h-1 bg-[var(--primary)] rounded-full" />
-                          <span className="text-[7px] text-[var(--primary)] font-mono uppercase">Live</span>
-                        </div>
-                      </div>
-                      <span className="text-[7px] text-[var(--muted-foreground)] font-mono opacity-40">ID: {note.id.split('-')[1]}...0xAF</span>
+                  {/* Sync Node */}
+                  <div className="relative pl-6">
+                    <div className="absolute left-[-4.5px] top-1.5 w-2 h-2 bg-[var(--primary)] rotate-45 shadow-[0_0_10px_var(--primary)]" />
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="block text-[7px] font-mono text-[var(--primary)] uppercase tracking-wider flex items-center gap-2">
+                        Last_Sync <span className="px-1 bg-[var(--primary)]/10 text-[6px] border border-[var(--primary)]/20 animate-pulse">LIVE</span>
+                      </span>
+                      <span className="text-[6px] font-mono text-[var(--accent)] uppercase tracking-tighter">Verified</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[11px] font-mono text-[var(--foreground)] uppercase font-black tracking-tight">
+                        {new Date(note.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                      </span>
+                      <span className="text-[8px] font-mono text-[var(--muted-foreground)] opacity-40 uppercase">/ {Math.floor((Date.now() - new Date(note.updatedAt).getTime()) / 60000)}m ago</span>
                     </div>
                   </div>
 
-                  {/* Current Status */}
-                  <div className="relative pt-2">
-                    <div className="flex items-center gap-2 text-[8px] font-mono text-[var(--muted-foreground)] italic">
-                      <div className="absolute -left-[30px] w-5 h-[1px] bg-[var(--border)]" />
-                      END_OF_TRACE
-                    </div>
+                  {/* Integrity Check */}
+                  <div className="relative pl-6 opacity-40">
+                    <div className="absolute left-[-4.5px] top-1.5 w-2 h-2 border border-[var(--border)] border-dashed rotate-45" />
+                    <span className="block text-[7px] font-mono text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Integrity_Hash</span>
+                    <span className="block text-[8px] font-mono text-[var(--foreground)] truncate font-medium">
+                      SHA256: {note.id.substring(0, 16).toUpperCase()}...
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Inbound References */}
+              {/* Backlinks */}
               {isEnabled("backlinks") && (
                 <div>
-                  <div className="flex items-center justify-between border-b border-dotted border-[var(--border)] pb-2 mb-6">
-                    <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-[0.3em] flex items-center gap-2">
-                      <Link size={12} className="text-[var(--accent)]" /> Inbound_References
-                    </span>
-                    <span className="text-[8px] font-mono text-[var(--muted-foreground)] bg-[var(--card)] px-1 border border-[var(--border)]">{backlinks.length}</span>
+                  <div className="flex items-center justify-between mb-3 opacity-60">
+                    <div className="flex items-center gap-1.5">
+                      <LinkIcon size={11} className="text-[var(--accent)]" />
+                      <span className="text-[9px] font-mono font-bold uppercase tracking-widest">Inbound_Links</span>
+                    </div>
+                    <span className="text-[8px] font-mono opacity-40">[{backlinks.length}]</span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {backlinks.length === 0 ? (
-                      <div className="text-[9px] font-mono text-[var(--muted-foreground)] italic opacity-50 px-2">NO_INBOUND_LINKS_DETECTED</div>
+                      <div className="text-[9px] font-mono text-[var(--muted-foreground)] opacity-30 italic px-2">No references detected</div>
                     ) : (
                       backlinks.map(linkNote => (
                         <button
                           key={linkNote.id}
                           onClick={() => onNavigate?.(linkNote.id)}
-                          className="w-full text-left bg-[var(--card)]/30 border border-[var(--border)] p-2 hover:border-[var(--primary)]/50 hover:bg-[var(--card)] transition-all group relative overflow-hidden"
+                          className="w-full text-left p-2 border border-[var(--border)] bg-[var(--card)]/10 hover:border-[var(--primary)]/50 hover:bg-[var(--primary)]/5 transition-all group flex items-start gap-2"
                         >
-                          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[10px] font-bold text-[var(--foreground)] uppercase truncate group-hover:text-[var(--primary)]">{linkNote.title || "UNTITLED"}</span>
-                            <span className="text-[8px] font-mono text-[var(--muted-foreground)] truncate opacity-60">{linkNote.content?.substring(0, 40)}...</span>
+                          <div className="w-0.5 h-6 bg-[var(--accent)]/30 group-hover:bg-[var(--primary)] transition-colors shrink-0" />
+                          <div className="min-w-0">
+                            <span className="block text-[9px] font-black text-[var(--foreground)] uppercase truncate group-hover:text-[var(--primary)] tracking-tight">{linkNote.title || "Untitled"}</span>
+                            <span className="block text-[7px] font-mono text-[var(--muted-foreground)] truncate opacity-40 uppercase tracking-tighter">{linkNote.content?.substring(0, 40).replace(/#{1,6}\s/g, '')}</span>
                           </div>
                         </button>
                       ))
@@ -205,29 +197,19 @@ export const EditorSidebar = ({
                   </div>
                 </div>
               )}
+            </div>
 
-              {/* Actions */}
-              <div className="pt-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <ShieldAlert size={12} className="text-[var(--destructive)]" />
-                  <span className="text-[9px] font-mono text-[var(--destructive)] uppercase tracking-[0.2em] font-bold">Critical_Operations</span>
-                </div>
-                <div className="grid gap-2">
-                  <Button 
-                    variant="ghost" 
-                    className="justify-start h-10 text-[9px] font-mono hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 border border-[var(--border)] hover:border-[var(--destructive)]/30 group px-4" 
-                    onClick={() => {
-                      if (confirm("Are you sure you want to permanently purge this data stream? This action cannot be undone.")) {
-                        onDelete(note.id);
-                      }
-                    }}
-                  >
-                    <Trash2 size={12} className="mr-3 opacity-50 group-hover:opacity-100 transition-opacity" /> 
-                    <span className="tracking-widest">PURGE_DATA_STREAM</span>
-                  </Button>
-                </div>
-              </div>
-            </section>
+            {/* Danger Zone */}
+            <div className="p-4 border-t border-[var(--border)] bg-[var(--destructive)]/[0.02]">
+              <button 
+                onClick={() => {
+                  if (confirm("Permanently purge this document?")) onDelete(note.id);
+                }}
+                className="w-full h-8 flex items-center justify-center gap-2 border border-[var(--destructive)]/30 text-[9px] font-mono font-bold text-[var(--destructive)] hover:bg-[var(--destructive)] hover:text-white transition-all uppercase tracking-widest"
+              >
+                <Trash2 size={11} /> Purge Document
+              </button>
+            </div>
           </div>
         </motion.aside>
       )}

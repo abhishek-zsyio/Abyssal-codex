@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { FilePlus, FolderPlus, Trash2, ChevronsDownUp, Search } from "lucide-react";
+import { FilePlus, FolderPlus, Trash2, ChevronsDownUp, Search, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SidebarHeaderProps {
   searchQuery: string;
@@ -23,61 +24,84 @@ export const SidebarHeader = ({
   onCollapseAll,
 }: SidebarHeaderProps) => {
   return (
-    <div className="p-5 border-b border-[var(--border)] bg-[var(--card)]/5 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-black text-[var(--foreground)] tracking-tight uppercase leading-none flex items-baseline gap-2">
-          Explorer
-          <span className="text-[10px] font-mono text-[var(--muted-foreground)] font-normal tracking-normal lowercase opacity-40">/root</span>
-        </h1>
-        
-        <div className="flex items-center gap-0.5">
-          <button 
-            onClick={() => {
-              const title = selectedFolderPath ? `${selectedFolderPath}/Untitled` : "Untitled";
-              onAddNote(title);
-            }} 
-            className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-            title={selectedFolderPath ? `New File in ${selectedFolderPath}` : "New File"}
-          >
-            <FilePlus size={14} />
-          </button>
-          <button 
-            onClick={onAddFolder} 
-            className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-            title="New Folder"
-          >
-            <FolderPlus size={14} />
-          </button>
-          {selectedFolderPath && onDeleteFolder && (
-            <button 
-              onClick={() => onDeleteFolder(selectedFolderPath)} 
-              className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors"
-              title={`Delete ${selectedFolderPath}`}
+    <div className="flex flex-col border-b border-[var(--border)]">
+      {/* title row */}
+      <div className="flex flex-col px-3 py-2 border-b border-[var(--border)]/50 gap-1.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-[var(--primary)] rotate-45" />
+            <span className="text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+              Explorer
+            </span>
+          </div>
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={() => {
+                const title = selectedFolderPath ? `${selectedFolderPath}/Untitled` : "Untitled";
+                onAddNote(title);
+              }}
+              title={selectedFolderPath ? `New file in ${selectedFolderPath}` : "New file"}
+              className="w-6 h-6 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/8 transition-colors"
             >
-              <Trash2 size={14} />
+              <FilePlus size={13} />
             </button>
-          )}
-          <button 
-            onClick={onCollapseAll} 
-            className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-            title="Collapse All"
-          >
-            <ChevronsDownUp size={14} />
-          </button>
+            <button
+              onClick={onAddFolder}
+              title="New folder"
+              className="w-6 h-6 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/8 transition-colors"
+            >
+              <FolderPlus size={13} />
+            </button>
+            {selectedFolderPath && onDeleteFolder && (
+              <button
+                onClick={() => onDeleteFolder(selectedFolderPath)}
+                title={`Delete ${selectedFolderPath}`}
+                className="w-6 h-6 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/8 transition-colors"
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
+            <button
+              onClick={onCollapseAll}
+              title="Collapse all"
+              className="w-6 h-6 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-colors"
+            >
+              <ChevronsDownUp size={13} />
+            </button>
+          </div>
         </div>
+
+        {selectedFolderPath && (
+          <div className="flex items-center gap-2 px-1 py-0.5 bg-[var(--primary)]/5 border-l-2 border-[var(--primary)]/30">
+            <span className="text-[7px] font-mono text-[var(--primary)] uppercase opacity-40 shrink-0">PATH:</span>
+            <span className="text-[8px] font-mono text-[var(--primary)] truncate uppercase tracking-tight">
+              /{selectedFolderPath}
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="relative group/search">
-        <div className="absolute inset-y-0 left-0 w-8 flex items-center justify-center text-[var(--muted-foreground)] group-focus-within/search:text-[var(--primary)] transition-colors">
-          <Search size={12} strokeWidth={3} />
+      {/* search row */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 w-9 flex items-center justify-center text-[var(--muted-foreground)] pointer-events-none">
+          <Search size={11} strokeWidth={2.5} />
         </div>
         <input
           type="text"
-          placeholder="LOCATE_NODE..."
+          placeholder="Search…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-[var(--background)]/50 border border-[var(--border)] py-2 pl-8 pr-4 text-[10px] font-mono focus:outline-none focus:border-[var(--primary)]/50 transition-all placeholder:text-[var(--muted-foreground)]/30 uppercase tracking-widest"
+          className="w-full bg-transparent border-0 py-2 pl-9 pr-8 text-[11px] font-mono focus:outline-none placeholder:text-[var(--muted-foreground)]/30 text-[var(--foreground)]"
         />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute inset-y-0 right-2 flex items-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            <X size={11} />
+          </button>
+        )}
       </div>
     </div>
   );

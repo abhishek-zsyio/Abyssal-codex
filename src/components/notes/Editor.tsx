@@ -252,10 +252,10 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
       <div className="flex-1 flex overflow-hidden relative group">
         <main 
           onContextMenu={openMenu}
-          className="flex-1 min-w-0 overflow-y-auto custom-scrollbar bg-[var(--card)] border-r border-dotted border-[var(--border)]"
+          className="flex-1 min-w-0 overflow-y-auto custom-scrollbar bg-[var(--background)] border-r border-[var(--border)]"
         >
           <div className={cn("flex flex-col", isEditing ? "h-full" : "min-h-full")}>
-            <div className="pt-16 lg:pt-24 px-12 lg:px-20 pb-0">
+            <div className="pt-8 lg:pt-12 px-8 lg:px-12 pb-0">
                <EditorTitle 
                  title={title}
                  onUpdateTitle={(newTitle) => {
