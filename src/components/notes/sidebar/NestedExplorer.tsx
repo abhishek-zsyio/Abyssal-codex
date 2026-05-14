@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, memo, useEffect } from "react";
-import { ChevronRight, ChevronDown, FileText, Folder, Trash2, Star, FileJson, FileCode, Settings } from "lucide-react";
+import { ChevronRight, ChevronDown, FileText, Folder, Trash2, Star, FileJson, FileCode, Settings, PanelRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TreeItem, TreeFolder, TreeFile } from "@/utils/tree";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +10,7 @@ interface NestedExplorerProps {
   items: TreeItem[];
   activeNoteId: string | null;
   onSelectNote: (id: string) => void;
+  onOpenToSide?: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onMoveNote?: (id: string, targetPath: string) => void;
   onMoveFolder?: (oldPath: string, targetPath: string) => void;
@@ -38,6 +39,7 @@ const FolderItem = memo(({
   folder, 
   activeNoteId, 
   onSelectNote, 
+  onOpenToSide,
   onDeleteNote, 
   onMoveNote,
   onMoveFolder,
@@ -174,6 +176,7 @@ const FolderItem = memo(({
               items={folder.children} 
               activeNoteId={activeNoteId} 
               onSelectNote={onSelectNote} 
+              onOpenToSide={onOpenToSide}
               onDeleteNote={onDeleteNote}
               onMoveNote={onMoveNote}
               onMoveFolder={onMoveFolder}
@@ -198,6 +201,7 @@ const FileItem = memo(({
   file, 
   activeNoteId, 
   onSelectNote, 
+  onOpenToSide,
   onDeleteNote, 
   onMoveNote,
   onMoveFolder,
@@ -208,6 +212,7 @@ const FileItem = memo(({
   file: TreeFile; 
   activeNoteId: string | null;
   onSelectNote: (id: string) => void;
+  onOpenToSide?: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onMoveNote?: (id: string, targetPath: string) => void;
   onMoveFolder?: (oldPath: string, targetPath: string) => void;
@@ -256,8 +261,12 @@ const FileItem = memo(({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={() => {
-        onSelectNote(file.id);
+      onClick={(e) => {
+        if ((e.metaKey || e.ctrlKey) && onOpenToSide) {
+          onOpenToSide(file.id);
+        } else {
+          onSelectNote(file.id);
+        }
         onSelectFolder?.(parentPath || null);
       }}
       className={cn(
@@ -278,15 +287,30 @@ const FileItem = memo(({
           {file.name}
         </span>
       </div>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDeleteNote(file.id);
-        }}
-        className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all hover:bg-[var(--destructive)]/10 rounded-none"
-      >
-        <Trash2 size={12} />
-      </button>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        {onOpenToSide && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenToSide(file.id);
+            }}
+            className="p-1 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-all rounded-none"
+            title="Open to Side"
+          >
+            <PanelRight size={12} />
+          </button>
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeleteNote(file.id);
+          }}
+          className="p-1 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all hover:bg-[var(--destructive)]/10 rounded-none"
+          title="Purge Node"
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
     </div>
   );
 });
@@ -295,6 +319,7 @@ const NestedExplorer = memo(({
   items, 
   activeNoteId, 
   onSelectNote, 
+  onOpenToSide,
   onDeleteNote, 
   onMoveNote,
   onMoveFolder,

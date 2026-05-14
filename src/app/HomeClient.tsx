@@ -54,6 +54,8 @@ function HomeContent() {
 
   const [showSplash, setShowSplash] = useState(true);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [secondaryNoteId, setSecondaryNoteId] = useState<string | null>(null);
+  const [focusedPane, setFocusedPane] = useState<"left" | "right">("left");
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -102,27 +104,56 @@ function HomeContent() {
       router.push(`/?id=${id}`, { scroll: false });
       setOpenNoteIds(prev => Array.from(new Set([...prev, id])));
       setMainView("editor");
-      setIsSplitPane(false);
+      
+      if (isSplitPane) {
+        if (focusedPane === "left") {
+          setActiveNoteId(id);
+        } else {
+          setSecondaryNoteId(id);
+        }
+      } else {
+        setActiveNoteId(id);
+      }
+
       if (window.innerWidth < 1024) {
         setIsSidebarOpen(false);
       }
     });
-  }, [router]);
+  }, [router, isSplitPane, focusedPane]);
+
+  const handleOpenToSide = useCallback((id: string) => {
+    startTransition(() => {
+      setOpenNoteIds(prev => Array.from(new Set([...prev, id])));
+      setMainView("editor");
+      setIsSplitPane(true);
+      setSecondaryNoteId(id);
+      setFocusedPane("right");
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      }
+    });
+  }, []);
 
   const handleCloseNote = useCallback((id: string) => {
     const remainingOpen = openNoteIds.filter(nid => nid !== id);
     setOpenNoteIds(remainingOpen);
     
     if (activeNoteId === id) {
-      const nextActive = remainingOpen[remainingOpen.length - 1] || null;
-      if (nextActive) {
-        router.push(`/?id=${nextActive}`, { scroll: false });
-      } else {
-        router.push(`/`, { scroll: false });
-        setActiveNoteId(null);
-      }
+      const nextActive = remainingOpen.find(nid => nid !== secondaryNoteId) || null;
+      setActiveNoteId(nextActive);
+      if (nextActive) router.push(`/?id=${nextActive}`, { scroll: false });
+      else if (!secondaryNoteId) router.push(`/`, { scroll: false });
+    } else if (secondaryNoteId === id) {
+      const nextSecondary = remainingOpen.find(nid => nid !== activeNoteId) || null;
+      setSecondaryNoteId(nextSecondary);
+      if (!nextSecondary) setIsSplitPane(false);
     }
-  }, [activeNoteId, openNoteIds, router]);
+
+    if (remainingOpen.length === 0) {
+      setIsSplitPane(false);
+      router.push(`/`, { scroll: false });
+    }
+  }, [activeNoteId, secondaryNoteId, openNoteIds, router]);
 
   useEffect(() => {
     if (urlNoteId && urlNoteId !== activeNoteId) {
@@ -189,10 +220,19 @@ function HomeContent() {
   }, [notes, deferredSearchQuery, fuse]);
 
   const activeNote = useMemo(() => notes.find(n => n.id === activeNoteId) || null, [notes, activeNoteId]);
-  const secondaryNote = useMemo(() => {
-    const id = openNoteIds.find(id => id !== activeNoteId);
-    return notes.find(n => n.id === id) || null;
-  }, [notes, openNoteIds, activeNoteId]);
+  const secondaryNote = useMemo(() => notes.find(n => n.id === secondaryNoteId) || null, [notes, secondaryNoteId]);
+
+  // Sync split state with header
+  const handleToggleSplit = useCallback((split: boolean) => {
+    setIsSplitPane(split);
+    if (split && !secondaryNoteId) {
+      const otherNoteId = openNoteIds.find(id => id !== activeNoteId);
+      if (otherNoteId) {
+        setSecondaryNoteId(otherNoteId);
+        setFocusedPane("right");
+      }
+    }
+  }, [openNoteIds, activeNoteId, secondaryNoteId]);
 
   if (isLoading || !mounted) {
     return (
@@ -230,6 +270,7 @@ function HomeContent() {
             notes={filteredNotes}
             activeNoteId={activeNoteId}
             onSelectNote={handleSelectNote}
+            onOpenToSide={handleOpenToSide}
             onAddNote={handleAddNote}
             onDeleteNote={handleDeleteNote}
             searchQuery={searchQuery}
@@ -262,7 +303,7 @@ function HomeContent() {
             setMainView={setMainView}
             activeNoteTitle={activeNote?.title}
             isSplitPane={isSplitPane}
-            setIsSplitPane={setIsSplitPane}
+            setIsSplitPane={handleToggleSplit}
             hasSecondaryNote={openNoteIds.length > 1}
             setIsSidebarOpen={setIsSidebarOpen}
           />
@@ -275,16 +316,29 @@ function HomeContent() {
                 </div>
               ) : (
                 <motion.div key="editor-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="absolute inset-0 flex flex-col">
-                  <HomeTabs openNoteIds={openNoteIds} notes={notes} activeNoteId={activeNoteId} handleSelectNote={handleSelectNote} handleCloseNote={handleCloseNote} />
+                  <HomeTabs openNoteIds={openNoteIds} notes={notes} activeNoteId={activeNoteId} secondaryNoteId={secondaryNoteId} focusedPane={focusedPane} handleSelectNote={handleSelectNote} handleOpenToSide={handleOpenToSide} handleCloseNote={handleCloseNote} />
                   <div className="flex-1 flex min-h-0 relative">
                     <AnimatePresence mode="wait">
                       {activeNote ? (
-                        <motion.div key={activeNote.id + (isSplitPane ? "-split" : "")} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.15 }} className="h-full w-full flex-1 min-h-0 flex">
-                          <div className={cn("h-full min-w-0", isSplitPane && secondaryNote ? "w-1/2 border-r border-[var(--border)]" : "w-full")}>
+                        <motion.div key="dual-core-layout" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.15 }} className="h-full w-full flex-1 min-h-0 flex">
+                          <div 
+                            onClick={() => setFocusedPane("left")}
+                            className={cn(
+                              "h-full min-w-0 transition-all duration-300", 
+                              isSplitPane && secondaryNote ? "w-1/2 border-r border-[var(--border)]" : "w-full",
+                              isSplitPane && focusedPane === "left" && "ring-1 ring-inset ring-[var(--primary)]/30 z-10 shadow-[0_0_30px_rgba(var(--primary-rgb),0.05)]"
+                            )}
+                          >
                             <NotesEditor note={activeNote} onUpdate={updateNote} onDelete={handleDeleteNote} onToggleFavorite={toggleFavorite} onTogglePublic={togglePublic} allNotes={notes} onNavigate={handleSelectNote} showSidebar={!isSplitPane} />
                           </div>
                           {isSplitPane && secondaryNote && (
-                            <div className="h-full w-1/2 min-w-0 hidden md:block">
+                            <div 
+                              onClick={() => setFocusedPane("right")}
+                              className={cn(
+                                "h-full w-1/2 min-w-0 hidden md:block transition-all duration-300",
+                                focusedPane === "right" && "ring-1 ring-inset ring-[var(--primary)]/30 z-10 shadow-[0_0_30px_rgba(var(--primary-rgb),0.05)]"
+                              )}
+                            >
                               <NotesEditor note={secondaryNote} onUpdate={updateNote} onDelete={handleDeleteNote} onToggleFavorite={toggleFavorite} onTogglePublic={togglePublic} allNotes={notes} onNavigate={handleSelectNote} showSidebar={!isSplitPane} />
                             </div>
                           )}
@@ -311,6 +365,7 @@ function HomeContent() {
           setIsOmniConsoleOpen={setIsOmniConsoleOpen}
           notes={notes}
           handleSelectNote={handleSelectNote}
+          onOpenToSide={handleOpenToSide}
           handleAddNote={handleAddNote}
           exportAllNotes={exportAllNotes}
           setIsThemeModalOpen={setIsThemeModalOpen}

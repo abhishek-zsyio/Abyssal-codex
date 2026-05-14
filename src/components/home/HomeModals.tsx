@@ -25,6 +25,7 @@ interface HomeModalsProps {
   setIsAuthModalOpen: (open: boolean) => void;
   isSecurityModalOpen: boolean;
   setIsSecurityModalOpen: (open: boolean) => void;
+  onOpenToSide?: (id: string) => void;
 }
 
 export const HomeModals = memo(({
@@ -42,7 +43,8 @@ export const HomeModals = memo(({
   isAuthModalOpen,
   setIsAuthModalOpen,
   isSecurityModalOpen,
-  setIsSecurityModalOpen
+  setIsSecurityModalOpen,
+  onOpenToSide
 }: HomeModalsProps) => {
   return (
     <>
@@ -51,6 +53,7 @@ export const HomeModals = memo(({
         onClose={() => setIsOmniConsoleOpen(false)}
         notes={notes}
         onSelectNote={handleSelectNote}
+        onOpenToSide={onOpenToSide}
         onAddNote={handleAddNote}
         onDeleteNote={handleDeleteNote}
         exportAllNotes={exportAllNotes || (() => {})}

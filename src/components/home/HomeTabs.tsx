@@ -11,8 +11,8 @@ interface TabProps {
   id: string;
   title: string;
   isActive: boolean;
-  onSelect: () => void;
-  onClose: (e: React.MouseEvent) => void;
+  isFocused?: boolean;
+  onOpenToSide?: (id: string) => void;
 }
 
 const Tab = memo(({ 
@@ -20,15 +20,24 @@ const Tab = memo(({
   title, 
   isActive, 
   onSelect, 
-  onClose 
+  onClose,
+  isFocused,
+  onOpenToSide
 }: TabProps) => (
   <div 
     onClick={onSelect}
+    onContextMenu={(e) => {
+      if (onOpenToSide) {
+        e.preventDefault();
+        onOpenToSide(id);
+      }
+    }}
     className={cn(
       "flex items-center gap-3 px-4 h-10 border-r border-[var(--border)] text-[8px] font-mono cursor-pointer transition-all whitespace-nowrap group relative min-w-[100px] md:min-w-[140px] max-w-[200px] md:max-w-[240px] overflow-hidden",
       isActive 
         ? "bg-[var(--card)]/40 text-[var(--primary)]" 
-        : "bg-transparent text-[var(--muted-foreground)] hover:bg-[var(--card)]/20 hover:text-[var(--foreground)]"
+        : "bg-transparent text-[var(--muted-foreground)] hover:bg-[var(--card)]/20 hover:text-[var(--foreground)]",
+      isFocused && "shadow-[inset_0_-2px_0_var(--primary)]"
     )}
   >
     <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
@@ -37,10 +46,20 @@ const Tab = memo(({
       <>
         <motion.div 
           layoutId="active-tab-top"
-          className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--primary)] shadow-[0_0_12px_var(--primary)]" 
+          className={cn(
+            "absolute top-0 left-0 right-0 h-[2px] bg-[var(--primary)] transition-all",
+            isFocused ? "opacity-100 shadow-[0_0_12px_var(--primary)]" : "opacity-40"
+          )} 
         />
-        <div className="absolute top-0 left-0 w-1.5 h-1.5 bg-[var(--primary)]" />
-        <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-[var(--primary)]" />
+        <div className={cn("absolute top-0 left-0 w-1.5 h-1.5 bg-[var(--primary)]", !isFocused && "opacity-40")} />
+        <div className={cn("absolute top-0 right-0 w-1.5 h-1.5 bg-[var(--primary)]", !isFocused && "opacity-40")} />
+        {isFocused && (
+          <motion.div 
+            animate={{ x: ["-100%", "200%"] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-[var(--primary)]/10 to-transparent skew-x-12"
+          />
+        )}
       </>
     )}
     
@@ -74,7 +93,10 @@ interface HomeTabsProps {
   openNoteIds: string[];
   notes: Note[];
   activeNoteId: string | null;
+  secondaryNoteId: string | null;
+  focusedPane: "left" | "right";
   handleSelectNote: (id: string) => void;
+  handleOpenToSide: (id: string) => void;
   handleCloseNote: (id: string) => void;
 }
 
@@ -82,7 +104,10 @@ export const HomeTabs = ({
   openNoteIds,
   notes,
   activeNoteId,
+  secondaryNoteId,
+  focusedPane,
   handleSelectNote,
+  handleOpenToSide,
   handleCloseNote
 }: HomeTabsProps) => {
   if (openNoteIds.length === 0) return null;
@@ -93,13 +118,20 @@ export const HomeTabs = ({
       {openNoteIds.map(id => {
         const note = notes.find(n => n.id === id);
         if (!note) return null;
+        
+        const isPrimaryActive = activeNoteId === id;
+        const isSecondaryActive = secondaryNoteId === id;
+        const isFocused = (isPrimaryActive && focusedPane === "left") || (isSecondaryActive && focusedPane === "right");
+
         return (
           <Tab 
             key={id}
             id={id}
             title={note.title || "UNTITLED"}
-            isActive={activeNoteId === id}
+            isActive={isPrimaryActive || isSecondaryActive}
+            isFocused={isFocused}
             onSelect={() => handleSelectNote(id)}
+            onOpenToSide={handleOpenToSide}
             onClose={(e) => {
               e.stopPropagation();
               handleCloseNote(id);

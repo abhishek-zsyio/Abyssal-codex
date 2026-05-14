@@ -44,6 +44,7 @@ interface SidebarProps {
   onAddFolder?: (path: string) => void;
   onRenameFolder?: (oldPath: string, newPath: string) => void;
   onDeleteFolder?: (path: string) => void;
+  onOpenToSide?: (id: string) => void;
 }
 
 const Sidebar = memo(({
@@ -73,6 +74,7 @@ const Sidebar = memo(({
   onAddFolder,
   onRenameFolder,
   onDeleteFolder,
+  onOpenToSide,
 }: SidebarProps) => {
   const { isEnabled } = usePlugins();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -340,6 +342,7 @@ const Sidebar = memo(({
                           items={noteTree} 
                           activeNoteId={activeNoteId} 
                           onSelectNote={onSelectNote} 
+                          onOpenToSide={onOpenToSide}
                           onDeleteNote={onDeleteNote} 
                           onMoveNote={handleMoveNote}
                           onMoveFolder={onRenameFolder || handleMoveFolder}

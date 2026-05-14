@@ -47,6 +47,7 @@ interface OmniConsoleProps {
   onOpenPlugins: () => void;
   onOpenThemes: () => void;
   onOpenSecurity: () => void;
+  onOpenToSide?: (id: string) => void;
 }
 
 const OmniConsole = ({
@@ -60,6 +61,7 @@ const OmniConsole = ({
   onOpenPlugins,
   onOpenThemes,
   onOpenSecurity,
+  onOpenToSide,
 }: OmniConsoleProps) => {
   const { theme } = useTheme();
   const { isEnabled } = usePlugins();
@@ -321,7 +323,14 @@ const OmniConsole = ({
                     filteredNotes.map((note) => (
                       <button
                         key={note.id}
-                        onClick={() => { onSelectNote(note.id); onClose(); }}
+                        onClick={(e) => { 
+                          if ((e.metaKey || e.ctrlKey) && onOpenToSide) {
+                            onOpenToSide(note.id);
+                          } else {
+                            onSelectNote(note.id); 
+                          }
+                          onClose(); 
+                        }}
                         className="w-full flex flex-col px-3 py-3 text-left hover:bg-[var(--secondary)] border-b border-[var(--border)] group transition-all"
                       >
                         <div className="flex items-center gap-2">
@@ -345,6 +354,7 @@ const OmniConsole = ({
               <div className="flex gap-4">
                 <span className="flex items-center gap-1"><Kbd>TAB</Kbd> SWITCH_MODE</span>
                 <span className="flex items-center gap-1"><Kbd>ENTER</Kbd> SELECT</span>
+                <span className="flex items-center gap-1"><Kbd>CMD</Kbd>+<Kbd>ENTER</Kbd> SIDE_LANE</span>
               </div>
               <div className="flex gap-2">
                 <Shield size={10} className="text-[var(--success)]" />
