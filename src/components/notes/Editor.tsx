@@ -18,6 +18,9 @@ import MarkdownPreview from "./MarkdownPreview";
 import { EditorHeader } from "./editor/EditorHeader";
 import { EditorSidebar } from "./editor/EditorSidebar";
 import { EditorContextMenu } from "./editor/EditorContextMenu";
+import { EditorTitle } from "./editor/EditorTitle";
+import { EditorTags } from "./editor/EditorTags";
+import { EditorFooter } from "./editor/EditorFooter";
 import { useEditorMonaco, MONACO_THEMES } from "@/hooks/use-editor-monaco";
 
 if (typeof window !== "undefined") {
@@ -49,8 +52,6 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
   const [tagInput, setTagInput] = useState("");
   const [isZenMode, setIsZenMode] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(showSidebar);
-  const [copiedContent, setCopiedContent] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const deferredContent = useDeferredValue(content);
@@ -71,8 +72,6 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
     
     return deferredAllNotes.filter(n => {
       if (n.id === note.id || !n.content) return false;
-      
-      // We want to avoid counting links inside code blocks or inline code as backlinks
       const cleanContent = n.content.replace(/```[\s\S]*?```|`[^`\n]*?`/g, '');
       return cleanContent.includes(wikiLink) || cleanContent.includes(protocolLink);
     });
@@ -104,8 +103,8 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
 
   useEffect(() => {
     const handleTocScroll = (e: any) => {
-      const id = e.detail.id;
-      if (editorRef.current) {
+      const id = e.detail?.id;
+      if (editorRef.current && id) {
         const model = editorRef.current.getModel();
         if (!model) return;
         
@@ -131,11 +130,13 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
     };
 
     const handleTocNavigate = (e: any) => {
-      const targetTitle = e.detail.target.toLowerCase().trim();
-      const targetNote = allNotes.find((n: any) => {
+      const targetLabel = e.detail?.target?.toLowerCase().trim();
+      if (!targetLabel) return;
+
+      const targetNote = allNotes.find((n: Note) => {
         const noteTitle = n.title?.toLowerCase().trim();
         const noteId = n.id?.toLowerCase().trim();
-        return noteId === targetTitle || noteTitle === targetTitle || noteTitle?.endsWith('/' + targetTitle);
+        return noteId === targetLabel || noteTitle === targetLabel || noteTitle?.endsWith('/' + targetLabel);
       });
       if (targetNote) {
         onNavigate?.(targetNote.id);
@@ -177,10 +178,6 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
           window.dispatchEvent(new CustomEvent("abyssal-log", {
             detail: { message: `ZEN_MODE_${!isZenMode ? 'ACTIVATED' : 'DEACTIVATED'}`, type: "system" }
           }));
-        } else {
-          window.dispatchEvent(new CustomEvent("abyssal-log", {
-            detail: { message: "ZEN_MODE_ERROR: PLUGIN_NOT_ENABLED_IN_STORE", type: "error" }
-          }));
         }
       }
     };
@@ -211,8 +208,6 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
           isPublic={note.isPublic}
           isEditing={isEditing}
           isZenMode={isZenMode}
-          copiedContent={copiedContent}
-          copiedLink={copiedLink}
           copiedShareLink={copiedShareLink}
           onToggleFavorite={() => onToggleFavorite?.(note.id)}
           onTogglePublic={() => {
@@ -227,8 +222,6 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
               setCopiedShareLink(true);
               toast("PUBLIC & COPIED TO CLIPBOARD", "success");
               setTimeout(() => setCopiedShareLink(false), 2000);
-            } else {
-              toast("FRAGMENT_SET_TO_PRIVATE", "system");
             }
           }}
           onDownload={handleDownloadMd}
@@ -236,14 +229,8 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
           onToggleZen={() => setIsZenMode(!isZenMode)}
           onCopy={() => {
             navigator.clipboard.writeText(content);
-            setCopiedContent(true);
-            setTimeout(() => setCopiedContent(false), 2000);
+            toast("COPIED TO CLIPBOARD", "success");
           }}
-          onCopyWikiLink={() => {
-            setCopiedLink(true);
-            setTimeout(() => setCopiedLink(false), 2000);
-          }}
-          onCopyShareLink={() => {}} // Placeholder if needed
           onCommit={() => {
             setIsSaving(true);
             onUpdate(note.id, { title, content });
@@ -269,66 +256,21 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
         >
           <div className={cn("flex flex-col", isEditing ? "h-full" : "min-h-full")}>
             <div className="pt-16 lg:pt-24 px-12 lg:px-20 pb-0">
-               <div className="flex flex-col mb-6 group/title-container">
-                 {/* Cluster Path (Folder) */}
-                 <div className="flex items-center gap-2 mb-3 group/cluster">
-                    <div className="w-1.5 h-1.5 border border-[var(--primary)] rotate-45 opacity-40 group-focus-within/cluster:opacity-100 transition-opacity" />
-                    <span className="text-[8px] font-mono uppercase tracking-[0.4em] opacity-40">CLUSTER_ID:</span>
-                    <input 
-                      type="text"
-                      value={title.split('/').slice(0, -1).join('/')}
-                      onChange={(e) => {
-                        const newCluster = e.target.value.replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
-                        const name = title.split('/').pop() || "";
-                        const newTitle = newCluster ? `${newCluster}/${name}` : name;
-                        setTitle(newTitle);
-                        debouncedUpdate(note.id, { title: newTitle });
-                      }}
-                      className="bg-transparent border-none outline-none text-[8px] font-mono text-[var(--primary)] uppercase tracking-[0.4em] w-full placeholder:opacity-20 focus:text-[var(--primary)]"
-                      placeholder="ROOT_DOMAIN"
-                    />
-                 </div>
-                 
-                 {/* Node Name (File) */}
-                 <div className="relative">
-                   <input
-                    type="text"
-                    value={title.split('/').pop() || ""}
-                    onChange={(e) => {
-                      const newNodeName = e.target.value.replace(/\//g, '');
-                      const parts = title.split('/');
-                      parts[parts.length - 1] = newNodeName;
-                      const newTitle = parts.join('/');
-                      setTitle(newTitle);
-                      debouncedUpdate(note.id, { title: newTitle });
-                    }}
-                    className="w-full bg-transparent text-5xl font-black outline-none placeholder:text-[var(--border)] text-[var(--foreground)] tracking-tighter leading-none selection:bg-[var(--primary)]/30"
-                    placeholder="UNIDENTIFIED_SEGMENT..."
-                  />
-                  <div className="absolute -bottom-4 left-0 flex items-center gap-4 opacity-20">
-                    <span className="text-[8px] font-mono uppercase tracking-widest">Protocol: ABYSSAL_STORAGE_V2</span>
-                    <span className="text-[8px] font-mono uppercase tracking-widest">Sync: ACTIVE</span>
-                  </div>
-                 </div>
-               </div>
-              <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] pb-6 mb-4">
-                {(note.tags || []).map(tag => (
-                  <Badge key={tag} variant="success" className="gap-1">
-                    <Hash size={8} /> {tag}
-                    <button onClick={() => onUpdate(note.id, { tags: note.tags?.filter(t => t !== tag) })} className="hover:text-[var(--destructive)] ml-1">
-                      <X size={8} />
-                    </button>
-                  </Badge>
-                ))}
-                <input 
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleAddTag}
-                  placeholder="+ Add Tag..."
-                  className="bg-transparent border-none outline-none text-[10px] font-mono text-[var(--muted-foreground)] w-24"
-                />
-              </div>
+               <EditorTitle 
+                 title={title}
+                 onUpdateTitle={(newTitle) => {
+                   setTitle(newTitle);
+                   debouncedUpdate(note.id, { title: newTitle });
+                 }}
+               />
+               
+               <EditorTags 
+                 tags={note.tags || []}
+                 tagInput={tagInput}
+                 setTagInput={setTagInput}
+                 onAddTag={handleAddTag}
+                 onRemoveTag={(tag) => onUpdate(note.id, { tags: note.tags?.filter(t => t !== tag) })}
+               />
             </div>
 
             <div className="flex-1 min-h-0">
@@ -399,31 +341,7 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
         )}
       </div>
       
-      {!isZenMode && (
-        <footer className="h-12 border-t border-[var(--border)] px-8 flex items-center justify-between text-[9px] font-mono text-[var(--muted-foreground)] bg-[var(--background)] relative overflow-hidden">
-          <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
-          <div className="flex items-center gap-10 relative z-10">
-            <div className="flex items-center gap-2">
-               <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse" />
-               <span className="uppercase tracking-[0.2em] font-black text-[var(--foreground)]">System_Live</span>
-            </div>
-            <div className="h-4 w-px bg-[var(--border)] opacity-30" />
-            <span className="uppercase tracking-widest">Buffer: Markdown_Stream_V1</span>
-            <span className="opacity-40 uppercase">0xABYS_CORE_ACTIVE</span>
-          </div>
-          <div className="flex items-center gap-4 relative z-10">
-             <span className="opacity-40 uppercase tracking-tighter">Loc: {note.id.split('-')[0].toUpperCase()}</span>
-             <div className="w-20 h-1 bg-[var(--border)]/20 relative overflow-hidden">
-                <motion.div 
-                   className="absolute inset-y-0 left-0 bg-[var(--primary)]" 
-                   initial={{ width: "0%" }}
-                   animate={{ width: "65%" }}
-                   transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
-                />
-             </div>
-          </div>
-        </footer>
-      )}
+      {!isZenMode && <EditorFooter noteId={note.id} />}
 
       <EditorContextMenu 
         isOpen={isOpen}

@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
-import { spring, softSpring, microSpring, transitionDefaults } from "@/lib/transitions";
+import { softSpring } from "@/lib/transitions";
 import { X, CheckCircle2, AlertCircle, Info, Terminal, ShieldAlert } from "lucide-react";
-import { useToast, Toast as ToastType } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 const TOAST_ICONS = {
@@ -22,8 +24,17 @@ const TOAST_COLORS = {
   system: "border-[#d3869b] bg-[var(--card)]",
 };
 
+
 export function ToastContainer() {
+  const [mounted, setMounted] = useState(false);
   const { toasts, removeToast } = useToast();
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-[10000] flex flex-col gap-3 pointer-events-none w-full max-w-[320px]">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ShieldAlert, Key, Copy, Download, Upload, RefreshCw, AlertTriangle, Check } from "lucide-react";
+import { X, ShieldAlert, Key, Copy, Upload, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { exportVaultKey, importVaultKey, resetVault } from "@/utils/encryption";
@@ -30,8 +30,8 @@ export default function SecurityModal({ isOpen, onClose }: SecurityModalProps) {
     try {
       const key = await exportVaultKey();
       setKeyString(key);
-    } catch (e) {
-      console.error(e);
+    } catch (_e) {
+      console.error(_e);
     }
   }
 
@@ -50,7 +50,7 @@ export default function SecurityModal({ isOpen, onClose }: SecurityModalProps) {
       setImportKeyInput("");
       loadKey();
       setTimeout(() => window.location.reload(), 1000); // Reload to apply new key
-    } catch (e) {
+    } catch (_e) {
       toast("IMPORT_FAILED: [INVALID_KEY_FORMAT]", "system");
     }
   };

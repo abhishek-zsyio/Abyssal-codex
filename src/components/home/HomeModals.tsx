@@ -74,3 +74,5 @@ export const HomeModals = memo(({
     </>
   );
 });
+
+HomeModals.displayName = "HomeModals";

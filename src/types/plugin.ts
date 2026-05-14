@@ -1,5 +1,3 @@
-import { LucideIcon } from "lucide-react";
-
 export type PluginId = string;
 
 export interface PluginMetadata {

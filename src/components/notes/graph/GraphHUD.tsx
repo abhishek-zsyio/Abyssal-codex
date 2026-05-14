@@ -1,9 +1,8 @@
 "use client";
 
 import React from "react";
-import { Activity, Hash } from "lucide-react";
+import { Hash } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 
 interface GraphHUDProps {
   isVisible: boolean;
@@ -126,3 +125,5 @@ export const GraphHUD = ({
     </div>
   );
 };
+
+GraphHUD.displayName = "GraphHUD";

@@ -1,22 +1,23 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { spring, softSpring, microSpring } from "@/lib/transitions";
-import { useEffect, useState } from "react";
-import { Hash, Terminal, Cpu, ShieldCheck, Database } from "lucide-react";
+import { softSpring, microSpring } from "@/lib/transitions";
+import { useEffect, useState, useMemo } from "react";
+import { Terminal, Cpu, ShieldCheck, Database } from "lucide-react";
+import Image from "next/image";
 
 const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
   const [progress, setProgress] = useState(0);
   const [statusIndex, setStatusIndex] = useState(0);
 
-  const statusMessages = [
+  const statusMessages = useMemo(() => [
     "INITIALIZING_CORE...",
     "MOUNTING_FILESYSTEM...",
     "LOADING_CORE_MODULES...",
     "DECRYPTING_CODEX...",
     "ESTABLISHING_LINK...",
     "READY"
-  ];
+  ], []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -38,7 +39,7 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
       clearInterval(interval);
       clearInterval(statusInterval);
     };
-  }, [onFinish]);
+  }, [onFinish, statusMessages.length]);
 
   return (
     <motion.div
@@ -74,7 +75,7 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
           className="flex flex-col items-center"
         >
           <div className="mb-8 relative">
-             <img src="/logo.png" alt="Abyssal Codex Logo" className="w-20 h-20 relative z-10" />
+             <Image src="/logo.png" alt="Abyssal Codex Logo" width={80} height={80} className="relative z-10" />
           </div>
 
           <h1 className="text-2xl font-bold text-[var(--foreground)] tracking-[0.4em] uppercase mb-2">

@@ -5,20 +5,14 @@ import { motion } from "framer-motion";
 import { 
   Book, 
   Command, 
-  Zap, 
   Keyboard, 
   Info, 
   X, 
-  ExternalLink, 
-  Cpu, 
   Share2, 
   Shield, 
-  Terminal,
-  Hash,
   Package,
   Layers
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface SidebarHelpProps {
   onClose?: () => void;

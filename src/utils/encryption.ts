@@ -126,7 +126,7 @@ export async function decrypt(encryptedBase64: string, userId?: string): Promise
             ciphertext
           );
           return new TextDecoder().decode(decryptedBuffer);
-        } catch (fallbackError) {
+        } catch {
           // Both failed
           throw new Error("DECRYPTION_FAILED: [ALL_KEYS_EXHAUSTED]");
         }
@@ -183,7 +183,7 @@ export async function exportVaultKey(): Promise<string> {
 export async function importVaultKey(jwkString: string): Promise<void> {
   try {
     const jwk = JSON.parse(jwkString);
-    const key = await window.crypto.subtle.importKey(
+    await window.crypto.subtle.importKey(
       "jwk",
       jwk,
       { name: "AES-GCM", length: 256 },

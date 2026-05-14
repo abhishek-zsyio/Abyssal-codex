@@ -3,12 +3,9 @@
 import React, { useRef, memo, useState, useMemo } from "react";
 import { Note } from "@/types/note";
 import { cn } from "../../lib/utils";
-import { Search, X, Hash, Tag, Download, Upload, FolderPlus, FilePlus, ChevronsDownUp, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { staggerContainer, slideInLeft } from "@/lib/transitions";
-import { Button } from "@/components/ui/Button";
+import { slideInLeft } from "@/lib/transitions";
 import { Badge } from "@/components/ui/DataDisplay";
-import { usePlugins } from "@/hooks/use-plugins";
 import SidebarPlugins from "./SidebarPlugins";
 import SidebarHelp from "./SidebarHelp";
 
@@ -16,6 +13,9 @@ import { SidebarSkeleton } from "./sidebar/SidebarSkeleton";
 import { SidebarNavigation } from "./sidebar/SidebarNavigation";
 import NestedExplorer from "./sidebar/NestedExplorer";
 import { buildNoteTree } from "@/utils/tree";
+import { SidebarHeader } from "./sidebar/SidebarHeader";
+import { SidebarTags } from "./sidebar/SidebarTags";
+import { SidebarFooter } from "./sidebar/SidebarFooter";
 
 interface SidebarProps {
   notes: Note[];
@@ -76,12 +76,18 @@ const Sidebar = memo(({
   onDeleteFolder,
   onOpenToSide,
 }: SidebarProps) => {
-  const { isEnabled } = usePlugins();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [internalActiveView, setInternalActiveView] = useState<"explorer" | "plugins" | "help">("explorer");
   const activeView = onViewChange ? externalActiveView : internalActiveView;
-  const setActiveView = (onViewChange || setInternalActiveView) as any;
+  
+  const handleViewChange = (view: "explorer" | "plugins" | "help") => {
+    if (onViewChange) {
+      onViewChange(view);
+    } else {
+      setInternalActiveView(view);
+    }
+  };
 
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
@@ -96,7 +102,6 @@ const Sidebar = memo(({
     if (!activeTag) return notes;
     return notes.filter(n => (n.tags || []).includes(activeTag));
   }, [notes, activeTag]);
-
 
   const regularNotes = useMemo(() => displayNotes.filter(n => !n.isFavorite), [displayNotes]);
 
@@ -168,15 +173,12 @@ const Sidebar = memo(({
         activeView={activeView}
         setActiveView={(view) => {
           if (!isOpen) {
-            // If closed, always open it and set the view
-            setActiveView(view);
+            handleViewChange(view);
             window.dispatchEvent(new CustomEvent('abyssal-sidebar-open'));
           } else if (view === activeView) {
-            // If open and clicking the same view, toggle it closed
             onClose?.();
           } else {
-            // If open and clicking a different view, just switch view
-            setActiveView(view);
+            handleViewChange(view);
           }
         }}
         isOpen={isOpen}
@@ -202,103 +204,21 @@ const Sidebar = memo(({
               variants={slideInLeft}
               className="flex-1 flex flex-col overflow-hidden relative"
             >
-              <div className="p-5 border-b border-[var(--border)] bg-[var(--card)]/5 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <h1 className="text-xl font-black text-[var(--foreground)] tracking-tight uppercase leading-none flex items-baseline gap-2">
-                    Explorer
-                    <span className="text-[10px] font-mono text-[var(--muted-foreground)] font-normal tracking-normal lowercase opacity-40">/root</span>
-                  </h1>
-                  
-                  <div className="flex items-center gap-0.5">
-                    <button 
-                      onClick={() => {
-                        const title = selectedFolderPath ? `${selectedFolderPath}/Untitled` : "Untitled";
-                        onAddNote(title);
-                      }} 
-                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-                      title={selectedFolderPath ? `New File in ${selectedFolderPath}` : "New File"}
-                    >
-                      <FilePlus size={14} />
-                    </button>
-                    <button 
-                      onClick={() => setIsCreatingFolder(true)} 
-                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-                      title="New Folder"
-                    >
-                      <FolderPlus size={14} />
-                    </button>
-                    {selectedFolderPath && onDeleteFolder && (
-                      <button 
-                        onClick={() => onDeleteFolder(selectedFolderPath)} 
-                        className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors"
-                        title={`Delete ${selectedFolderPath}`}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => setCollapseTrigger(prev => prev + 1)} 
-                      className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-                      title="Collapse All"
-                    >
-                      <ChevronsDownUp size={14} />
-                    </button>
-                  </div>
-                </div>
+              <SidebarHeader 
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                selectedFolderPath={selectedFolderPath}
+                onAddNote={onAddNote}
+                onAddFolder={() => setIsCreatingFolder(true)}
+                onDeleteFolder={onDeleteFolder}
+                onCollapseAll={() => setCollapseTrigger(prev => prev + 1)}
+              />
 
-                <div className="relative group/search">
-                  <div className="absolute inset-y-0 left-0 w-8 flex items-center justify-center text-[var(--muted-foreground)] group-focus-within/search:text-[var(--primary)] transition-colors">
-                    <Search size={12} strokeWidth={3} />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="LOCATE_NODE..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[var(--background)]/50 border border-[var(--border)] py-2 pl-8 pr-4 text-[10px] font-mono focus:outline-none focus:border-[var(--primary)]/50 transition-all placeholder:text-[var(--muted-foreground)]/30 uppercase tracking-widest"
-                  />
-                </div>
-              </div>
-
-              <div className="flex-shrink-0 px-6 pt-4 empty:hidden">
-                <AnimatePresence>
-                  {activeTag && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="flex items-center gap-2 mb-3 overflow-hidden"
-                    >
-                      <span className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase">Filtered by:</span>
-                      <button
-                        onClick={() => setActiveTag(null)}
-                        className="flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 bg-[var(--primary)] text-[var(--background)] font-bold"
-                      >
-                        <Hash size={8} /> {activeTag} <X size={8} />
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {allTags.length > 0 && (
-                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                    {allTags.map(tag => (
-                      <button
-                        key={tag}
-                        onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                        className={cn(
-                          "flex-shrink-0 flex items-center gap-0.5 text-[9px] font-mono px-1.5 py-0.5 border transition-colors",
-                          activeTag === tag
-                            ? "bg-[var(--primary)] text-[var(--background)] border-[var(--primary)] font-bold"
-                            : "text-[var(--muted-foreground)] border-[var(--border)] hover:text-[var(--accent)] hover:border-[var(--accent)]"
-                        )}
-                      >
-                        <Tag size={8} /> {tag}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <SidebarTags 
+                allTags={allTags}
+                activeTag={activeTag}
+                setActiveTag={setActiveTag}
+              />
 
               <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 {isLoading ? (
@@ -360,21 +280,12 @@ const Sidebar = memo(({
                 )}
               </div>
 
-              <div className="p-6 border-t border-dotted border-[var(--border)] bg-[var(--background)]">
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <Button onClick={exportAllNotes} size="sm" className="bg-[var(--card)]/50 hover:bg-[var(--card)] border-[var(--border)] rounded-none h-9"><Download size={12} className="mr-2" /> Export</Button>
-                  <Button onClick={() => fileInputRef.current?.click()} size="sm" className="bg-[var(--card)]/50 hover:bg-[var(--card)] border-[var(--border)] rounded-none h-9"><Upload size={12} className="mr-2" /> Import</Button>
-                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                </div>
-                <Button 
-                  onClick={deleteAllNotes} 
-                  variant="destructive" 
-                  size="sm" 
-                  className="w-full bg-[var(--destructive)]/10 hover:bg-[var(--destructive)] text-[var(--destructive)] hover:text-white border-[var(--destructive)]/30 text-[10px] font-mono tracking-widest h-10 rounded-none"
-                >
-                  <Trash2 size={12} className="mr-2" /> WIPE_ALL_BUFFERS
-                </Button>
-              </div>
+              <SidebarFooter 
+                onExport={exportAllNotes}
+                onImportClick={() => fileInputRef.current?.click()}
+                onWipe={deleteAllNotes}
+              />
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
             </motion.div>
           ) : activeView === "plugins" ? (
             <motion.div key="plugins" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.15 }} className="flex-1 flex flex-col overflow-hidden">
@@ -390,7 +301,6 @@ const Sidebar = memo(({
     </aside>
   );
 });
-
 Sidebar.displayName = "Sidebar";
 
 export default Sidebar;

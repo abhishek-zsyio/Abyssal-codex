@@ -61,17 +61,13 @@ export const GlitchText = ({ text, className }: { text: string; className?: stri
 };
 
 export const DataStream = () => {
-  const [streams, setStreams] = useState<{ id: number; duration: number; delay: number; left: string; content: string }[]>([]);
-  
-  useEffect(() => {
-    setStreams(Array.from({ length: 10 }).map((_, i) => ({
-      id: i,
-      duration: Math.random() * 20 + 10,
-      delay: Math.random() * 10,
-      left: `${i * 10}%`,
-      content: Array.from({ length: 20 }).map(() => (Math.random() > 0.5 ? "1" : "0")).join("\n")
-    })));
-  }, []);
+  const [streams] = useState(() => Array.from({ length: 10 }).map((_, i) => ({
+    id: i,
+    duration: Math.random() * 20 + 10,
+    delay: Math.random() * 10,
+    left: `${i * 10}%`,
+    content: Array.from({ length: 20 }).map(() => (Math.random() > 0.5 ? "1" : "0")).join("\n")
+  })));
 
   return (
     <div className="absolute inset-0 pointer-events-none opacity-[0.05] overflow-hidden font-mono text-[8px] leading-none">

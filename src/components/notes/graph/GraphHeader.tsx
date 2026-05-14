@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Activity, Search, Hash, Zap, ZoomIn, ZoomOut, Maximize2, X, Play, Pause, Link2, LayoutDashboard } from "lucide-react";
+import { Activity, Search, ZoomIn, ZoomOut, Maximize2, X, Play, Pause, Link2, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -128,3 +128,4 @@ export const GraphHeader = ({
     </div>
   );
 };
+GraphHeader.displayName = "GraphHeader";

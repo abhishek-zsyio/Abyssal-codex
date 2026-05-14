@@ -11,6 +11,7 @@ interface EditorContextMenuProps {
   onClose: () => void;
   isEditing: boolean;
   hasSelection: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   editorRef: React.MutableRefObject<any>;
   onToggleEdit: () => void;
   onDelete: () => void;
@@ -74,7 +75,7 @@ export const EditorContextMenu = ({
               }]);
               editorRef.current?.focus();
               toast("BUFFER_PASTED", "system");
-            } catch (err) {
+            } catch {
               toast("PASTE_FAILED", "error");
             }
           }
@@ -91,6 +92,7 @@ export const EditorContextMenu = ({
               const selection = editor.getSelection();
               const text = selection ? model.getValueInRange(selection) : "";
               editor.executeEdits("insert-link", [{
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 range: selection || new (window as any).monaco.Range(1, 1, 1, 1),
                 text: `[[${text}]]`,
                 forceMoveMarkers: true

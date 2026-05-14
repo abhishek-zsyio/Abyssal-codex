@@ -2,19 +2,10 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity, FileText, Hash, Clock, Database, Link, ShieldAlert, Trash2, List } from "lucide-react";
+import { Clock, Link, ShieldAlert, Trash2, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Note } from "@/types/note";
-
-const slugify = (text: string) => {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-};
 
 interface EditorSidebarProps {
   isOpen: boolean;

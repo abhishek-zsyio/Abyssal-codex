@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Hash } from "lucide-react";
 import { Note } from "@/types/note";
 import { cn } from "@/lib/utils";
 import * as d3 from "d3-force";
 
-import { useTheme } from "@/hooks/use-theme";
+import { useGraphTheme } from "@/hooks/use-graph-theme";
+import { useGraphSimulation } from "@/hooks/use-graph-simulation";
+import { GraphNode, GraphLink } from "@/types/graph";
 import { GraphHeader } from "./graph/GraphHeader";
 import { GraphHUD } from "./graph/GraphHUD";
 import { GraphNodePreview } from "./graph/GraphNodePreview";
@@ -22,71 +23,41 @@ interface GraphViewProps {
   folders?: string[];
 }
 
-interface Node extends d3.SimulationNodeDatum {
-  id: string;
-  title: string;
-  content: string;
-  size: number;
-  color: string;
-  isGhost?: boolean;
-  isFolder?: boolean;
-  parentFolderId?: string;
-  isNexus?: boolean;
-  isRootSun?: boolean;
-  isRoguePlanet?: boolean;
-}
-
-interface Link extends d3.SimulationLinkDatum<Node> {
-  source: string | Node;
-  target: string | Node;
-  isHierarchy?: boolean;
-}
-
 export default function GraphView({ isOpen, onClose, notes, variant = "modal", onSelectNote, onUpdateNote, folders = [] }: GraphViewProps) {
-  const { theme } = useTheme();
+  const themeColors = useGraphTheme(isOpen);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const simulationRef = useRef<d3.Simulation<Node, Link> | null>(null);
   const transformRef = useRef({ x: 0, y: 0, k: 0.8 });
   const hoveredNodeRef = useRef<string | null>(null);
   
-  const [hoveredNode, setHoveredNode] = useState<Node | null>(null);
-  const [activeHoveredNode, setActiveHoveredNode] = useState<Node | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
+  const [activeHoveredNode, setActiveHoveredNode] = useState<GraphNode | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showHUD, setShowHUD] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [isLinkMode, setIsLinkMode] = useState(false);
-  const [linkSource, setLinkSource] = useState<Node | null>(null);
-  const [themeColors, setThemeColors] = useState({
-    background: "#0d0d0d",
-    foreground: "#ebdbb2",
-    primary: "#fabd2f",
-    accent: "#b8bb26",
-    border: "#262626",
-    muted: "#928374",
-    card: "#141414",
-    destructive: "#fb4934",
-    secondary: "#222222"
-  });
+  const [linkSource, setLinkSource] = useState<GraphNode | null>(null);
   
   const searchQueryRef = useRef("");
   const isPausedRef = useRef(false);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
   const needsRedrawRef = useRef<boolean>(true);
-  const isInteractingRef = useRef<boolean>(false);
   const nodeTexturesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
-  const mousePosRef = useRef({ x: 0, y: 0 });
-  const currentNodesRef = useRef<Node[]>([]);
   const simulationTimeRef = useRef<number>(0);
   const lastFrameTimeRef = useRef<number>(Date.now());
-  const linkCacheRef = useRef<Map<string, { content: string, links: string[] }>>(new Map());
 
   const requestRender = useCallback(() => {
     needsRedrawRef.current = true;
   }, []);
 
-  const ORBIT_RADIUS = 70;
-  const FOLDER_ORBIT_RADIUS = 150;
+  const { simulationRef, initialNodes, initialLinks } = useGraphSimulation({
+    notes,
+    folders,
+    themeColors,
+    isOpen,
+    isPaused,
+    onRequestRender: requestRender,
+  });
 
   useEffect(() => {
     searchQueryRef.current = searchQuery;
@@ -95,17 +66,10 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
 
   useEffect(() => {
     isPausedRef.current = isPaused;
-    if (simulationRef.current) {
-      if (isPaused) {
-        simulationRef.current.stop();
-      } else {
-        simulationRef.current.alpha(0.3).restart();
-      }
-    }
     requestRender();
   }, [isPaused, requestRender]);
 
-  // Pre-render node textures
+  // Pre-render node textures (kept here for now to avoid complexity in extraction)
   useEffect(() => {
     const palette = [
       themeColors.primary, 
@@ -115,13 +79,10 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
       themeColors.muted,
       themeColors.secondary
     ];
-    // Filter out potential duplicate background colors or empty values
     const cleanPalette = Array.from(new Set(palette.filter(Boolean)));
-    
     const textures = new Map<string, HTMLCanvasElement>();
     
     cleanPalette.forEach(color => {
-      // ... texture generation ...
       const planetCanvas = document.createElement("canvas");
       planetCanvas.width = 48; planetCanvas.height = 48;
       const pctx = planetCanvas.getContext("2d");
@@ -171,219 +132,6 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
     requestRender();
   }, [themeColors, requestRender]);
 
-
-  useEffect(() => {
-    const updateTheme = () => {
-      const style = getComputedStyle(document.documentElement);
-      setThemeColors({
-        background: style.getPropertyValue("--background").trim() || "#0d0d0d",
-        foreground: style.getPropertyValue("--foreground").trim() || "#ebdbb2",
-        primary: style.getPropertyValue("--primary").trim() || "#fabd2f",
-        accent: style.getPropertyValue("--accent").trim() || "#b8bb26",
-        border: style.getPropertyValue("--border").trim() || "#262626",
-        muted: style.getPropertyValue("--muted-foreground").trim() || "#928374",
-        card: style.getPropertyValue("--card").trim() || "#141414",
-        destructive: style.getPropertyValue("--destructive").trim() || "#fb4934",
-        secondary: style.getPropertyValue("--secondary").trim() || "#222222",
-      });
-      requestRender();
-    };
-    
-    updateTheme();
-    // Add a small delay to ensure CSS variables are applied
-    const timer = setTimeout(updateTheme, 50);
-    return () => clearTimeout(timer);
-  }, [theme, isOpen, requestRender]);
-
-  const { initialNodes, initialLinks } = useMemo(() => {
-    const nodes: Node[] = [];
-    const links: Link[] = [];
-    const folderNodesMap = new Map<string, Node>();
-    const nodesById = new Map<string, Node>();
-    const nodesByTitleMap = new Map<string, Node[]>();
-    const palette = [
-      themeColors.primary,
-      themeColors.accent,
-      themeColors.destructive,
-      themeColors.foreground,
-      themeColors.muted,
-      themeColors.secondary !== themeColors.background ? themeColors.secondary : themeColors.accent,
-    ];
-
-    // Cache current positions
-    const posCache = new Map<string, { x: number, y: number, vx: number, vy: number }>();
-    currentNodesRef.current.forEach(n => {
-      if (n.x !== undefined) posCache.set(n.id, { x: n.x, y: n.y!, vx: n.vx!, vy: n.vy! });
-    });
-
-    // 1. SUNS
-    const allPaths = new Set<string>();
-    notes.forEach(n => {
-        const p = n.title.split("/");
-        if (p.length > 1) allPaths.add(p.slice(0, -1).join("/"));
-    });
-    folders.forEach(f => allPaths.add(f));
-
-    Array.from(allPaths).forEach(path => {
-      const parts = path.split("/");
-      let currentPath = "";
-      parts.forEach((part, i) => {
-        currentPath = currentPath ? `${currentPath}/${part}` : part;
-        if (!folderNodesMap.has(currentPath)) {
-          const isRoot = i === 0;
-          const id = `folder:${currentPath}`;
-          const cached = posCache.get(id);
-          const folderNode: Node = {
-            id,
-            title: part,
-            content: `SUN:[${currentPath}]`,
-            size: isRoot ? 35 : 22,
-            color: palette[folderNodesMap.size % palette.length],
-            isFolder: true,
-            isRootSun: isRoot,
-            x: cached?.x ?? (Math.random() - 0.5) * 600,
-            y: cached?.y ?? (Math.random() - 0.5) * 600,
-            vx: cached?.vx ?? 0,
-            vy: cached?.vy ?? 0,
-          };
-          folderNodesMap.set(currentPath, folderNode);
-          nodes.push(folderNode);
-          nodesById.set(folderNode.id, folderNode);
-        }
-      });
-    });
-
-    // 2. PLANETS
-    const processedNotes: Node[] = [];
-    notes.forEach((note) => {
-      const parts = note.title.split("/");
-      const fileName = parts[parts.length - 1] || "Untitled";
-      const parentPath = parts.length > 1 ? parts.slice(0, -1).join("/") : null;
-      const parentSun = parentPath ? folderNodesMap.get(parentPath) : null;
-      
-      const cached = posCache.get(note.id);
-      const noteNode: Node = {
-        id: note.id,
-        title: fileName,
-        content: note.content || "",
-        size: 10,
-        color: parentSun ? parentSun.color : themeColors.muted,
-        parentFolderId: parentSun ? parentSun.id : undefined,
-        isRoguePlanet: !parentSun,
-        x: cached?.x ?? (Math.random() - 0.5) * 800,
-        y: cached?.y ?? (Math.random() - 0.5) * 800,
-        vx: cached?.vx ?? 0,
-        vy: cached?.vy ?? 0,
-      };
-      nodes.push(noteNode);
-      processedNotes.push(noteNode);
-      nodesById.set(noteNode.id, noteNode);
-      
-      const titleLower = fileName.toLowerCase();
-      if (!nodesByTitleMap.has(titleLower)) nodesByTitleMap.set(titleLower, []);
-      nodesByTitleMap.get(titleLower)!.push(noteNode);
-
-      if (parentSun) {
-        links.push({ source: note.id, target: parentSun.id, isHierarchy: true });
-      }
-    });
-
-    // 3. Hierarchy
-    folderNodesMap.forEach((node, path) => {
-      const parts = path.split("/");
-      if (parts.length > 1) {
-        const parentPath = parts.slice(0, -1).join("/");
-        const parentSun = folderNodesMap.get(parentPath);
-        if (parentSun) {
-          node.parentFolderId = parentSun.id;
-          links.push({ source: node.id, target: parentSun.id, isHierarchy: true });
-        }
-      }
-    });
-
-    // 4. ROBUST NEURAL LINKS
-    const ghostNodesMap = new Map<string, Node>();
-    const connectedPairs = new Set<string>();
-    
-    processedNotes.forEach(sourceNode => {
-      // Use cache to avoid re-parsing links if content hasn't changed
-      let targets: string[] = [];
-      const cached = linkCacheRef.current.get(sourceNode.id);
-      
-      if (cached && cached.content === sourceNode.content) {
-        targets = cached.links;
-      } else {
-        // Support [[Target|Alias]]
-        const wikiLinks = sourceNode.content?.match(/\[\[(.*?)\]\]/g) || [];
-        targets = wikiLinks.map(l => {
-          const content = l.slice(2, -2).trim();
-          return content.includes('|') ? content.split('|')[0].trim() : content;
-        });
-        linkCacheRef.current.set(sourceNode.id, { content: sourceNode.content, links: targets });
-      }
-      
-      const uniqueTargets = new Set(targets);
-
-      uniqueTargets.forEach(targetTitle => {
-        if (!targetTitle) return;
-        const targetTitleLower = targetTitle.toLowerCase();
-        let targetNode: Node | undefined;
-        
-        // Resolution Logic
-        const matchingNotes = nodes.filter(n => !n.isFolder && !n.isGhost && (
-            n.title.toLowerCase() === targetTitleLower || // Exact filename match
-            n.id.toLowerCase() === targetTitleLower || // ID match
-            (n.parentFolderId && `${n.parentFolderId.replace('folder:', '')}/${n.title}`.toLowerCase() === targetTitleLower) // Full path match
-        ));
-
-        if (matchingNotes.length > 0) {
-            // Priority: Same folder
-            targetNode = matchingNotes.find(n => n.parentFolderId === sourceNode.parentFolderId);
-            // Fallback: First match
-            if (!targetNode) targetNode = matchingNotes[0];
-        }
-
-        // Priority 2: Match a folder/sun directly
-        if (!targetNode) {
-            const cleanSunTitle = targetTitle.endsWith('/') ? targetTitle.slice(0, -1) : targetTitle;
-            const cleanSunLower = cleanSunTitle.toLowerCase();
-            targetNode = nodes.find(n => n.isFolder && (n.title.toLowerCase() === cleanSunLower || n.id.replace('folder:', '').toLowerCase() === cleanSunLower));
-        }
-        
-        // Priority 3: Ghost Planet
-        if (!targetNode) {
-          const ghostId = `ghost-${targetTitleLower}`;
-          targetNode = ghostNodesMap.get(ghostId);
-          if (!targetNode) {
-            const cached = posCache.get(ghostId);
-            targetNode = {
-              id: ghostId, title: targetTitle, content: "", size: 6,
-              color: themeColors.muted, isGhost: true,
-              isRoguePlanet: true,
-              x: cached?.x ?? (Math.random() - 0.5) * 1000, 
-              y: cached?.y ?? (Math.random() - 0.5) * 1000,
-              vx: cached?.vx ?? 0,
-              vy: cached?.vy ?? 0,
-            };
-            ghostNodesMap.set(ghostId, targetNode);
-          }
-        }
-
-        if (targetNode && targetNode.id !== sourceNode.id) {
-          const pairId = [sourceNode.id, targetNode.id].sort().join("-");
-          if (!connectedPairs.has(pairId)) {
-            links.push({ source: sourceNode.id, target: targetNode.id });
-            connectedPairs.add(pairId);
-          }
-        }
-      });
-    });
-
-    const finalNodes = [...nodes, ...Array.from(ghostNodesMap.values())];
-    currentNodesRef.current = finalNodes;
-    return { initialNodes: finalNodes, initialLinks: links };
-  }, [notes, folders, themeColors]);
-
   useEffect(() => {
     if (!isOpen || !canvasRef.current || !containerRef.current) return;
 
@@ -412,7 +160,6 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
         offscreenCtx.fillStyle = themeColors.background;
         offscreenCtx.fillRect(0, 0, rect.width, rect.height);
         
-        // Dynamic stars/noise
         const starColor = themeColors.foreground;
         offscreenCtx.fillStyle = starColor;
         for (let i = 0; i < 60; i++) {
@@ -436,40 +183,12 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
     resize();
     window.addEventListener("resize", resize);
 
-    const nodesById = new Map(initialNodes.map(n => [n.id, n]));
     const visibleLinks = initialLinks.filter(l => !l.isHierarchy);
-    const hierarchyLinks = initialLinks.filter(l => l.isHierarchy);
-
-    const simulation = d3.forceSimulation<Node>(initialNodes)
-      .alphaDecay(0.08) // Faster stabilization
-      .force("link", d3.forceLink<Node, Link>(visibleLinks).id(d => d.id).distance(80).strength(0.3))
-      .force("charge", d3.forceManyBody().strength((d) => (d as Node).isFolder ? -600 : (d as Node).isRoguePlanet ? -150 : -80))
-      .force("center", d3.forceCenter(0, 0).strength(0.02))
-      .force("collide", d3.forceCollide<Node>().radius(d => (d.isFolder ? 50 : d.isRoguePlanet ? 25 : 12)))
-      .force("orbit", (alpha) => {
-        hierarchyLinks.forEach(link => {
-          const s = nodesById.get(typeof link.source === 'string' ? link.source : (link.source as any).id);
-          const t = nodesById.get(typeof link.target === 'string' ? link.target : (link.target as any).id);
-          if (!s || !t) return;
-          const dx = s.x! - t.x!; const dy = s.y! - t.y!;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const orbitDist = s.isFolder ? FOLDER_ORBIT_RADIUS : ORBIT_RADIUS;
-          const delta = orbitDist - dist;
-          s.vx! += (dx / dist) * delta * 0.5 * alpha;
-          s.vy! += (dy / dist) * delta * 0.4 * alpha;
-        });
-      })
-      .on("tick", () => requestRender());
-
-    simulationRef.current = simulation;
-    // Lower pre-tick to avoid blocking the main thread
-    for (let i = 0; i < 30; i++) simulation.tick();
-    if (isPausedRef.current) simulation.stop();
 
     let animationFrame: number;
 
     const render = () => {
-      if (!needsRedrawRef.current && !isInteractingRef.current) {
+      if (!needsRedrawRef.current) {
         animationFrame = requestAnimationFrame(render);
         return;
       }
@@ -490,10 +209,8 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
       const simTime = simulationTimeRef.current;
 
       ctx.drawImage(offscreenCanvas, 0, 0, width, height);
-      
-      // If theme recently changed, redraw the background color to avoid flickering old theme color
       ctx.fillStyle = themeColors.background;
-      ctx.globalAlpha = 0.8; // Blend with offscreen for stars
+      ctx.globalAlpha = 0.8;
       ctx.fillRect(0, 0, width, height);
       ctx.globalAlpha = 1.0;
 
@@ -501,20 +218,15 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
       ctx.translate(width / 2 + x, height / 2 + y);
       ctx.scale(k, k);
 
-
-      // 1. Neural Links (Neural Bridges)
       const curHoverId = hoveredNodeRef.current;
-      
-      // Batch drawing for performance
       ctx.lineWidth = 1.0 / k;
       
-      // Group links by color to batch draw
-      const linksByColor = new Map<string, Link[]>();
-      const interSystemLinks: Link[] = [];
-      const highlightedLinks: Link[] = [];
+      const linksByColor = new Map<string, GraphLink[]>();
+      const interSystemLinks: GraphLink[] = [];
+      const highlightedLinks: GraphLink[] = [];
 
       visibleLinks.forEach(link => {
-        const s = link.source as Node; const t = link.target as Node;
+        const s = link.source as GraphNode; const t = link.target as GraphNode;
         if (!s.x || !t.x) return;
         
         if (curHoverId === s.id || curHoverId === t.id) {
@@ -533,29 +245,26 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
         linksByColor.get(color)!.push(link);
       });
 
-      // Draw Intra-System Links (Batched)
       linksByColor.forEach((links, color) => {
         ctx.beginPath();
         ctx.strokeStyle = color;
         links.forEach(link => {
-          const s = link.source as Node; const t = link.target as Node;
+          const s = link.source as GraphNode; const t = link.target as GraphNode;
           ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!);
         });
         ctx.stroke();
       });
 
-      // Draw Inter-System Links (Batched if possible, or simple lines)
       ctx.beginPath();
       ctx.strokeStyle = themeColors.muted + "44";
       interSystemLinks.forEach(link => {
-        const s = link.source as Node; const t = link.target as Node;
+        const s = link.source as GraphNode; const t = link.target as GraphNode;
         ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!);
       });
       ctx.stroke();
 
-      // Draw Highlighted Links (With Gradients and Glow)
       highlightedLinks.forEach(link => {
-        const s = link.source as Node; const t = link.target as Node;
+        const s = link.source as GraphNode; const t = link.target as GraphNode;
         const sourceColor = s.color || themeColors.primary;
         const targetColor = t.color || themeColors.primary;
         
@@ -573,10 +282,9 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
         ctx.shadowBlur = 0;
       });
 
-      // Animated Data Packets for Inter-System Links (Only if zoomed in or limited)
       if (k > 0.3) {
         interSystemLinks.forEach(link => {
-          const s = link.source as Node; const t = link.target as Node;
+          const s = link.source as GraphNode; const t = link.target as GraphNode;
           const speed = 0.0015;
           const time = (simTime * speed) % 1;
           const px = s.x! + (t.x! - s.x!) * time;
@@ -589,7 +297,6 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
         });
       }
 
-      // 2. Solar Nodes
       initialNodes.forEach(node => {
         const isHovered = curHoverId === node.id;
         const matchesSearch = searchQueryRef.current && node.title.toLowerCase().includes(searchQueryRef.current.toLowerCase());
@@ -619,10 +326,7 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
         }
       });
       
-      // 3. Ambient Effects
       ctx.restore();
-      
-      // Scanline Effect
       const scanTime = (simTime * 0.0001) % 1;
       ctx.fillStyle = themeColors.primary + "05";
       ctx.fillRect(0, scanTime * height, width, 1.5);
@@ -635,12 +339,10 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
       window.removeEventListener("resize", resize);
       container.removeEventListener('wheel', handleWheelNative);
       cancelAnimationFrame(animationFrame);
-      simulation.stop();
     };
-  }, [isOpen, initialNodes, initialLinks, theme]);
+  }, [isOpen, initialNodes, initialLinks, themeColors]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    mousePosRef.current = { x: e.clientX, y: e.clientY };
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const mx = (e.clientX - rect.left - rect.width / 2 - transformRef.current.x) / transformRef.current.k;
@@ -658,7 +360,7 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
             setActiveHoveredNode(null); requestRender();
         }
     }
-  }, [initialNodes, requestRender]);
+  }, [simulationRef, requestRender]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (hoveredNodeRef.current) {
@@ -669,7 +371,6 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
         const nodeStartX = node.x!, nodeStartY = node.y!;
 
         const onMove = (moveEvent: MouseEvent) => {
-            mousePosRef.current = { x: moveEvent.clientX, y: moveEvent.clientY };
             if (isLinkMode) return; 
             const dx = (moveEvent.clientX - startX) / transformRef.current.k;
             const dy = (moveEvent.clientY - startY) / transformRef.current.k;
@@ -685,27 +386,16 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
                   const sourceNote = notes.find(n => n.id === linkSource.id);
                   if (sourceNote) {
                     const targetLabel = node.isFolder ? (node.id.replace('folder:', '') + '/') : node.title;
-                    const targetLink = node.isFolder ? targetLabel : node.id;
-                    const wikiLink = node.isFolder ? `[[${targetLabel}]]` : `[[${targetLink}|${targetLabel}]]`;
-                    
+                    const wikiLink = node.isFolder ? `[[${targetLabel}]]` : `[[${node.id}|${targetLabel}]]`;
                     const currentContent = sourceNote.content || "";
-                    const newContent = currentContent.endsWith('\n') ? 
-                      `${currentContent}\n${wikiLink}` : 
-                      `${currentContent}\n\n${wikiLink}`;
-                    
+                    const newContent = currentContent.endsWith('\n') ? `${currentContent}\n${wikiLink}` : `${currentContent}\n\n${wikiLink}`;
                     onUpdateNote(sourceNote.id, { content: newContent });
-                    
-                    window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                      detail: { message: `LINK_ESTABLISHED: [[${sourceNote.title}]] -> [[${targetLabel}]]`, type: 'success' } 
-                    }));
+                    window.dispatchEvent(new CustomEvent('abyssal-log', { detail: { message: `LINK_ESTABLISHED`, type: 'success' } }));
                   }
                 }
                 setLinkSource(null); setIsLinkMode(false);
             } else if (isLinkMode && !linkSource && !node.isGhost && !node.isFolder) {
                 setLinkSource(node);
-                window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                  detail: { message: `SOURCE_LOCKED: [[${node.title}]]`, type: 'system' } 
-                }));
             } else if (onSelectNote && !node.isFolder) {
               onSelectNote(node.id);
             }
@@ -720,13 +410,12 @@ export default function GraphView({ isOpen, onClose, notes, variant = "modal", o
     
     const startX = e.clientX, startY = e.clientY, initialTransform = { ...transformRef.current };
     const onMove = (moveEvent: MouseEvent) => {
-      mousePosRef.current = { x: moveEvent.clientX, y: moveEvent.clientY };
       transformRef.current = { ...initialTransform, x: initialTransform.x + (moveEvent.clientX - startX), y: initialTransform.y + (moveEvent.clientY - startY) };
       requestRender();
     };
     const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
     window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
-  }, [initialNodes, onSelectNote, isLinkMode, linkSource, notes, onUpdateNote, requestRender]);
+  }, [initialNodes, onSelectNote, isLinkMode, linkSource, notes, onUpdateNote, requestRender, simulationRef]);
 
   return (
     <AnimatePresence>

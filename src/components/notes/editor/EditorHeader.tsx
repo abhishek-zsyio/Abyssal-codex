@@ -1,10 +1,8 @@
 "use client";
 
 import React from "react";
-import { Star, Globe, Download, Maximize2, PanelRight, Edit3, Eye, Link, Copy, Check, Hash } from "lucide-react";
+import { Star, Globe, Download, Maximize2, PanelRight, Edit3, Eye, Copy, Check, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/Button";
 import { usePlugins } from "@/hooks/use-plugins";
 
 interface EditorHeaderProps {
@@ -14,8 +12,6 @@ interface EditorHeaderProps {
   isPublic: boolean;
   isEditing: boolean;
   isZenMode: boolean;
-  copiedContent: boolean;
-  copiedLink: boolean;
   copiedShareLink: boolean;
   onToggleFavorite: () => void;
   onTogglePublic: () => void;
@@ -23,8 +19,6 @@ interface EditorHeaderProps {
   onToggleEdit: (editing: boolean) => void;
   onToggleZen: () => void;
   onCopy: () => void;
-  onCopyWikiLink: () => void;
-  onCopyShareLink: () => void;
   onCommit: () => void;
   isRightSidebarOpen: boolean;
   onToggleRightSidebar: () => void;
@@ -39,8 +33,6 @@ export const EditorHeader = ({
   isPublic,
   isEditing,
   isZenMode,
-  copiedContent,
-  copiedLink,
   copiedShareLink,
   onToggleFavorite,
   onTogglePublic,
@@ -48,8 +40,6 @@ export const EditorHeader = ({
   onToggleEdit,
   onToggleZen,
   onCopy,
-  onCopyWikiLink,
-  onCopyShareLink,
   onCommit,
   isRightSidebarOpen,
   onToggleRightSidebar,

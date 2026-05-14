@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { microSpring } from "@/lib/transitions";
 import { LucideIcon } from "lucide-react";
 
 export interface ContextMenuItem {
@@ -30,8 +29,11 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ isOpen, x, y, items, o
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => {
+      clearTimeout(timer);
+      setMounted(false);
+    };
   }, []);
 
   // Keep menu within viewport

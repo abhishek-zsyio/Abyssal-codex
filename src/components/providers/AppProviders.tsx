@@ -9,14 +9,16 @@ import { ToastContainer } from "@/components/ui/Toast";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
     };
-    
-    window.oncontextmenu = handleContextMenu as any;
+
+    window.addEventListener("contextmenu", handleContextMenu);
     
     return () => {
-      window.oncontextmenu = null;
+      window.removeEventListener("contextmenu", handleContextMenu);
     };
   }, []);
 

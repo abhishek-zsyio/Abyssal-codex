@@ -17,7 +17,6 @@ export const CodeBlockHeader = ({ language, code }: { language: string; code: st
           output += args.join(" ") + "\n";
         };
         
-        // eslint-disable-next-line no-new-func
         const fn = new Function(code);
         fn();
         

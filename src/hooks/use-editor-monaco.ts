@@ -1,4 +1,6 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 
 import { useRef, useCallback, useEffect } from "react";
 import { Note } from "@/types/note";
@@ -29,7 +31,7 @@ export const useEditorMonaco = (
   allNotes: Note[],
   onNavigate?: (id: string) => void,
   setHasSelection?: (has: boolean) => void,
-  openMenu?: (e: any) => void
+  openMenu?: (e: React.MouseEvent | MouseEvent) => void
 ) => {
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);

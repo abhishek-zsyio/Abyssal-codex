@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { spring, softSpring, microSpring, staggerContainer } from "@/lib/transitions";
-import { Terminal as TerminalIcon, X, ChevronRight, Hash, Activity, Shield } from "lucide-react";
+import { spring, microSpring, staggerContainer } from "@/lib/transitions";
+import { Terminal as TerminalIcon, X, ChevronRight, Activity, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Note } from "@/types/note";
 
 interface Log {
   id: string;
@@ -16,7 +17,7 @@ interface Log {
 interface TerminalProps {
   isOpen: boolean;
   onClose: () => void;
-  notes?: any[];
+  notes?: Note[];
   onSelectNote?: (id: string) => void;
   onAddNote?: (title: string, content: string) => void;
   onDeleteNote?: (id: string) => void;
@@ -32,15 +33,26 @@ export const Terminal = ({ isOpen, onClose, notes, onSelectNote, onAddNote, onDe
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const addLog = useCallback((message: string, type: Log["type"] = "info") => {
+    const newLog: Log = {
+      id: Math.random().toString(36).substr(2, 9),
+      timestamp: new Date().toLocaleTimeString(),
+      type,
+      message,
+    };
+    setLogs((prev) => [...prev, newLog].slice(-100));
+  }, []);
+
   useEffect(() => {
-    const handleGlobalLog = (e: any) => {
-      if (e.detail && e.detail.message) {
-        addLog(e.detail.message, e.detail.type || "info");
+    const handleGlobalLog = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.message) {
+        addLog(customEvent.detail.message, customEvent.detail.type || "info");
       }
     };
     window.addEventListener("abyssal-log", handleGlobalLog);
     return () => window.removeEventListener("abyssal-log", handleGlobalLog);
-  }, []);
+  }, [addLog]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -55,16 +67,6 @@ export const Terminal = ({ isOpen, onClose, notes, onSelectNote, onAddNote, onDe
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
-
-  const addLog = (message: string, type: Log["type"] = "info") => {
-    const newLog: Log = {
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toLocaleTimeString(),
-      type,
-      message,
-    };
-    setLogs((prev) => [...prev, newLog].slice(-100));
-  };
 
   const handleCommand = (e: React.FormEvent) => {
     e.preventDefault();

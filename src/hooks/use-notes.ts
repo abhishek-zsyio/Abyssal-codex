@@ -12,7 +12,6 @@ export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -58,7 +57,16 @@ export function useNotes() {
         ]);
 
         if (notesRes.data && !notesRes.error) {
-          const remoteNotes: Note[] = await Promise.all((notesRes.data as any[]).map(async (n) => ({
+          const remoteNotes: Note[] = await Promise.all((notesRes.data as Array<{
+            id: string,
+            title: string,
+            content: string,
+            is_favorite: boolean,
+            is_public: boolean,
+            tags: string[],
+            updated_at: string,
+            created_at: string
+          }>).map(async (n) => ({
             id: n.id,
             title: n.title,
             content: await decryptNote(n.content || "", user.id),
@@ -173,7 +181,7 @@ export function useNotes() {
     saveToStorage(updatedNotes, folders);
 
     if (user) {
-      const dbUpdates: any = {};
+      const dbUpdates: Record<string, unknown> = {};
       if (updates.title !== undefined) dbUpdates.title = updates.title;
       if (updates.content !== undefined) {
         dbUpdates.content = await encryptNote(updates.content, user.id);

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Download, Trash2, Check, Package, Zap, Star, Info, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Search, Download, Trash2, Package, Zap, Star, ChevronLeft, X } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { usePlugins } from "@/hooks/use-plugins";
 import { useTheme } from "@/hooks/use-theme";
@@ -16,6 +16,12 @@ import remarkGfm from "remark-gfm";
 interface SidebarPluginsProps {
   onClose?: () => void;
 }
+
+const PluginIcon = ({ name, className }: { name: string, className?: string }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Icon = (LucideIcons as any)[name] || Package;
+  return <Icon className={className} />;
+};
 
 export default function SidebarPlugins({ onClose }: SidebarPluginsProps) {
   const {
@@ -48,11 +54,6 @@ export default function SidebarPlugins({ onClose }: SidebarPluginsProps) {
   }, [availablePlugins, searchQuery, selectedCategory]);
 
   const categories = ["utility", "editor", "ui", "theme", "system"];
-
-  const PluginIcon = ({ name, className }: { name: string, className?: string }) => {
-    const Icon = (LucideIcons as any)[name] || Package;
-    return <Icon className={className} />;
-  };
 
   const handleToggleThemePlugin = (plugin: PluginMetadata, forceEnable = false, isInstalling = false) => {
     const themeName = plugin.id.replace("theme-", "");

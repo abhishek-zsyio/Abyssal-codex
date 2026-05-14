@@ -73,41 +73,6 @@ const OmniConsole = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleGlobalLog = (e: any) => {
-      if (e.detail && e.detail.message) {
-        addLog(e.detail.message, e.detail.type || "info");
-      }
-    };
-    window.addEventListener("abyssal-log", handleGlobalLog);
-    return () => window.removeEventListener("abyssal-log", handleGlobalLog);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    } else {
-      setQuery("");
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [logs]);
-
-  // Fuse search
-  const fuse = useMemo(() => new Fuse(notes, {
-    keys: ["title", "content"],
-    threshold: 0.4,
-  }), [notes]);
-
-  const filteredNotes = useMemo(() => {
-    if (!query || query.startsWith("/")) return notes.slice(0, 5);
-    return fuse.search(query).map(result => result.item);
-  }, [notes, query, fuse]);
-
   const addLog = (message: string, type: Log["type"] = "info") => {
     const newLog: Log = {
       id: Math.random().toString(36).substr(2, 9),
@@ -117,6 +82,16 @@ const OmniConsole = ({
     };
     setLogs((prev) => [...prev, newLog].slice(-50));
   };
+
+  useEffect(() => {
+    const handleGlobalLog = (e: any) => {
+      if (e.detail && e.detail.message) {
+        addLog(e.detail.message, e.detail.type || "info");
+      }
+    };
+    window.addEventListener("abyssal-log", handleGlobalLog);
+    return () => window.removeEventListener("abyssal-log", handleGlobalLog);
+  }, []);
 
   const handleCommand = (cmdStr: string) => {
     const fullCommand = cmdStr.startsWith("/") ? cmdStr.slice(1) : cmdStr;

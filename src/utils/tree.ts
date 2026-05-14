@@ -18,68 +18,65 @@ export type TreeItem = TreeFolder | TreeFile;
 
 export function buildNoteTree(notes: Note[], emptyFolders: string[] = []): TreeItem[] {
   const root: TreeItem[] = [];
+  const folderCache = new Map<string, TreeFolder>();
 
-  // 1. Add explicitly created empty folders
-  emptyFolders.forEach((path) => {
+  const getOrCreateFolder = (path: string): TreeFolder => {
+    if (folderCache.has(path)) return folderCache.get(path)!;
+
     const parts = path.split("/");
-    let currentLevel = root;
+    const name = parts[parts.length - 1];
+    const parentPath = parts.slice(0, -1).join("/");
+    
+    const folder: TreeFolder = {
+      id: `folder:${path}`,
+      name,
+      type: "folder",
+      children: [],
+    };
 
-    parts.forEach((part, index) => {
-      let folder = currentLevel.find(
-        (item) => item.type === "folder" && item.name === part
-      ) as TreeFolder;
+    folderCache.set(path, folder);
 
-      if (!folder) {
-        folder = {
-          id: `folder:${parts.slice(0, index + 1).join("/")}`,
-          name: part,
-          type: "folder",
-          children: [],
-        };
-        currentLevel.push(folder);
-      }
-      currentLevel = folder.children;
-    });
+    if (parentPath) {
+      const parentFolder = getOrCreateFolder(parentPath);
+      parentFolder.children.push(folder);
+    } else {
+      root.push(folder);
+    }
+
+    return folder;
+  };
+
+  // 1. Process empty folders
+  emptyFolders.forEach((path) => {
+    if (path) getOrCreateFolder(path);
   });
 
-  // 2. Add files and the folders derived from their paths
+  // 2. Process notes
   notes.forEach((note) => {
-    // Ignore any remaining .keep files if they somehow got in
     if (note.title.endsWith("/.keep") || note.title === ".keep") return;
 
     const parts = note.title.split("/");
-    let currentLevel = root;
+    const fileName = parts[parts.length - 1];
+    const parentPath = parts.slice(0, -1).join("/");
 
-    parts.forEach((part, index) => {
-      const isLast = index === parts.length - 1;
+    const file: TreeFile = {
+      id: note.id,
+      name: fileName,
+      type: "file",
+      note: note,
+    };
 
-      if (isLast) {
-        // Check if file already exists in this level
-        if (!currentLevel.find(item => item.type === "file" && item.id === note.id)) {
-          currentLevel.push({
-            id: note.id,
-            name: part,
-            type: "file",
-            note: note,
-          });
-        }
-      } else {
-        let folder = currentLevel.find(
-          (item) => item.type === "folder" && item.name === part
-        ) as TreeFolder;
-
-        if (!folder) {
-          folder = {
-            id: `folder:${parts.slice(0, index + 1).join("/")}`,
-            name: part,
-            type: "folder",
-            children: [],
-          };
-          currentLevel.push(folder);
-        }
-        currentLevel = folder.children;
+    if (parentPath) {
+      const parentFolder = getOrCreateFolder(parentPath);
+      // Avoid duplicates
+      if (!parentFolder.children.find(item => item.type === "file" && item.id === note.id)) {
+        parentFolder.children.push(file);
       }
-    });
+    } else {
+      if (!root.find(item => item.type === "file" && item.id === note.id)) {
+        root.push(file);
+      }
+    }
   });
 
   const sortItems = (items: TreeItem[]) => {

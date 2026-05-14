@@ -2,9 +2,8 @@
 
 import React, { memo } from "react";
 import { motion } from "framer-motion";
-import { FileText, Package, Share2, Palette, Terminal as TerminalIcon, ShieldCheck, HelpCircle, Cpu, Lock } from "lucide-react";
+import { FileText, Package, Palette, ShieldCheck, HelpCircle, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { microSpring } from "@/lib/transitions";
 
 interface SidebarNavigationProps {
   activeView: "explorer" | "plugins" | "help";
@@ -23,13 +22,11 @@ const NavItem = ({
   title, 
   isActive, 
   onClick, 
-  label,
 }: { 
-  icon: any, 
+  icon: LucideIcon, 
   title: string, 
   isActive?: boolean, 
   onClick: () => void,
-  label: string,
 }) => (
   <button
     onClick={onClick}
@@ -82,12 +79,10 @@ const NavItem = ({
 export const SidebarNavigation = memo(({
   activeView,
   setActiveView,
-  onOpenGraph,
   onOpenThemes,
   onToggleTerminal,
   onOpenAuth,
   onOpenSecurity,
-  isLoggedIn
 }: SidebarNavigationProps) => {
   return (
     <div className="w-14 h-full border-r border-[var(--border)] flex flex-col items-center py-4 bg-[var(--card)]/20 backdrop-blur-3xl relative z-50">
@@ -101,7 +96,6 @@ export const SidebarNavigation = memo(({
       <div className="flex-1 flex flex-col items-center gap-1 w-full">
         <NavItem 
           icon={FileText}
-          label="Nodes"
           title="Explorer"
           isActive={activeView === "explorer"}
           onClick={() => setActiveView("explorer")}
@@ -109,7 +103,6 @@ export const SidebarNavigation = memo(({
 
         <NavItem 
           icon={Package}
-          label="Packs"
           title="Plugins"
           isActive={activeView === "plugins"}
           onClick={() => setActiveView("plugins")}
@@ -120,7 +113,6 @@ export const SidebarNavigation = memo(({
         {/* Unified Identity Node */}
         <NavItem 
           icon={ShieldCheck}
-          label="Identity"
           title="Auth & Security"
           onClick={onOpenAuth || onOpenSecurity || (() => {})}
         />
@@ -128,14 +120,12 @@ export const SidebarNavigation = memo(({
         {/* Unified System Node */}
         <NavItem 
           icon={Palette}
-          label="System"
           title="Themes & Terminal"
           onClick={onOpenThemes || onToggleTerminal || (() => {})}
         />
 
         <NavItem 
           icon={HelpCircle}
-          label="Core"
           title="Manual"
           isActive={activeView === "help"}
           onClick={() => setActiveView("help")}
@@ -144,3 +134,5 @@ export const SidebarNavigation = memo(({
     </div>
   );
 });
+
+SidebarNavigation.displayName = "SidebarNavigation";
