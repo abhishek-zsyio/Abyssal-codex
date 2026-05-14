@@ -1,0 +1,82 @@
+[
+  {
+    "id": "vault-init",
+    "title": "VAULT/Security/Initialization_Sequence",
+    "content": "# INITIALIZATION_SEQUENCE\nSTATUS: **SECURE**\n\n## OVERVIEW\nThis node documents the boot sequence of the @{VAULT/Security/Encryption_Standard|AES_256_GCM} layer. \n\n## STEPS\n1. Generate high-entropy seed.\n2. Ingest user recovery phrase.\n3. Derive master key via Argon2.\n4. Lock @{SYSTEM/CORE/Architecture_Manifesto} segments.\n\n## AUDIT_TRAIL\nSee @{SYSTEM/PROTOCOL/Temporal_Audit} for historical boot logs.",
+    "updatedAt": 1778483176924,
+    "createdAt": 1778400797815,
+    "isFavorite": true,
+    "isPublic": false,
+    "tags": ["security", "boot", "encryption"]
+  },
+  {
+    "id": "enc-std",
+    "title": "VAULT/Security/Encryption_Standard",
+    "content": "# ENCRYPTION_STANDARD\nPROTOCOL: AES-256-GCM\n\n## SPECIFICATION\nWe utilize Galois/Counter Mode (GCM) to provide both confidentiality and authenticity. This is the bedrock of @{NEXUS/Data_Sovereignty}.\n\n## KEY_ROTATION\nKeys should be rotated every 90 cycles as per @{VAULT/Security/Initialization_Sequence}.\n\n## WARNING\nNever expose the master key to @{SYSTEM/PROTOCOL/Neural_Graph_Engine} debug logs.",
+    "updatedAt": 1778483176924,
+    "createdAt": 1778400797815,
+    "isFavorite": false,
+    "isPublic": false,
+    "tags": ["security", "spec", "aes"]
+  },
+  {
+    "id": "ui-mobile",
+    "title": "DESIGN/MOBILE/Responsive_Optimization",
+    "content": "# MOBILE_OPTIMIZATION\nSTATUS: **DEPLOYED**\n\n## CHANGES\n- **SIDEBAR_DRAWER**: Fixed overlay with blur backdrop.\n- **SINGLE_PANE_MODE**: Split view disabled on `md` breakpoint.\n- **TOUCH_GESTURES**: Optimized tap targets for the @{DEVELOPMENT/OmniConsole_Kernel}.\n\n## FEEDBACK\nTest on various viewports to ensure @{DESIGN/AESTHETIC/Brutalist_Design_Language} remains consistent.",
+    "updatedAt": 1778483176924,
+    "createdAt": 1778400797815,
+    "isFavorite": true,
+    "isPublic": true,
+    "tags": ["ui", "mobile", "design"]
+  },
+  {
+    "id": "code-demo",
+    "title": "DEVELOPMENT/Snippets/Graph_Linker",
+    "content": "# GRAPH_LINKER_SNIPPET\nLANGUAGE: TYPESCRIPT\n\n## IMPLEMENTATION\n```typescript\n// Extracting links using the new @{...} syntax\nconst extractLinks = (content: string) => {\n  const regex = /§\\{(.*?)\\}/g;\n  const matches = [...content.matchAll(regex)];\n  return matches.map(m => m[1]);\n};\n\nconst test = extractLinks(\"Link to @{SYSTEM/CORE/Architecture_Manifesto}\");\nconsole.log(test); // [\"SYSTEM/CORE/Architecture_Manifesto\"]\n```\n\n## CONTEXT\nThis function is used in @{SYSTEM/PROTOCOL/Neural_Graph_Engine} to build the link cache.",
+    "updatedAt": 1778483176924,
+    "createdAt": 1778400797815,
+    "isFavorite": false,
+    "isPublic": false,
+    "tags": ["dev", "code", "regex"]
+  },
+  {
+    "id": "manifesto-v2",
+    "title": "SYSTEM/CORE/Architecture_Manifesto",
+    "content": "# ARCHITECTURE_MANIFESTO_v2\nSTATUS: **ACTIVE**\n\n## CORE_THEMES\n1. **LOCAL_FIRST**: Knowledge is yours. @{NEXUS/Data_Sovereignty} is non-negotiable.\n2. **BRUTALISM**: Efficiency over decoration. See @{DESIGN/AESTHETIC/Brutalist_Design_Language}.\n3. **CONNECTIVITY**: Everything is linked via @{SYSTEM/PROTOCOL/Neural_Graph_Engine}.\n\n## REVISION_HISTORY\n- **v1.0**: Initial draft with standard brackets.\n- **v2.0**: Migrated to @{...} syntax for dev compatibility.",
+    "updatedAt": 1778483176924,
+    "createdAt": 1778400797815,
+    "isFavorite": true,
+    "isPublic": true,
+    "tags": ["core", "manifesto"]
+  },
+  {
+    "id": "nexus-sovereign",
+    "title": "NEXUS/Data_Sovereignty",
+    "content": "# DATA_SOVEREIGNTY\n\n## THE_PRINCIPLE\nUsers should own their raw markdown files. The IDE is just a lens. \n\n## MECHANISMS\n- Client-side encryption: @{VAULT/Security/Encryption_Standard}\n- Local storage first: @{META/System_Integrity_Check}\n- Open export formats: @{SYSTEM/PROTOCOL/Temporal_Audit}\n\n## MISSION\nTo provide the most secure @{NEXUS/Neural_Networking} platform for researchers.",
+    "updatedAt": 1778483176924,
+    "createdAt": 1778400797815,
+    "isFavorite": false,
+    "isPublic": true,
+    "tags": ["ethics", "sovereignty"]
+  },
+  {
+    "id": "brutalist-spec",
+    "title": "DESIGN/AESTHETIC/Brutalist_Design_Language",
+    "content": "# BRUTALIST_SPECIFICATION\n\n## VISUAL_RULES\n- **NO_CURVES**: All elements use `rounded-none`.\n- **GLASSMORPHISM**: High-density blur overlays for modals.\n- **MONO**: Monospaced fonts everywhere. \n\n## COMPLIANCE\nVerified by @{META/System_Integrity_Check} on build.",
+    "updatedAt": 1778483176924,
+    "createdAt": 1778400797815,
+    "isFavorite": false,
+    "isPublic": true,
+    "tags": ["design", "spec"]
+  },
+  {
+    "id": "integrity-v3",
+    "title": "META/System_Integrity_Check",
+    "content": "# INTEGRITY_REPORT_V3\nDATE: 2026-05-14\n\n## DIAGNOSTICS\n- **SYNTAX_MIGRATION**: 100% COMPLETE\n- **MOBILE_DRAWER**: FUNCTIONAL\n- **VAULT_LOCK**: ENGAGED\n\n## PENDING\n- Full audit of @{SYSTEM/PROTOCOL/Temporal_Audit} shards.",
+    "updatedAt": 1778483176924,
+    "createdAt": 1778400797815,
+    "isFavorite": false,
+    "isPublic": false,
+    "tags": ["meta", "diagnostics"]
+  }
+]

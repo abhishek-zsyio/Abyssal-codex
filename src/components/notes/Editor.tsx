@@ -295,9 +295,17 @@ const NotesEditor = memo(({ note, onUpdate, onDelete, onToggleFavorite, onToggle
                         padding: { top: 20 },
                         automaticLayout: true,
                         wordWrap: "on",
-                        contextmenu: false,
-                        quickSuggestions: true,
-                        suggestOnTriggerCharacters: true
+                        contextmenu: true,
+                        quickSuggestions: {
+                          other: true,
+                          comments: true,
+                          strings: true
+                        },
+                        suggestOnTriggerCharacters: true,
+                        wordBasedSuggestions: "currentDocument",
+                        suggestSelection: "first",
+                        acceptSuggestionOnEnter: "on",
+                        tabCompletion: "on"
                       }}
                     />
                   </motion.div>

@@ -129,7 +129,7 @@ export const useGraphSimulation = ({
       if (cached && cached.content === sourceNode.content) {
         targets = cached.links;
       } else {
-        const wikiLinks = sourceNode.content?.match(/§\{(.*?)\}/g) || [];
+        const wikiLinks = sourceNode.content?.match(/@\{(.*?)\}/g) || [];
         targets = wikiLinks.map(l => {
           const content = l.slice(2, -1).trim();
           return content.includes('|') ? content.split('|')[0].trim() : content;

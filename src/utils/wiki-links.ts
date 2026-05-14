@@ -9,7 +9,7 @@ export interface ParsedWikiLink {
   isFolder: boolean;
 }
 
-const WIKI_LINK_REGEX = /§\{(.*?)\}/g;
+const WIKI_LINK_REGEX = /@\{(.*?)\}/g;
 
 /**
  * Parses all wiki links in a given text

@@ -422,114 +422,181 @@ export const useEditorMonaco = (
     
     monaco.editor.setTheme(MONACO_THEMES[theme] || theme);
 
-    // Register Wiki Link Completion Provider once
+    // Register Wiki Link Completion Provider
     try {
-      if (!monaco.languages.wikiLinkRegistered) {
-        monaco.languages.wikiLinkRegistered = true;
-        
-        monaco.languages.registerCompletionItemProvider('markdown', {
-          triggerCharacters: ['§'],
-          provideCompletionItems: (model: any, position: any) => {
-            const lineContent = model.getLineContent(position.lineNumber);
-            const textBeforeCursor = lineContent.substring(0, position.column - 1);
-            
-            if (textBeforeCursor.endsWith('§{')) {
-              const suggestions = (notesRef.current || []).map(n => ({
-                label: n.title.includes('/') ? n.title : (n.title || "UNTITLED"),
-                kind: monaco.languages.CompletionItemKind.Reference,
-                insertText: n.title || "UNTITLED",
-                detail: `Path: ${n.title}`,
-                documentation: {
-                  value: n.content ? (n.content.substring(0, 100) + '...') : "No content"
-                },
-                range: {
-                  startLineNumber: position.lineNumber,
-                  endLineNumber: position.lineNumber,
-                  startColumn: position.column,
-                  endColumn: position.column
-                }
-              }));
+      monaco.languages.registerCompletionItemProvider('plaintext', {
+        triggerCharacters: ['@', '{'],
+        provideCompletionItems: (model: any, position: any) => {
+          const lineContent = model.getLineContent(position.lineNumber);
+          const textBeforeCursor = lineContent.substring(0, position.column - 1);
+          
+          // Check if we are inside @{... or just starting with @
+          const match = textBeforeCursor.match(/@\{?([^@}]*)$/);
+          if (!match) return { suggestions: [] };
 
-              return { suggestions };
+          const hasBrace = textBeforeCursor.includes('@{');
+          const word = match[1]; // What the user has typed so far
+          
+          const noteSuggestions = (notesRef.current || []).map(n => ({
+            label: `@{${n.title}}`,
+            kind: monaco.languages.CompletionItemKind.Reference,
+            insertText: hasBrace ? `${n.title}}` : `{${n.title}}`,
+            detail: `Path: ${n.title}`,
+            documentation: n.title,
+            range: {
+              startLineNumber: position.lineNumber,
+              endLineNumber: position.lineNumber,
+              startColumn: position.column - word.length,
+              endColumn: position.column
             }
-            return { suggestions: [] };
-          }
-        });
+          }));
 
-        // Link Provider (Clickable links in editor)
-        monaco.languages.registerLinkProvider('markdown', {
-          provideLinks: (model: any) => {
-            const links: any[] = [];
-            const text = model.getValue();
-            if (!text) return { links: [] };
-            
-            // Combined regex to match code blocks, inline code, wikilinks, and note links
-            // Group 1: wikilink content, Group 2: note link target
-            const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|§\{([\s\S]*?)\}|\[.*?\]\(note:\/\/(.*?)\))/g;
-            
-            let match;
-            while ((match = combinedRegex.exec(text)) !== null) {
-              const startPos = model.getPositionAt(match.index);
-              const endPos = model.getPositionAt(match.index + match[0].length);
-              
-              // Case 1: Wikilink [[Note Title]] or [[Note Title|Alias]]
-              if (match[1] !== undefined) {
-                const content = match[1];
-                let target = content;
-                if (content.includes('|')) {
-                  target = content.split('|')[0].trim();
-                }
-                
-                const targetLower = target.toLowerCase().trim();
-                const targetNote = (notesRef.current || []).find(n => {
-                  const noteTitle = n.title?.toLowerCase().trim();
-                  const noteId = n.id?.toLowerCase().trim();
-                  return noteId === targetLower || noteTitle === targetLower || noteTitle?.endsWith('/' + targetLower);
-                });
-                
-                if (targetNote) {
-                  links.push({
-                    range: {
-                      startLineNumber: startPos.lineNumber,
-                      startColumn: startPos.column,
-                      endLineNumber: endPos.lineNumber,
-                      endColumn: endPos.column
-                    },
-                    url: `note://${encodeURIComponent(target)}`,
-                    tooltip: `Cmd/Ctrl + Click to follow: ${target}`
-                  });
-                }
-              } 
-              // Case 2: Markdown note links: [Text](note://Title)
-              else if (match[2] !== undefined) {
-                const titleMatch = match[2];
-                const title = titleMatch ? decodeURIComponent(titleMatch) : "";
-                
-                const targetNote = (notesRef.current || []).find(n => 
-                  n.title?.toLowerCase().trim() === title.toLowerCase().trim()
-                );
+          return { suggestions: noteSuggestions };
+        }
+      });
 
-                if (targetNote) {
-                  links.push({
-                    range: {
-                      startLineNumber: startPos.lineNumber,
-                      startColumn: startPos.column,
-                      endLineNumber: endPos.lineNumber,
-                      endColumn: endPos.column
-                    },
-                    url: `note://${titleMatch}`,
-                    tooltip: `Cmd/Ctrl + Click to follow: ${title}`
-                  });
-                }
+      monaco.languages.registerCompletionItemProvider('markdown', {
+        triggerCharacters: ['@', '{'],
+        provideCompletionItems: (model: any, position: any) => {
+          const lineContent = model.getLineContent(position.lineNumber);
+          const textBeforeCursor = lineContent.substring(0, position.column - 1);
+          
+          // Check if we are inside @{... or just starting with @
+          const match = textBeforeCursor.match(/@\{?([^@}]*)$/);
+          if (!match) return { suggestions: [] };
+
+          const hasBrace = textBeforeCursor.includes('@{');
+          const word = match[1]; // What the user has typed so far
+          
+          const noteSuggestions = (notesRef.current || []).map(n => ({
+            label: `@{${n.title}}`,
+            kind: monaco.languages.CompletionItemKind.Reference,
+            insertText: hasBrace ? `${n.title}}` : `{${n.title}}`,
+            detail: `Path: ${n.title}`,
+            documentation: n.title,
+            range: {
+              startLineNumber: position.lineNumber,
+              endLineNumber: position.lineNumber,
+              startColumn: position.column - word.length,
+              endColumn: position.column
+            }
+          }));
+
+          // Add some helpful markdown snippets
+          const snippets = [
+            {
+              label: "table",
+              kind: monaco.languages.CompletionItemKind.Snippet,
+              insertText: "| HEADER_1 | HEADER_2 |\n| :--- | :--- |\n| DATA_1 | DATA_2 |",
+              insertTextRules: monaco.languages.CompletionItemInsertRules?.InsertAsSnippet ?? 4,
+              detail: "Insert Markdown Table",
+              range: {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: position.column - word.length,
+                endColumn: position.column
+              }
+            },
+            {
+              label: "code",
+              kind: monaco.languages.CompletionItemKind.Snippet,
+              insertText: "```${1:language}\n${2:code_segment}\n```",
+              insertTextRules: monaco.languages.CompletionItemInsertRules?.InsertAsSnippet ?? 4,
+              detail: "Insert Code Block",
+              range: {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: position.column - word.length,
+                endColumn: position.column
+              }
+            },
+            {
+              label: "diagnostic",
+              kind: monaco.languages.CompletionItemKind.Snippet,
+              insertText: "## DIAGNOSTIC_REPORT\nSTATUS: ${1:OK}\nTIMESTAMP: ${CURRENT_YEAR}-${CURRENT_MONTH}-${CURRENT_DATE}\n\n${2:Details...}",
+              insertTextRules: monaco.languages.CompletionItemInsertRules?.InsertAsSnippet ?? 4,
+              detail: "Technical Diagnostic Template",
+              range: {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: position.column - word.length,
+                endColumn: position.column
               }
             }
+          ];
 
-            return { links };
+          return { suggestions: [...noteSuggestions, ...snippets] };
+        }
+      });
+
+      // Link Provider (Clickable links in editor)
+      monaco.languages.registerLinkProvider('markdown', {
+        provideLinks: (model: any) => {
+          const links: any[] = [];
+          const text = model.getValue();
+          if (!text) return { links: [] };
+          
+          const combinedRegex = /(?:```[\s\S]*?```|`[^`\n]*?`|@\{([\s\S]*?)\}|\[.*?\]\(note:\/\/(.*?)\))/g;
+          
+          let match;
+          while ((match = combinedRegex.exec(text)) !== null) {
+            const startPos = model.getPositionAt(match.index);
+            const endPos = model.getPositionAt(match.index + match[0].length);
+            
+            if (match[1] !== undefined) {
+              const content = match[1];
+              let target = content;
+              if (content.includes('|')) {
+                target = content.split('|')[0].trim();
+              }
+              
+              const targetLower = target.toLowerCase().trim();
+              const targetNote = (notesRef.current || []).find(n => {
+                const noteTitle = n.title?.toLowerCase().trim();
+                const noteId = n.id?.toLowerCase().trim();
+                return noteId === targetLower || noteTitle === targetLower || noteTitle?.endsWith('/' + targetLower);
+              });
+              
+              if (targetNote) {
+                links.push({
+                  range: {
+                    startLineNumber: startPos.lineNumber,
+                    startColumn: startPos.column,
+                    endLineNumber: endPos.lineNumber,
+                    endColumn: endPos.column
+                  },
+                  url: `note://${encodeURIComponent(target)}`,
+                  tooltip: `Cmd/Ctrl + Click to follow: ${target}`
+                });
+              }
+            } 
+            else if (match[2] !== undefined) {
+              const titleMatch = match[2];
+              const title = titleMatch ? decodeURIComponent(titleMatch) : "";
+              const targetNote = (notesRef.current || []).find(n => 
+                n.title?.toLowerCase().trim() === title.toLowerCase().trim()
+              );
+
+              if (targetNote) {
+                links.push({
+                  range: {
+                    startLineNumber: startPos.lineNumber,
+                    startColumn: startPos.column,
+                    endLineNumber: endPos.lineNumber,
+                    endColumn: endPos.column
+                  },
+                  url: `note://${titleMatch}`,
+                  tooltip: `Cmd/Ctrl + Click to follow: ${title}`
+                });
+              }
+            }
           }
-        });
-      }
+
+          return { links };
+        }
+      });
     } catch (err) {
-      console.error("LinkProvider registration failed:", err);
+      console.error("Provider registration failed:", err);
     }
 
     // Intercept link clicks in the editor
@@ -553,7 +620,7 @@ export const useEditorMonaco = (
 
             if (targetNote) {
               window.dispatchEvent(new CustomEvent('abyssal-log', { 
-                detail: { message: `NAVIGATING_TO: §{${title}}`, type: 'system' } 
+                detail: { message: `NAVIGATING_TO: @{${title}}`, type: 'system' } 
               }));
               navigateRef.current?.(targetNote.id);
             }
