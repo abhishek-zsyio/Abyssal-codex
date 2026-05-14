@@ -21,11 +21,13 @@ const NavItem = ({
   icon: Icon, 
   title, 
   isActive, 
+  isLoggedIn,
   onClick, 
 }: { 
   icon: LucideIcon, 
   title: string, 
   isActive?: boolean, 
+  isLoggedIn?: boolean,
   onClick: () => void,
 }) => (
   <button
@@ -62,9 +64,13 @@ const NavItem = ({
 
     <div className={cn(
       "transition-all duration-500 relative z-10",
-      isActive ? "scale-110 drop-shadow-[0_0_10px_var(--primary)]" : "group-hover:scale-105"
+      isActive ? "scale-110 drop-shadow-[0_0_10px_var(--primary)]" : "group-hover:scale-105",
+      isLoggedIn && "text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]"
     )}>
       <Icon size={20} strokeWidth={isActive ? 2.2 : 1.5} />
+      {isLoggedIn && (
+        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />
+      )}
     </div>
     
     {/* Label Tooltip Alternative (Minimalist) */}
@@ -83,6 +89,7 @@ export const SidebarNavigation = memo(({
   onToggleTerminal,
   onOpenAuth,
   onOpenSecurity,
+  isLoggedIn,
 }: SidebarNavigationProps) => {
   return (
     <div className="w-14 h-full border-r border-[var(--border)] flex flex-col items-center py-4 bg-[var(--card)]/20 backdrop-blur-3xl relative z-50">
@@ -114,6 +121,7 @@ export const SidebarNavigation = memo(({
         <NavItem 
           icon={ShieldCheck}
           title="Auth & Security"
+          isLoggedIn={isLoggedIn}
           onClick={onOpenAuth || onOpenSecurity || (() => {})}
         />
 

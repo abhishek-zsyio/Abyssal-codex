@@ -18,20 +18,35 @@ export const useGraphTheme = (isOpen: boolean) => {
     secondary: "#222222"
   });
 
+  // Convert any CSS color to #rrggbb via an offscreen canvas
+  const normalizeColor = useCallback((raw: string, fallback: string): string => {
+    if (!raw) return fallback;
+    const tmp = document.createElement("canvas");
+    tmp.width = 1; tmp.height = 1;
+    const ctx = tmp.getContext("2d");
+    if (!ctx) return fallback;
+    ctx.fillStyle = raw.startsWith("#") || raw.startsWith("rgb") ? raw : `#${raw}`;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
+  }, []);
+
+
   const updateTheme = useCallback(() => {
     const style = getComputedStyle(document.documentElement);
+    const get = (v: string, fb: string) => normalizeColor(style.getPropertyValue(v).trim(), fb);
     setThemeColors({
-      background: style.getPropertyValue("--background").trim() || "#0d0d0d",
-      foreground: style.getPropertyValue("--foreground").trim() || "#ebdbb2",
-      primary: style.getPropertyValue("--primary").trim() || "#fabd2f",
-      accent: style.getPropertyValue("--accent").trim() || "#b8bb26",
-      border: style.getPropertyValue("--border").trim() || "#262626",
-      muted: style.getPropertyValue("--muted-foreground").trim() || "#928374",
-      card: style.getPropertyValue("--card").trim() || "#141414",
-      destructive: style.getPropertyValue("--destructive").trim() || "#fb4934",
-      secondary: style.getPropertyValue("--secondary").trim() || "#222222",
+      background:  get("--background",       "#0d0d0d"),
+      foreground:  get("--foreground",       "#ebdbb2"),
+      primary:     get("--primary",          "#fabd2f"),
+      accent:      get("--accent",           "#b8bb26"),
+      border:      get("--border",           "#262626"),
+      muted:       get("--muted-foreground", "#928374"),
+      card:        get("--card",             "#141414"),
+      destructive: get("--destructive",      "#fb4934"),
+      secondary:   get("--secondary",        "#222222"),
     });
-  }, []);
+  }, [normalizeColor]);
 
   useEffect(() => {
     if (isOpen) {

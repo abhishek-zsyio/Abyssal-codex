@@ -307,8 +307,9 @@ export function useNotes() {
     await storage.saveFolders([], user?.id);
 
     if (user) {
-      const { error } = await supabase.from("notes").delete().eq("user_id", user.id);
-      if (error) console.error("Cloud Wipe Error:", error);
+      const { error: notesError } = await supabase.from("notes").delete().eq("user_id", user.id);
+      const { error: foldersError } = await supabase.from("folders").delete().eq("user_id", user.id);
+      if (notesError || foldersError) console.error("Cloud Wipe Error:", notesError || foldersError);
     }
     
     toast("SYSTEM_WIPE_COMPLETE: [BUFFER_CLEARED]", "system");

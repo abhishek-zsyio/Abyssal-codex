@@ -23,10 +23,10 @@ import {
 } from "lucide-react";
 import { spring, microSpring, staggerContainer, fadeInScale } from "@/lib/transitions";
 import { cn } from "@/lib/utils";
-import Fuse from "fuse.js";
 import { Kbd } from "@/components/ui/DataDisplay";
 import { useTheme } from "@/hooks/use-theme";
 import { usePlugins } from "@/hooks/use-plugins";
+import { useSearchWorker } from "@/hooks/use-search-worker";
 import { CornerAccents } from "@/components/ui/Effects";
 
 interface Log {
@@ -82,6 +82,12 @@ const OmniConsole = ({
     };
     setLogs((prev) => [...prev, newLog].slice(-50));
   };
+
+  const { results: filteredNotes, search, isSearching } = useSearchWorker(notes);
+
+  useEffect(() => {
+    search(query);
+  }, [query, search]);
 
   useEffect(() => {
     const handleGlobalLog = (e: any) => {
@@ -288,7 +294,7 @@ const OmniConsole = ({
               )}>
                 <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--card)] flex justify-between items-center">
                   <span className="text-[9px] text-[var(--muted-foreground)] uppercase tracking-tighter">
-                    {query ? "Search_Results" : "Recent_Files"}
+                    {isSearching ? "Searching..." : (query ? "Search_Results" : "Recent_Files")}
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">

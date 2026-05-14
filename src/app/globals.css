@@ -294,24 +294,24 @@
   --ring: #bb9af7;
 }
 
-[data-theme='pale-light'] {
-  --background: #f4f4f2;
-  --foreground: #40403e;
-  --card: #ebebe8;
-  --card-foreground: #40403e;
-  --popover: #f4f4f2;
-  --popover-foreground: #40403e;
-  --primary: #70706b;
-  --primary-foreground: #f4f4f2;
-  --secondary: #e2e2df;
-  --secondary-foreground: #40403e;
-  --muted: #e2e2df;
-  --muted-foreground: #a6a6a1;
-  --accent: #7a8a99;
-  --accent-foreground: #f4f4f2;
-  --border: #d6d6d1;
-  --input: #ebebe8;
-  --ring: #70706b;
+[data-theme='tokyo-night-light'] {
+  --background: #d5d6db;
+  --foreground: #343b58;
+  --card: #c6c7cc;
+  --card-foreground: #343b58;
+  --popover: #d5d6db;
+  --popover-foreground: #343b58;
+  --primary: #343b58;
+  --primary-foreground: #d5d6db;
+  --secondary: #b4b5b9;
+  --secondary-foreground: #343b58;
+  --muted: #b4b5b9;
+  --muted-foreground: #6a6f87;
+  --accent: #2ac3de;
+  --accent-foreground: #d5d6db;
+  --border: #b4b5b9;
+  --input: #c6c7cc;
+  --ring: #343b58;
 }
 
 [data-theme='ayu'] {

@@ -182,6 +182,7 @@ const Sidebar = memo(({
           }
         }}
         isOpen={isOpen}
+        isLoggedIn={isLoggedIn}
         onOpenGraph={onOpenGraph}
         onOpenThemes={onOpenThemes}
         onToggleTerminal={onToggleTerminal}

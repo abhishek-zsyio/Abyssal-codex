@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
-import * as d3 from "d3-force";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { Note } from "@/types/note";
 import { GraphNode, GraphLink, GraphThemeColors } from "@/types/graph";
 
@@ -22,12 +21,9 @@ export const useGraphSimulation = ({
   isPaused,
   onRequestRender,
 }: UseGraphSimulationProps) => {
-  const simulationRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null);
+  const workerRef = useRef<Worker | null>(null);
   const currentNodesRef = useRef<GraphNode[]>([]);
   const linkCacheRef = useRef<Map<string, { content: string, links: string[] }>>(new Map());
-
-  const ORBIT_RADIUS = 70;
-  const FOLDER_ORBIT_RADIUS = 150;
 
   const { initialNodes, initialLinks } = useMemo(() => {
     const nodes: GraphNode[] = [];
@@ -201,39 +197,60 @@ export const useGraphSimulation = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const nodesById = new Map(initialNodes.map(n => [n.id, n]));
-    const visibleLinks = initialLinks.filter(l => !l.isHierarchy);
-    const hierarchyLinks = initialLinks.filter(l => l.isHierarchy);
+    // Initialize worker
+    const worker = new Worker(
+      new URL("../lib/workers/graph.worker.ts", import.meta.url)
+    );
+    workerRef.current = worker;
 
-    const simulation = d3.forceSimulation<GraphNode>(initialNodes)
-      .alphaDecay(0.08)
-      .force("link", d3.forceLink<GraphNode, GraphLink>(visibleLinks).id(d => d.id).distance(80).strength(0.3))
-      .force("charge", d3.forceManyBody().strength((d) => (d as GraphNode).isFolder ? -600 : (d as GraphNode).isRoguePlanet ? -150 : -80))
-      .force("center", d3.forceCenter(0, 0).strength(0.02))
-      .force("collide", d3.forceCollide<GraphNode>().radius(d => (d.isFolder ? 50 : d.isRoguePlanet ? 25 : 12)))
-      .force("orbit", (alpha) => {
-        hierarchyLinks.forEach(link => {
-          const s = nodesById.get(typeof link.source === 'string' ? link.source : (link.source as GraphNode).id);
-          const t = nodesById.get(typeof link.target === 'string' ? link.target : (link.target as GraphNode).id);
-          if (!s || !t) return;
-          const dx = s.x! - t.x!; const dy = s.y! - t.y!;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const orbitDist = s.isFolder ? FOLDER_ORBIT_RADIUS : ORBIT_RADIUS;
-          const delta = orbitDist - dist;
-          s.vx! += (dx / dist) * delta * 0.5 * alpha;
-          s.vy! += (dy / dist) * delta * 0.4 * alpha;
+    worker.onmessage = (e) => {
+      if (e.data.type === "TICK") {
+        const updatedPositions = e.data.nodes;
+        const nodeMap = new Map(updatedPositions.map((n: any) => [n.id, n]));
+        
+        initialNodes.forEach(node => {
+          const updated = nodeMap.get(node.id);
+          if (updated) {
+            node.x = updated.x;
+            node.y = updated.y;
+            node.vx = updated.vx;
+            node.vy = updated.vy;
+          }
         });
-      })
-      .on("tick", onRequestRender);
+        onRequestRender();
+      }
+    };
 
-    simulationRef.current = simulation;
-    for (let i = 0; i < 30; i++) simulation.tick();
-    if (isPaused) simulation.stop();
+    worker.postMessage({ 
+      type: "INIT", 
+      payload: { nodes: initialNodes, links: initialLinks } 
+    });
 
     return () => {
-      simulation.stop();
+      worker.terminate();
+      workerRef.current = null;
     };
-  }, [isOpen, initialNodes, initialLinks, isPaused, onRequestRender]);
+  }, [isOpen, initialNodes, initialLinks, onRequestRender]);
 
-  return { simulationRef, initialNodes, initialLinks };
+  useEffect(() => {
+    if (isPaused) {
+      workerRef.current?.postMessage({ type: "PAUSE" });
+    } else {
+      workerRef.current?.postMessage({ type: "RESUME" });
+    }
+  }, [isPaused]);
+
+  // Helper to update node in worker (for dragging)
+  const updateNodeInWorker = (id: string, fx: number | null, fy: number | null) => {
+    workerRef.current?.postMessage({
+      type: "UPDATE_NODES",
+      payload: { nodes: [{ id, fx, fy }] }
+    });
+  };
+
+  return { 
+    initialNodes, 
+    initialLinks, 
+    updateNodeInWorker 
+  };
 };

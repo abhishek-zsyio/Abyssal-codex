@@ -256,6 +256,16 @@ export const AVAILABLE_PLUGINS: PluginMetadata[] = [
     guide: "A clean dark theme that celebrates the lights of Tokyo at night. Featuring vibrant purples and blues."
   },
   {
+    id: "theme-tokyo-night-light",
+    name: "Tokyo Night Light",
+    description: "An elegant light variant of the Tokyo Night color palette.",
+    author: "Enki",
+    version: "1.0.0",
+    icon: "Sun",
+    category: "theme",
+    guide: "The official light variant of the Tokyo Night color palette. Designed for maximum readability and a clean, technical look."
+  },
+  {
     id: "theme-ayu",
     name: "Ayu Mirage",
     description: "A refined dark theme with a warm, minimalist color palette.",

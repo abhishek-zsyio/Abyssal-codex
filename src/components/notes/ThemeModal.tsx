@@ -106,11 +106,11 @@ const THEMES: { id: Theme; name: string; desc: string; color: string; accent: st
     accent: '#bb9af7'
   },
   { 
-    id: 'pale-light', 
-    name: 'Pale Porcelain', 
-    desc: 'An ultra-minimal, high-clarity light theme. Soft, professional tones for focus.',
-    color: '#fdfdfd',
-    accent: '#636e72'
+    id: 'tokyo-night-light', 
+    name: 'Tokyo Night Light', 
+    desc: 'The elegant light variant of Tokyo Night. Balanced, professional, and easy on the eyes.',
+    color: '#d5d6db',
+    accent: '#343b58'
   },
   { 
     id: 'ayu', 
@@ -155,7 +155,7 @@ export default function ThemeModal({ isOpen, onClose }: ThemeModalProps) {
   const { toast } = useToast();
 
   const availableThemes = THEMES.filter(t => {
-    if (['dark', 'light', 'catppuccin', 'rose-pine', 'everforest', 'tokyo-night', 'nord', 'pale-light'].includes(t.id)) return true;
+    if (['dark', 'light', 'catppuccin', 'rose-pine', 'everforest', 'tokyo-night', 'nord', 'tokyo-night-light'].includes(t.id)) return true;
     return isInstalled(`theme-${t.id}`);
   });
 
@@ -284,7 +284,7 @@ export default function ThemeModal({ isOpen, onClose }: ThemeModalProps) {
                       )}
 
                       {/* Remove Button (Only for installed themes) */}
-                      {!['dark', 'light', 'catppuccin', 'rose-pine', 'everforest', 'tokyo-night', 'nord'].includes(theme.id) && (
+                      {!['dark', 'light', 'catppuccin', 'rose-pine', 'everforest', 'tokyo-night', 'nord', 'tokyo-night-light'].includes(theme.id) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

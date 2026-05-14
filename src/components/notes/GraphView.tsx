@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Note } from "@/types/note";
 import { cn } from "@/lib/utils";
-import * as d3 from "d3-force";
-
+import {
+  Search,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  X,
+  Link2,
+  Pause,
+  Play,
+  Info,
+} from "lucide-react";
 import { useGraphTheme } from "@/hooks/use-graph-theme";
 import { useGraphSimulation } from "@/hooks/use-graph-simulation";
 import { GraphNode, GraphLink } from "@/types/graph";
-import { GraphHeader } from "./graph/GraphHeader";
-import { GraphHUD } from "./graph/GraphHUD";
-import { GraphNodePreview } from "./graph/GraphNodePreview";
 
 interface GraphViewProps {
   isOpen: boolean;
@@ -23,455 +29,719 @@ interface GraphViewProps {
   folders?: string[];
 }
 
-export default function GraphView({ isOpen, onClose, notes, variant = "modal", onSelectNote, onUpdateNote, folders = [] }: GraphViewProps) {
+export default function GraphView({
+  isOpen,
+  onClose,
+  notes,
+  variant = "modal",
+  onSelectNote,
+  onUpdateNote,
+  folders = [],
+}: GraphViewProps) {
   const themeColors = useGraphTheme(isOpen);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const transformRef = useRef({ x: 0, y: 0, k: 0.8 });
+  const transformRef = useRef({ x: 0, y: 0, k: 0.75 });
   const hoveredNodeRef = useRef<string | null>(null);
-  
+  const needsRedrawRef = useRef(true);
+  const rafRef = useRef(0);
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
-  const [activeHoveredNode, setActiveHoveredNode] = useState<GraphNode | null>(null);
+  const [selectedPreview, setSelectedPreview] = useState<GraphNode | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
-  const [showHUD, setShowHUD] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [isLinkMode, setIsLinkMode] = useState(false);
   const [linkSource, setLinkSource] = useState<GraphNode | null>(null);
-  
-  const searchQueryRef = useRef("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  const searchRef = useRef("");
   const isPausedRef = useRef(false);
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const needsRedrawRef = useRef<boolean>(true);
-  const nodeTexturesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
-  const simulationTimeRef = useRef<number>(0);
-  const lastFrameTimeRef = useRef<number>(Date.now());
 
   const requestRender = useCallback(() => {
     needsRedrawRef.current = true;
   }, []);
 
-  const { simulationRef, initialNodes, initialLinks } = useGraphSimulation({
-    notes,
-    folders,
-    themeColors,
-    isOpen,
-    isPaused,
-    onRequestRender: requestRender,
-  });
+  const { initialNodes, initialLinks, updateNodeInWorker } = useGraphSimulation(
+    {
+      notes,
+      folders,
+      themeColors,
+      isOpen,
+      isPaused,
+      onRequestRender: requestRender,
+    },
+  );
 
   useEffect(() => {
-    searchQueryRef.current = searchQuery;
+    searchRef.current = searchQuery;
     requestRender();
   }, [searchQuery, requestRender]);
-
   useEffect(() => {
     isPausedRef.current = isPaused;
     requestRender();
   }, [isPaused, requestRender]);
 
-  // Pre-render node textures (kept here for now to avoid complexity in extraction)
-  useEffect(() => {
-    const palette = [
-      themeColors.primary, 
-      themeColors.accent, 
-      themeColors.destructive,
-      themeColors.foreground,
-      themeColors.muted,
-      themeColors.secondary
-    ];
-    const cleanPalette = Array.from(new Set(palette.filter(Boolean)));
-    const textures = new Map<string, HTMLCanvasElement>();
-    
-    cleanPalette.forEach(color => {
-      const planetCanvas = document.createElement("canvas");
-      planetCanvas.width = 48; planetCanvas.height = 48;
-      const pctx = planetCanvas.getContext("2d");
-      if (pctx) {
-        pctx.beginPath(); pctx.arc(24, 24, 10, 0, Math.PI * 2);
-        pctx.strokeStyle = color; pctx.lineWidth = 3; pctx.stroke();
-        pctx.fillStyle = color + "66"; pctx.fill();
-      }
-      textures.set(`planet:${color}`, planetCanvas);
-
-      const sunCanvas = document.createElement("canvas");
-      sunCanvas.width = 160; sunCanvas.height = 160;
-      const sctx = sunCanvas.getContext("2d");
-      if (sctx) {
-        sctx.beginPath(); sctx.arc(80, 80, 36, 0, Math.PI * 2);
-        sctx.strokeStyle = color; sctx.lineWidth = 6; sctx.stroke();
-        sctx.fillStyle = color + "33"; sctx.fill();
-        sctx.beginPath(); sctx.arc(80, 80, 48, 0, Math.PI * 2);
-        sctx.strokeStyle = color + "44"; sctx.lineWidth = 2; sctx.stroke();
-      }
-      textures.set(`sun:${color}`, sunCanvas);
-
-      const miniSunCanvas = document.createElement("canvas");
-      miniSunCanvas.width = 96; miniSunCanvas.height = 96;
-      const msctx = miniSunCanvas.getContext("2d");
-      if (msctx) {
-        msctx.beginPath(); msctx.arc(48, 48, 22, 0, Math.PI * 2);
-        msctx.strokeStyle = color; msctx.lineWidth = 4; msctx.stroke();
-        msctx.fillStyle = color + "22"; msctx.fill();
-      }
-      textures.set(`minisun:${color}`, miniSunCanvas);
-
-      const rogueCanvas = document.createElement("canvas");
-      rogueCanvas.width = 48; rogueCanvas.height = 48;
-      const rctx = rogueCanvas.getContext("2d");
-      if (rctx) {
-        rctx.beginPath(); rctx.arc(24, 24, 9, 0, Math.PI * 2);
-        rctx.strokeStyle = color; rctx.lineWidth = 2.5; rctx.stroke();
-        rctx.setLineDash([3, 3]);
-        rctx.beginPath(); rctx.arc(24, 24, 14, 0, Math.PI * 2);
-        rctx.strokeStyle = color + "44"; rctx.stroke();
-        rctx.setLineDash([]);
-      }
-      textures.set(`rogue:${color}`, rogueCanvas);
-    });
-    nodeTexturesRef.current = textures;
-    requestRender();
-  }, [themeColors, requestRender]);
-
   useEffect(() => {
     if (!isOpen || !canvasRef.current || !containerRef.current) return;
-
     const canvas = canvasRef.current;
     const container = containerRef.current;
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
 
-    const handleWheelNative = (e: WheelEvent) => {
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const delta = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-      transformRef.current.k = Math.min(Math.max(transformRef.current.k * delta, 0.05), 5);
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      transformRef.current.k = Math.min(
+        Math.max(transformRef.current.k * factor, 0.05),
+        8,
+      );
       requestRender();
     };
-    container.addEventListener('wheel', handleWheelNative, { passive: false });
-
-    const offscreenCanvas = document.createElement("canvas");
-    const offscreenCtx = offscreenCanvas.getContext("2d");
-    
-    const setupOffscreen = () => {
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      offscreenCanvas.width = rect.width * dpr; offscreenCanvas.height = rect.height * dpr;
-      if (offscreenCtx) {
-        offscreenCtx.scale(dpr, dpr);
-        offscreenCtx.fillStyle = themeColors.background;
-        offscreenCtx.fillRect(0, 0, rect.width, rect.height);
-        
-        const starColor = themeColors.foreground;
-        offscreenCtx.fillStyle = starColor;
-        for (let i = 0; i < 60; i++) {
-          offscreenCtx.globalAlpha = Math.random() * 0.2;
-          offscreenCtx.beginPath();
-          offscreenCtx.arc(Math.random() * rect.width, Math.random() * rect.height, Math.random() * 0.7, 0, Math.PI * 2);
-          offscreenCtx.fill();
-        }
-        offscreenCtx.globalAlpha = 1.0;
-      }
-    };
+    container.addEventListener("wheel", onWheel, { passive: false });
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2.0);
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const r = canvas.getBoundingClientRect();
+      canvas.width = r.width * dpr;
+      canvas.height = r.height * dpr;
       ctx.scale(dpr, dpr);
-      setupOffscreen();
       requestRender();
     };
     resize();
     window.addEventListener("resize", resize);
 
-    const visibleLinks = initialLinks.filter(l => !l.isHierarchy);
+    const wikiLinks = initialLinks.filter((l) => !l.isHierarchy);
+    const hierarchyLinks = initialLinks.filter((l) => l.isHierarchy);
 
-    let animationFrame: number;
-
-    const render = () => {
-      if (!needsRedrawRef.current) {
-        animationFrame = requestAnimationFrame(render);
-        return;
+    // ── Pre-bake node textures (run once per themeColors change) ─────────────
+    // Key: `${type}:${color}` → offscreen canvas
+    const texCache = new Map<string, HTMLCanvasElement>();
+    const bakeNode = (type: 'planet-root'|'planet'|'star'|'ghost', color: string, bg: string): HTMLCanvasElement => {
+      const key = `${type}:${color}`;
+      if (texCache.has(key)) return texCache.get(key)!;
+      const SIZE = type === 'planet-root' ? 120 : type === 'planet' ? 80 : type === 'star' ? 60 : 24;
+      const c = document.createElement('canvas');
+      c.width = SIZE; c.height = SIZE;
+      const cx = c.getContext('2d')!;
+      const cx0 = SIZE / 2, cy0 = SIZE / 2;
+      if (type === 'ghost') {
+        cx.strokeStyle = color + '55'; cx.lineWidth = 1;
+        cx.setLineDash([2, 3]);
+        cx.beginPath(); cx.arc(cx0, cy0, 8, 0, Math.PI * 2); cx.stroke();
+        cx.setLineDash([]);
+      } else if (type === 'star') {
+        const r = 5;
+        const corona = cx.createRadialGradient(cx0, cy0, 0, cx0, cy0, SIZE / 2);
+        corona.addColorStop(0, color + 'aa'); corona.addColorStop(0.35, color + '33'); corona.addColorStop(1, color + '00');
+        cx.beginPath(); cx.arc(cx0, cy0, SIZE / 2, 0, Math.PI * 2);
+        cx.fillStyle = corona; cx.fill();
+        cx.beginPath(); cx.arc(cx0, cy0, r, 0, Math.PI * 2);
+        cx.fillStyle = color + 'ff'; cx.fill();
+      } else {
+        // planet
+        const r = type === 'planet-root' ? 22 : 14;
+        // atmosphere
+        const atm = cx.createRadialGradient(cx0, cy0, r * 0.5, cx0, cy0, r * 2.5);
+        atm.addColorStop(0, color + '33'); atm.addColorStop(1, color + '00');
+        cx.beginPath(); cx.arc(cx0, cy0, r * 2.5, 0, Math.PI * 2);
+        cx.fillStyle = atm; cx.fill();
+        // orbital ring
+        cx.save(); cx.translate(cx0, cy0); cx.scale(1, 0.3);
+        cx.beginPath(); cx.arc(0, 0, r * 1.85, 0, Math.PI * 2);
+        cx.strokeStyle = color + '44'; cx.lineWidth = 1.5; cx.stroke();
+        cx.restore();
+        // sphere
+        const sphere = cx.createRadialGradient(cx0 - r * 0.35, cy0 - r * 0.35, r * 0.05, cx0, cy0, r);
+        sphere.addColorStop(0, color + 'ff'); sphere.addColorStop(0.65, color + 'cc'); sphere.addColorStop(1, bg + 'bb');
+        cx.beginPath(); cx.arc(cx0, cy0, r, 0, Math.PI * 2);
+        cx.fillStyle = sphere; cx.fill();
+        // specular
+        const spec = cx.createRadialGradient(cx0 - r * 0.38, cy0 - r * 0.38, 0, cx0 - r * 0.38, cy0 - r * 0.38, r * 0.55);
+        spec.addColorStop(0, 'rgba(255,255,255,0.4)'); spec.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.beginPath(); cx.arc(cx0, cy0, r, 0, Math.PI * 2);
+        cx.fillStyle = spec; cx.fill();
       }
+      texCache.set(key, c);
+      return c;
+    };
+
+    // Pre-warm textures for all unique colors
+    const uniqueColors = Array.from(new Set(initialNodes.map(n => n.color || themeColors.muted)));
+    uniqueColors.forEach(col => {
+      bakeNode('planet-root', col, themeColors.background);
+      bakeNode('planet', col, themeColors.background);
+      bakeNode('star', col, themeColors.background);
+      bakeNode('ghost', col, themeColors.background);
+    });
+
+    const drawFrame = () => {
+      rafRef.current = requestAnimationFrame(drawFrame);
+      if (!needsRedrawRef.current) return;
       needsRedrawRef.current = false;
 
       const { x, y, k } = transformRef.current;
-      const width = canvas.width / (window.devicePixelRatio || 1);
-      const height = canvas.height / (window.devicePixelRatio || 1);
+      const W = canvas.width / (window.devicePixelRatio || 1);
+      const H = canvas.height / (window.devicePixelRatio || 1);
 
-      const now = Date.now();
-      const deltaTime = now - lastFrameTimeRef.current;
-      lastFrameTimeRef.current = now;
-      
-      if (!isPausedRef.current) {
-        simulationTimeRef.current += deltaTime;
-      }
-      
-      const simTime = simulationTimeRef.current;
-
-      ctx.drawImage(offscreenCanvas, 0, 0, width, height);
+      // ── space background (theme-aware) ────────────────────────────────────
       ctx.fillStyle = themeColors.background;
-      ctx.globalAlpha = 0.8;
-      ctx.fillRect(0, 0, width, height);
-      ctx.globalAlpha = 1.0;
+      ctx.fillRect(0, 0, W, H);
+
+      // Star field — uses theme foreground color so light themes get dark stars
+      if (!(drawFrame as any)._stars) {
+        (drawFrame as any)._stars = Array.from({ length: 260 }, () => ({
+          x: Math.random() * 4000 - 2000,
+          y: Math.random() * 4000 - 2000,
+          r: Math.random() * 1.1 + 0.2,
+          a: Math.random() * 0.5 + 0.1,
+        }));
+      }
+      ctx.save();
+      ctx.translate(W / 2 + x, H / 2 + y);
+      ctx.scale(k, k);
+      (drawFrame as any)._stars.forEach((s: any) => {
+        ctx.globalAlpha = s.a * 0.6;
+        ctx.fillStyle = themeColors.foreground;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r / k, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      ctx.restore();
 
       ctx.save();
-      ctx.translate(width / 2 + x, height / 2 + y);
+      ctx.translate(W / 2 + x, H / 2 + y);
       ctx.scale(k, k);
 
-      const curHoverId = hoveredNodeRef.current;
-      ctx.lineWidth = 1.0 / k;
-      
-      const linksByColor = new Map<string, GraphLink[]>();
-      const interSystemLinks: GraphLink[] = [];
-      const highlightedLinks: GraphLink[] = [];
+      const nodeMap = new Map(initialNodes.map((n) => [n.id, n]));
+      const cur = hoveredNodeRef.current;
+      const q = searchRef.current.toLowerCase();
 
-      visibleLinks.forEach(link => {
-        const s = link.source as GraphNode; const t = link.target as GraphNode;
-        if (!s.x || !t.x) return;
-        
-        if (curHoverId === s.id || curHoverId === t.id) {
-          highlightedLinks.push(link);
-          return;
-        }
-
-        const sSys = s.parentFolderId; const tSys = t.parentFolderId;
-        if (sSys !== tSys) {
-          interSystemLinks.push(link);
-          return;
-        }
-
-        const color = (s.color || themeColors.foreground) + "22";
-        if (!linksByColor.has(color)) linksByColor.set(color, []);
-        linksByColor.get(color)!.push(link);
-      });
-
-      linksByColor.forEach((links, color) => {
-        ctx.beginPath();
-        ctx.strokeStyle = color;
-        links.forEach(link => {
-          const s = link.source as GraphNode; const t = link.target as GraphNode;
-          ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!);
-        });
-        ctx.stroke();
-      });
-
-      ctx.beginPath();
-      ctx.strokeStyle = themeColors.muted + "44";
-      interSystemLinks.forEach(link => {
-        const s = link.source as GraphNode; const t = link.target as GraphNode;
-        ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!);
-      });
-      ctx.stroke();
-
-      highlightedLinks.forEach(link => {
-        const s = link.source as GraphNode; const t = link.target as GraphNode;
-        const sourceColor = s.color || themeColors.primary;
-        const targetColor = t.color || themeColors.primary;
-        
-        const grad = ctx.createLinearGradient(s.x!, s.y!, t.x!, t.y!);
-        grad.addColorStop(0, sourceColor + "ff");
-        grad.addColorStop(1, targetColor + "66");
-
-        ctx.beginPath();
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 3.0 / k;
-        ctx.shadowBlur = 15 / k;
-        ctx.shadowColor = sourceColor;
-        ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      });
-
-      if (k > 0.3) {
-        interSystemLinks.forEach(link => {
-          const s = link.source as GraphNode; const t = link.target as GraphNode;
-          const speed = 0.0015;
-          const time = (simTime * speed) % 1;
-          const px = s.x! + (t.x! - s.x!) * time;
-          const py = s.y! + (t.y! - s.y!) * time;
-          
-          ctx.beginPath();
-          ctx.fillStyle = s.color || themeColors.primary;
-          ctx.arc(px, py, 1.5 / k, 0, Math.PI * 2);
-          ctx.fill();
+      const neighborIds = new Set<string>();
+      if (cur) {
+        [...wikiLinks, ...hierarchyLinks].forEach((l) => {
+          const sId =
+            typeof l.source === "string"
+              ? l.source
+              : (l.source as GraphNode).id;
+          const tId =
+            typeof l.target === "string"
+              ? l.target
+              : (l.target as GraphNode).id;
+          if (sId === cur) neighborIds.add(tId);
+          if (tId === cur) neighborIds.add(sId);
         });
       }
 
-      initialNodes.forEach(node => {
-        const isHovered = curHoverId === node.id;
-        const matchesSearch = searchQueryRef.current && node.title.toLowerCase().includes(searchQueryRef.current.toLowerCase());
-        
-        let alpha = 1;
-        if (curHoverId) alpha = isHovered ? 1 : 0.25;
-        else alpha = 0.7;
-        
-        if (searchQueryRef.current) alpha = matchesSearch ? 1 : 0.05;
+      const res = (ref: string | GraphNode): GraphNode | undefined =>
+        typeof ref === "string" ? nodeMap.get(ref) : (ref as GraphNode);
 
-        ctx.globalAlpha = alpha;
-        let typeKey = node.isFolder ? (node.isRootSun ? 'sun' : 'minisun') : 'planet';
-        if (node.isRoguePlanet && !node.isFolder) typeKey = 'rogue';
-        
-        const color = node.color || themeColors.muted;
-        const tex = nodeTexturesRef.current.get(`${typeKey}:${color}`);
-        
-        if (tex) {
-          const tSize = typeKey === 'sun' ? 80 : (typeKey === 'minisun' ? 56 : 32);
-          ctx.drawImage(tex, node.x! - tSize/2, node.y! - tSize/2, tSize, tSize);
+      // ── nebula blobs — only at zoom > 0.3, skip at low zoom ────────────────
+      const folderNodes = initialNodes.filter(n => n.isFolder && n.x !== undefined);
+      if (k > 0.25) {
+        folderNodes.forEach((fn) => {
+          const nr = fn.isRootSun ? 200 : 120;
+          const g = ctx.createRadialGradient(fn.x!, fn.y!, 0, fn.x!, fn.y!, nr);
+          g.addColorStop(0, (fn.color || themeColors.primary) + "12");
+          g.addColorStop(1, (fn.color || themeColors.primary) + "00");
+          ctx.globalAlpha = 0.7;
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(fn.x!, fn.y!, nr, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+        });
+      }
+
+      // ── hierarchy edges — plain lines (no per-edge gradient) ────────────
+      ctx.lineWidth = 0.7 / k;
+      hierarchyLinks.forEach((l) => {
+        const s = res(l.source); const t = res(l.target);
+        if (!s || !t || s.x === undefined || t.x === undefined) return;
+        const hi = cur === s.id || cur === t.id || neighborIds.has(s.id) || neighborIds.has(t.id);
+        ctx.strokeStyle = (s.color || themeColors.muted) + (hi ? '55' : '1a');
+        ctx.lineWidth = (hi ? 1.2 : 0.6) / k;
+        ctx.beginPath(); ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!); ctx.stroke();
+      });
+
+      // ── wiki edges ─────────────────────────────────────────────────────────
+      if (cur) {
+        // only show connected links when hovering
+        wikiLinks.forEach((l) => {
+          const s = res(l.source); const t = res(l.target);
+          if (!s || !t || s.x === undefined || t.x === undefined) return;
+          if (s.id !== cur && t.id !== cur) return;
+          ctx.strokeStyle = (s.color || themeColors.primary) + 'bb';
+          ctx.lineWidth = 1.5 / k;
+          ctx.beginPath(); ctx.moveTo(s.x!, s.y!); ctx.lineTo(t.x!, t.y!); ctx.stroke();
+        });
+      } else {
+        // Batch by color — single path per color
+        const buckets = new Map<string, [number, number, number, number][]>();
+        wikiLinks.forEach((l) => {
+          const s = res(l.source); const t = res(l.target);
+          if (!s || !t || s.x === undefined || t.x === undefined) return;
+          const c = s.color || themeColors.muted;
+          if (!buckets.has(c)) buckets.set(c, []);
+          buckets.get(c)!.push([s.x!, s.y!, t.x!, t.y!]);
+        });
+        buckets.forEach((segs, color) => {
+          ctx.beginPath(); ctx.strokeStyle = color + '0f'; ctx.lineWidth = 0.4 / k;
+          segs.forEach(([x1, y1, x2, y2]) => { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); });
+          ctx.stroke();
+        });
+      }
+
+      // ── nodes — drawImage from pre-baked textures ─────────────────────────
+      // Set font once for the entire label pass
+      const labelFont = `400 ${9 / k}px ui-monospace, monospace`;
+      const labelFontBold = `600 ${11 / k}px ui-monospace, monospace`;
+      ctx.textAlign = 'left';
+
+      initialNodes.forEach((node) => {
+        if (node.x === undefined || node.y === undefined) return;
+        const isHov = node.id === cur;
+        const isNeigh = neighborIds.has(node.id);
+        const matched = q && node.title.toLowerCase().includes(q);
+
+        let a = 1;
+        if (q) a = matched ? 1 : 0.08;
+        else if (cur) a = isHov ? 1 : isNeigh ? 0.8 : 0.15;
+        else a = node.isGhost ? 0.3 : 0.9;
+
+        ctx.globalAlpha = a;
+        const c = node.color || themeColors.muted;
+
+        if (node.isFolder) {
+          const type = node.isRootSun ? 'planet-root' : 'planet';
+          const tex = bakeNode(type, c, themeColors.background);
+          const SIZE = tex.width;
+          // drawImage is a fast GPU blit — no gradient creation per frame
+          ctx.drawImage(tex, node.x! - SIZE / 2, node.y! - SIZE / 2, SIZE, SIZE);
+
+          // hover ring (cheap stroke, only when hovered)
+          if (isHov) {
+            const r = node.isRootSun ? 22 : 14;
+            ctx.beginPath(); ctx.arc(node.x!, node.y!, r + 5 / k, 0, Math.PI * 2);
+            ctx.strokeStyle = c + '88'; ctx.lineWidth = 2 / k; ctx.stroke();
+          }
+
+        } else if (node.isGhost) {
+          const tex = bakeNode('ghost', c, themeColors.background);
+          ctx.drawImage(tex, node.x! - 12, node.y! - 12, 24, 24);
+
+        } else {
+          const tex = bakeNode('star', c, themeColors.background);
+          const SIZE = isHov ? 60 : 44;
+          ctx.drawImage(tex, node.x! - SIZE / 2, node.y! - SIZE / 2, SIZE, SIZE);
+
+          // diffraction spikes only on hover (cheap lines)
+          if (isHov) {
+            const spike = 14 / k;
+            ctx.strokeStyle = c + '88'; ctx.lineWidth = 0.8 / k;
+            ctx.beginPath();
+            ctx.moveTo(node.x! - spike, node.y!); ctx.lineTo(node.x! + spike, node.y!);
+            ctx.moveTo(node.x!, node.y! - spike); ctx.lineTo(node.x!, node.y! + spike);
+            ctx.stroke();
+          }
         }
 
-        if ((isHovered || matchesSearch || (node.isFolder && k > 0.4)) && k > 0.1) {
-            ctx.fillStyle = node.isFolder ? (node.color || themeColors.primary) : (node.isRoguePlanet ? themeColors.muted : themeColors.foreground);
-            ctx.font = `${node.isFolder ? 'bold' : 'normal'} ${13 / k}px JetBrains Mono, monospace`;
-            ctx.fillText(node.title.toUpperCase(), node.x! + (node.size * 1.8), node.y! + 5);
+        ctx.globalAlpha = 1;
+
+        // Labels
+        const showLabel = node.isFolder || isHov || (isNeigh && k > 0.5) || matched || (k > 2.8 && !node.isGhost);
+        if (showLabel) {
+          ctx.globalAlpha = (isHov ? 1 : node.isFolder ? 0.85 : 0.6) * a;
+          ctx.font = node.isFolder ? labelFontBold : labelFont;
+          ctx.fillStyle = isHov ? themeColors.foreground : c;
+          const offX = (node.isFolder ? (node.isRootSun ? 26 : 18) : 10) / k;
+          const label = node.title.length > 22 ? node.title.slice(0, 22) + '…' : node.title;
+          ctx.fillText(label, node.x! + offX, node.y! + 4 / k);
+          ctx.globalAlpha = 1;
         }
       });
-      
-      ctx.restore();
-      const scanTime = (simTime * 0.0001) % 1;
-      ctx.fillStyle = themeColors.primary + "05";
-      ctx.fillRect(0, scanTime * height, width, 1.5);
 
-      animationFrame = requestAnimationFrame(render);
+      ctx.restore();
     };
 
-    render();
+    drawFrame();
     return () => {
       window.removeEventListener("resize", resize);
-      container.removeEventListener('wheel', handleWheelNative);
-      cancelAnimationFrame(animationFrame);
+      container.removeEventListener("wheel", onWheel);
+      cancelAnimationFrame(rafRef.current);
     };
-  }, [isOpen, initialNodes, initialLinks, themeColors]);
+  }, [isOpen, initialNodes, initialLinks, themeColors, requestRender]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const mx = (e.clientX - rect.left - rect.width / 2 - transformRef.current.x) / transformRef.current.k;
-    const my = (e.clientY - rect.top - rect.height / 2 - transformRef.current.y) / transformRef.current.k;
+  // ── mouse ──────────────────────────────────────────────────────────────────
+  const hitTest = useCallback(
+    (mx: number, my: number) => {
+      return (
+        initialNodes.find((n) => {
+          if (n.x === undefined) return false;
+          const dx = n.x! - mx,
+            dy = n.y! - my;
+          const r = n.isFolder ? (n.isRootSun ? 20 : 14) : 10;
+          return dx * dx + dy * dy < r * r;
+        }) || null
+      );
+    },
+    [initialNodes],
+  );
 
-    const found = simulationRef.current?.find(mx, my, 30) || null;
-
-    if (found?.id !== hoveredNodeRef.current) {
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!canvasRef.current) return;
+      const r = canvasRef.current.getBoundingClientRect();
+      const mx =
+        (e.clientX - r.left - r.width / 2 - transformRef.current.x) /
+        transformRef.current.k;
+      const my =
+        (e.clientY - r.top - r.height / 2 - transformRef.current.y) /
+        transformRef.current.k;
+      const found = hitTest(mx, my);
+      if (found?.id !== hoveredNodeRef.current) {
         hoveredNodeRef.current = found?.id || null;
-        setHoveredNode(found); requestRender();
+        setHoveredNode(found);
+        requestRender();
         if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-        if (found) {
-            hoverTimerRef.current = setTimeout(() => { setActiveHoveredNode(found); requestRender(); }, 200);
+        if (found && !found.isFolder) {
+          hoverTimerRef.current = setTimeout(
+            () => setSelectedPreview(found),
+            250,
+          );
         } else {
-            setActiveHoveredNode(null); requestRender();
+          setSelectedPreview(null);
         }
-    }
-  }, [simulationRef, requestRender]);
+      }
+    },
+    [hitTest, requestRender],
+  );
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (hoveredNodeRef.current) {
-      const node = initialNodes.find(n => n.id === hoveredNodeRef.current);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      const node = hoveredNodeRef.current
+        ? initialNodes.find((n) => n.id === hoveredNodeRef.current)
+        : null;
       if (node) {
-        const startX = e.clientX, startY = e.clientY;
-        let hasMoved = false;
-        const nodeStartX = node.x!, nodeStartY = node.y!;
-
-        const onMove = (moveEvent: MouseEvent) => {
-            if (isLinkMode) return; 
-            const dx = (moveEvent.clientX - startX) / transformRef.current.k;
-            const dy = (moveEvent.clientY - startY) / transformRef.current.k;
-            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasMoved = true;
-            node.fx = nodeStartX + dx; node.fy = nodeStartY + dy;
-            simulationRef.current?.alpha(0.05).restart();
+        const sx = e.clientX,
+          sy = e.clientY,
+          nx0 = node.x!,
+          ny0 = node.y!;
+        let moved = false;
+        const onMove = (ev: MouseEvent) => {
+          if (isLinkMode) return;
+          const dx = (ev.clientX - sx) / transformRef.current.k;
+          const dy = (ev.clientY - sy) / transformRef.current.k;
+          if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+          node.fx = nx0 + dx;
+          node.fy = ny0 + dy;
+          updateNodeInWorker(node.id, node.fx, node.fy);
+          requestRender();
         };
-
         const onUp = () => {
-          if (!hasMoved) {
+          if (!moved) {
             if (isLinkMode && linkSource && linkSource.id !== node.id) {
-                if (onUpdateNote) {
-                  const sourceNote = notes.find(n => n.id === linkSource.id);
-                  if (sourceNote) {
-                    const targetLabel = node.isFolder ? (node.id.replace('folder:', '') + '/') : node.title;
-                    const wikiLink = node.isFolder ? `[[${targetLabel}]]` : `[[${node.id}|${targetLabel}]]`;
-                    const currentContent = sourceNote.content || "";
-                    const newContent = currentContent.endsWith('\n') ? `${currentContent}\n${wikiLink}` : `${currentContent}\n\n${wikiLink}`;
-                    onUpdateNote(sourceNote.id, { content: newContent });
-                    window.dispatchEvent(new CustomEvent('abyssal-log', { detail: { message: `LINK_ESTABLISHED`, type: 'success' } }));
-                  }
+              if (onUpdateNote) {
+                const src = notes.find((n) => n.id === linkSource.id);
+                if (src) {
+                  const wl = `[[${node.title}]]`;
+                  onUpdateNote(src.id, {
+                    content: (src.content || "") + "\n\n" + wl,
+                  });
                 }
-                setLinkSource(null); setIsLinkMode(false);
-            } else if (isLinkMode && !linkSource && !node.isGhost && !node.isFolder) {
-                setLinkSource(node);
-            } else if (onSelectNote && !node.isFolder) {
+              }
+              setLinkSource(null);
+              setIsLinkMode(false);
+            } else if (
+              isLinkMode &&
+              !linkSource &&
+              !node.isGhost &&
+              !node.isFolder
+            ) {
+              setLinkSource(node);
+            } else if (!node.isFolder && !node.isGhost && onSelectNote) {
               onSelectNote(node.id);
             }
           }
-          node.fx = null; node.fy = null;
-          window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp);
+          node.fx = null;
+          node.fy = null;
+          updateNodeInWorker(node.id, null, null);
+          window.removeEventListener("mousemove", onMove);
+          window.removeEventListener("mouseup", onUp);
         };
-        window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", onUp);
+        return;
       }
-      return;
-    }
-    
-    const startX = e.clientX, startY = e.clientY, initialTransform = { ...transformRef.current };
-    const onMove = (moveEvent: MouseEvent) => {
-      transformRef.current = { ...initialTransform, x: initialTransform.x + (moveEvent.clientX - startX), y: initialTransform.y + (moveEvent.clientY - startY) };
-      requestRender();
-    };
-    const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-    window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
-  }, [initialNodes, onSelectNote, isLinkMode, linkSource, notes, onUpdateNote, requestRender, simulationRef]);
+      // pan
+      const sx = e.clientX,
+        sy = e.clientY,
+        it = { ...transformRef.current };
+      const onMove = (ev: MouseEvent) => {
+        transformRef.current = {
+          ...it,
+          x: it.x + ev.clientX - sx,
+          y: it.y + ev.clientY - sy,
+        };
+        requestRender();
+      };
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    },
+    [
+      initialNodes,
+      onSelectNote,
+      isLinkMode,
+      linkSource,
+      notes,
+      onUpdateNote,
+      requestRender,
+      updateNodeInWorker,
+    ],
+  );
+
+  const noteCount = initialNodes.filter(
+    (n) => !n.isFolder && !n.isGhost,
+  ).length;
+  const folderCount = initialNodes.filter((n) => n.isFolder).length;
+  const linkCount = initialLinks.filter((l) => !l.isHierarchy).length;
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className={cn(
-          "bg-[var(--background)] border border-[var(--border)] overflow-hidden flex flex-col shadow-2xl",
-          variant === "modal" ? "fixed inset-4 md:inset-8 z-[401] rounded-2xl" : "relative w-full h-full border-none"
-        )}>
-          {variant === "modal" && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 z-[-1] bg-black/60 backdrop-blur-sm" />}
-          
-          <GraphHeader 
-            searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-            isLinkMode={isLinkMode} setIsLinkMode={setIsLinkMode}
-            showHUD={showHUD} setShowHUD={setShowHUD}
-            isPaused={isPaused} setIsPaused={setIsPaused}
-            onZoomIn={() => { transformRef.current.k *= 1.2; requestRender(); }}
-            onZoomOut={() => { transformRef.current.k /= 1.2; requestRender(); }}
-            onReset={() => { transformRef.current = { x: 0, y: 0, k: 0.8 }; requestRender(); }}
-            onClose={onClose} variant={variant}
-          />
+        <>
+          {variant === "modal" && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="fixed inset-0 z-[400] bg-black/75 backdrop-blur-md"
+            />
+          )}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            className={cn(
+              "flex flex-col bg-[var(--background)] border border-[var(--border)]/60 shadow-2xl overflow-hidden",
+              variant === "modal"
+                ? "fixed inset-4 md:inset-10 z-[401] rounded-2xl"
+                : "relative w-full h-full border-none rounded-none",
+            )}
+          >
+            {/* ── HEADER ──────────────────────────────────────────────────── */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]/50 bg-[var(--card)]/30 backdrop-blur-xl shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--destructive)]/70" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+                </div>
+                <span className="text-[11px] font-semibold font-mono text-[var(--foreground)] opacity-70 tracking-widest uppercase ml-1">
+                  Knowledge Graph
+                </span>
+                <span className="text-[10px] font-mono text-[var(--muted-foreground)] opacity-40">
+                  {folderCount} folders · {noteCount} notes · {linkCount} links
+                </span>
+              </div>
 
-          <div ref={containerRef} className="flex-1 relative bg-[var(--background)] overflow-hidden cursor-crosshair"
-               onMouseMove={handleMouseMove} onMouseDown={handleMouseDown} style={{ touchAction: 'none' }}>
-             <canvas ref={canvasRef} className="w-full h-full" />
-             <GraphHUD isVisible={showHUD} nodesCount={initialNodes.length} linksCount={initialLinks.length} isLinkMode={isLinkMode} hasLinkSource={!!linkSource} />
-             <GraphNodePreview node={activeHoveredNode} />
-          </div>
+              <div className="flex items-center gap-1">
+                {/* Search */}
+                <AnimatePresence>
+                  {showSearch && (
+                    <motion.input
+                      initial={{ width: 0, opacity: 0 }}
+                      animate={{ width: 180, opacity: 1 }}
+                      exit={{ width: 0, opacity: 0 }}
+                      type="text"
+                      placeholder="Search nodes…"
+                      autoFocus
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-7 px-3 text-[11px] font-mono bg-[var(--background)] border border-[var(--border)] rounded-md focus:outline-none focus:border-[var(--primary)]/50 text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/40 mr-1"
+                    />
+                  )}
+                </AnimatePresence>
+                {[
+                  {
+                    icon: Search,
+                    action: () => {
+                      setShowSearch((s) => !s);
+                      if (showSearch) setSearchQuery("");
+                    },
+                    active: showSearch,
+                    tip: "Search",
+                  },
+                  {
+                    icon: Link2,
+                    action: () => setIsLinkMode((l) => !l),
+                    active: isLinkMode,
+                    tip: "Link mode",
+                  },
+                  {
+                    icon: isPaused ? Play : Pause,
+                    action: () => setIsPaused((p) => !p),
+                    active: isPaused,
+                    tip: isPaused ? "Resume" : "Pause",
+                  },
+                  {
+                    icon: ZoomIn,
+                    action: () => {
+                      transformRef.current.k = Math.min(
+                        transformRef.current.k * 1.25,
+                        8,
+                      );
+                      requestRender();
+                    },
+                    tip: "Zoom in",
+                  },
+                  {
+                    icon: ZoomOut,
+                    action: () => {
+                      transformRef.current.k = Math.max(
+                        transformRef.current.k / 1.25,
+                        0.05,
+                      );
+                      requestRender();
+                    },
+                    tip: "Zoom out",
+                  },
+                  {
+                    icon: Maximize2,
+                    action: () => {
+                      transformRef.current = { x: 0, y: 0, k: 0.75 };
+                      requestRender();
+                    },
+                    tip: "Reset view",
+                  },
+                ].map(({ icon: Icon, action, active, tip }, i) => (
+                  <button
+                    key={i}
+                    onClick={action}
+                    title={tip}
+                    className={cn(
+                      "w-7 h-7 flex items-center justify-center rounded-lg transition-all",
+                      active
+                        ? "bg-[var(--primary)]/15 text-[var(--primary)]"
+                        : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5",
+                    )}
+                  >
+                    <Icon size={14} strokeWidth={1.8} />
+                  </button>
+                ))}
+                {variant === "modal" && (
+                  <button
+                    onClick={onClose}
+                    title="Close"
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-all ml-1"
+                  >
+                    <X size={14} strokeWidth={1.8} />
+                  </button>
+                )}
+              </div>
+            </div>
 
-          <div className="px-8 py-3 border-t border-[var(--border)] flex justify-between items-center text-[8px] font-mono bg-[var(--card)]/20 backdrop-blur-sm relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--primary)]/20 to-transparent" />
-            <div className="flex gap-10">
-               <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[var(--primary)] opacity-50" />
-                  <span className="text-[var(--foreground)] font-bold tracking-widest uppercase">System_Active</span>
-               </div>
-               <div className="flex items-center gap-2 border-l border-[var(--border)] pl-10">
-                  <span className="text-[var(--muted-foreground)] uppercase">Linkage_Engine:</span>
-                  <span className="text-[var(--accent)] font-bold">READY</span>
-               </div>
-               <div className="flex items-center gap-2 border-l border-[var(--border)] pl-10">
-                  <span className="text-[var(--muted-foreground)] uppercase">Memory_Buffer:</span>
-                  <span className="text-[var(--foreground)]">0x{notes.length.toString(16).toUpperCase()}</span>
-               </div>
+            {/* ── CANVAS ──────────────────────────────────────────────────── */}
+            <div
+              ref={containerRef}
+              className="flex-1 relative overflow-hidden"
+              style={{ cursor: hoveredNode ? "pointer" : "grab" }}
+              onMouseMove={handleMouseMove}
+              onMouseDown={handleMouseDown}
+            >
+              <canvas ref={canvasRef} className="w-full h-full" />
+
+              {/* Link mode banner */}
+              <AnimatePresence>
+                {isLinkMode && (
+                  <motion.div
+                    initial={{ y: -40, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -40, opacity: 0 }}
+                    className="absolute top-4 left-1/2 -translate-x-1/2 bg-[var(--primary)]/10 border border-[var(--primary)]/30 backdrop-blur-xl rounded-full px-5 py-2 flex items-center gap-3 text-[11px] font-mono text-[var(--primary)]"
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse" />
+                    {!linkSource
+                      ? "Click a note to start a link"
+                      : "Now click the target note"}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Legend */}
+              <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 select-none pointer-events-none">
+                {[
+                  { shape: "folder", label: "Planet  (folder)" },
+                  { shape: "note", label: "Star  (note)" },
+                  { shape: "ghost", label: "Asteroid  (unresolved ref)" },
+                ].map(({ shape, label }) => (
+                  <div key={shape} className="flex items-center gap-2">
+                    {shape === "folder" && (
+                      <div className="w-4 h-4 rounded-full border-2 border-[var(--primary)] bg-[var(--primary)]/50 shrink-0" />
+                    )}
+                    {shape === "note" && (
+                      <div className="w-3 h-3 rounded-full bg-[var(--foreground)]/50 shrink-0" />
+                    )}
+                    {shape === "ghost" && (
+                      <div className="w-3 h-3 rounded-full border border-dashed border-[var(--muted-foreground)]/50 shrink-0" />
+                    )}
+                    <span className="text-[9px] font-mono text-[var(--muted-foreground)]/60 uppercase tracking-wider">
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Hover hint */}
+              <div className="absolute bottom-4 right-4 select-none pointer-events-none text-[9px] font-mono text-[var(--muted-foreground)]/30 uppercase tracking-wider text-right">
+                scroll to zoom · drag to pan
+                <br />
+                click note to open
+              </div>
+
+              {/* Node preview tooltip */}
+              <AnimatePresence>
+                {selectedPreview &&
+                  selectedPreview.content &&
+                  !selectedPreview.isFolder && (
+                    <motion.div
+                      key={selectedPreview.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute bottom-16 left-1/2 -translate-x-1/2 w-80 pointer-events-none select-none"
+                    >
+                      <div className="bg-[var(--card)]/80 backdrop-blur-2xl border border-[var(--border)]/60 rounded-xl p-4 shadow-2xl">
+                        <div className="flex items-center gap-2.5 mb-2">
+                          <div
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: selectedPreview.color }}
+                          />
+                          <span className="text-[12px] font-semibold text-[var(--foreground)] truncate">
+                            {selectedPreview.title}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[var(--muted-foreground)] line-clamp-3 leading-relaxed font-mono">
+                          {selectedPreview.content
+                            .replace(/#{1,6} /g, "")
+                            .replace(/\*\*/g, "")
+                            .slice(0, 200) || "No content yet"}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+              </AnimatePresence>
             </div>
-            <div className="flex items-center gap-4">
-               <span className="text-[var(--muted-foreground)] tracking-widest uppercase italic opacity-60">Nexus_Neural_Interface_v4.0.1</span>
-               <div className="w-16 h-1.5 bg-[var(--border)] rounded-none relative overflow-hidden">
-                  <motion.div 
-                    animate={{ x: ["-100%", "100%"] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-0 bg-[var(--primary)]/40 w-1/3"
-                  />
-               </div>
-            </div>
-          </div>
-        </div>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );

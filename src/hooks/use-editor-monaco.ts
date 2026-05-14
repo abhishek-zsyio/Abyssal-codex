@@ -19,6 +19,7 @@ export const MONACO_THEMES: Record<string, string> = {
   "rose-pine": "rose-pine",
   everforest: "everforest",
   "tokyo-night": "tokyo-night",
+  "tokyo-night-light": "tokyo-night-light",
   ayu: "ayu",
   synthwave: "synthwave",
   "night-owl": "night-owl",
@@ -305,6 +306,27 @@ export const useEditorMonaco = (
         "editor.background": "#1a1b26",
         "editor.foreground": "#a9b1d6",
         "editor.lineHighlightBackground": "#24283b",
+      },
+    });
+
+    monaco.editor.defineTheme("tokyo-night-light", {
+      base: "vs",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "343b58", background: "d5d6db" },
+        { token: "comment", foreground: "9699a3" },
+        { token: "keyword", foreground: "9854f1" },
+        { token: "string", foreground: "485e30" },
+        { token: "number", foreground: "d6a062" },
+        { token: "type", foreground: "166775" },
+        { token: "class", foreground: "166775" },
+        { token: "function", foreground: "34548a" },
+      ],
+      colors: {
+        "editor.background": "#d5d6db",
+        "editor.foreground": "#343b58",
+        "editor.lineHighlightBackground": "#c6c7cc",
+        "editorCursor.foreground": "#343b58",
       },
     });
 
