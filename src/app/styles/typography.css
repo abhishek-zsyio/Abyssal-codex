@@ -1,0 +1,267 @@
+/* Typography for Markdown (Gruvbox style) */
+.prose {
+  color: var(--foreground); 
+  max-width: 100%;
+  font-size: 16px;
+  line-height: 1.8;
+  counter-reset: h1;
+  font-family: var(--font-sans);
+}
+
+.prose h1 {
+  color: var(--primary);
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-top: 4rem;
+  margin-bottom: 2rem;
+  letter-spacing: -0.03em;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  counter-increment: h1;
+  counter-reset: h2;
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.prose h1::before {
+  content: "SEC_" counter(h1, decimal-leading-zero);
+  font-size: 0.35em;
+  color: var(--muted-foreground);
+  letter-spacing: 0.2em;
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.prose h2 {
+  color: var(--primary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 3.5rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  counter-increment: h2;
+  counter-reset: h3;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  position: relative;
+}
+
+.prose h2::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 2px;
+  background: var(--primary);
+  opacity: 0.4;
+}
+
+.prose h2::before {
+  content: counter(h1) "." counter(h2);
+  font-size: 0.45em;
+  color: var(--muted-foreground);
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+.prose h3 {
+  color: var(--primary);
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  counter-increment: h3;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.prose h3::before {
+  content: ">>";
+  font-size: 0.7em;
+  color: var(--accent);
+  opacity: 0.6;
+}
+
+.prose p {
+  margin-bottom: 1.75rem;
+  color: var(--foreground);
+  text-align: justify;
+  hyphens: auto;
+}
+
+.prose strong {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.prose a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0 2px;
+}
+
+.prose a:hover {
+  color: var(--primary);
+  border-bottom: 1px solid var(--primary);
+  background: var(--primary-foreground);
+  text-shadow: 0 0 8px var(--primary);
+}
+
+.prose code:not(pre code) {
+  background: var(--card);
+  color: var(--accent);
+  padding: 0.15rem 0.4rem;
+  font-size: 0.85em;
+  font-family: var(--font-mono), monospace;
+  border: 1px solid var(--border);
+  border-radius: 2px !important;
+}
+
+.prose pre {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  margin: 2.5rem 0 !important;
+  box-shadow: none !important;
+}
+
+.prose pre *, .prose code * {
+  background: transparent !important;
+  border: none !important;
+  text-decoration: none !important;
+}
+
+.prose ul {
+  list-style-type: none;
+  padding-left: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.prose ul li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.prose ul li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--primary);
+  font-weight: bold;
+  opacity: 0.6;
+}
+
+.prose ol {
+  list-style-type: none;
+  padding-left: 0.5rem;
+  margin-bottom: 2rem;
+  counter-reset: ol;
+}
+
+.prose ol li {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 0.85rem;
+  counter-increment: ol;
+}
+
+.prose ol li::before {
+  content: counter(ol, decimal-leading-zero) ".";
+  position: absolute;
+  left: 0;
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  font-weight: bold;
+  opacity: 0.6;
+}
+
+.prose li {
+  color: var(--foreground);
+}
+
+.prose blockquote {
+  border-left: 2px solid var(--primary);
+  background: var(--card);
+  padding: 1.5rem 2.5rem;
+  margin: 3rem 0;
+  font-style: italic;
+  color: var(--muted-foreground);
+  position: relative;
+  overflow: hidden;
+}
+
+.prose blockquote::before {
+  content: "SYST_MSG";
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  background: var(--primary);
+  color: var(--background);
+  padding: 1px 4px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+}
+
+.prose hr {
+  border: 0;
+  border-top: 1px dotted var(--border);
+  margin: 4rem 0;
+  background: transparent;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  margin: 3rem 0;
+  filter: grayscale(0.2) contrast(1.1);
+  transition: filter 0.3s ease;
+}
+
+.prose img:hover {
+  filter: grayscale(0) contrast(1);
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 3rem 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+}
+
+.prose th, .prose td {
+  border: 1px solid var(--border);
+  padding: 1rem;
+  text-align: left;
+}
+
+.prose th {
+  background: var(--card);
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.prose tr:nth-child(even) {
+  background: var(--card);
+}
+
+.prose tr:hover {
+  background: var(--secondary);
+}
