@@ -9,6 +9,8 @@ import { createClient } from "@/utils/supabase/client";
 import { encryptNote, decryptNote } from "@/utils/encryption";
 import { updateLinksInContent } from "@/utils/wiki-links";
 
+import { supabaseService } from "@/lib/supabase-service";
+
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<string[]>([]);
@@ -34,7 +36,7 @@ export function useNotes() {
         setIsLoading(true);
       }
 
-      // Load Notes
+      // Load Local Storage
       const savedNotes = await storage.getNotes<Note[]>(user?.id);
       let currentNotes: Note[] = [];
       if (savedNotes) {
@@ -44,53 +46,25 @@ export function useNotes() {
         })));
       }
 
-      // Load Folders
       const savedFolders = await storage.getFolders<string[]>(user?.id);
-      if (savedFolders) {
-        setFolders(savedFolders);
-      }
+      if (savedFolders) setFolders(savedFolders);
 
-      // Supabase Sync (Notes & Folders)
+      // Cloud Sync
       if (user) {
-        const [notesRes, foldersRes] = await Promise.all([
-          supabase.from("notes").select("*").order("updated_at", { ascending: false }),
-          supabase.from("folders").select("path")
-        ]);
-
-        if (notesRes.data && !notesRes.error) {
-          const remoteNotes: Note[] = await Promise.all((notesRes.data as Array<{
-            id: string,
-            title: string,
-            content: string,
-            is_favorite: boolean,
-            is_public: boolean,
-            tags: string[],
-            updated_at: string,
-            created_at: string
-          }>).map(async (n) => ({
-            id: n.id,
-            title: n.title,
-            content: await decryptNote(n.content || "", user.id),
-            isFavorite: n.is_favorite ?? false,
-            isPublic: n.is_public ?? false,
-            tags: n.tags || [],
-            updatedAt: n.updated_at ? new Date(n.updated_at).getTime() : Date.now(),
-            createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
-          })));
+        try {
+          const [remoteNotes, remoteFolders] = await Promise.all([
+            supabaseService.fetchNotes(supabase, user.id),
+            supabaseService.fetchFolders(supabase)
+          ]);
 
           setNotes(() => {
             const localOnly = currentNotes.filter(ln => !remoteNotes.find(rn => rn.id === ln.id));
             return [...remoteNotes, ...localOnly];
           });
-        } else {
-          setNotes(currentNotes);
-        }
-
-        if (foldersRes.data && !foldersRes.error) {
-          const remoteFolders = foldersRes.data.map(f => f.path);
           setFolders(prev => Array.from(new Set([...prev, ...remoteFolders])));
-        } else if (foldersRes.error) {
-          console.error("Cloud Folder Fetch Error:", foldersRes.error);
+        } catch (error) {
+          console.error("Cloud Fetch Error:", error);
+          setNotes(currentNotes);
         }
       } else {
         setNotes(currentNotes);
@@ -102,17 +76,13 @@ export function useNotes() {
   }, [user, supabase]);
 
   const saveToStorage = useCallback(async (notesToSave: Note[], foldersToSave: string[]) => {
-    // Immediate local state update is already done via setNotes/setFolders
-    // Debounce the actual persistence
     pendingSyncRef.current = { notes: notesToSave, folders: foldersToSave };
-    
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     
     saveTimeoutRef.current = setTimeout(async () => {
       const syncData = pendingSyncRef.current;
       if (!syncData) return;
       
-      // Encrypt for local storage
       const encryptedNotes = await Promise.all(syncData.notes.map(async n => ({
         ...n,
         content: await encryptNote(n.content, user?.id)
@@ -122,7 +92,7 @@ export function useNotes() {
       await storage.saveFolders(syncData.folders, user?.id);
       saveTimeoutRef.current = null;
       pendingSyncRef.current = null;
-    }, 2000); // 2 second debounce for persistence
+    }, 2000);
   }, [user]);
 
   const addNote = useCallback(async (title: string = "Untitled", content: string = "") => {
@@ -141,20 +111,12 @@ export function useNotes() {
     saveToStorage(updatedNotes, folders);
 
     if (user) {
-      const encryptedContent = await encryptNote(newNote.content, user.id);
-      const { error } = await supabase.from("notes").insert([{
-        id: newNote.id,
-        user_id: user.id,
-        title: newNote.title,
-        content: encryptedContent,
-        is_favorite: newNote.isFavorite,
-        tags: newNote.tags,
-        updated_at: new Date(newNote.updatedAt).toISOString(),
-        created_at: new Date(newNote.createdAt).toISOString()
-      }]);
-      if (error) console.error("Cloud Save Error:", error);
+      try {
+        await supabaseService.upsertNote(supabase, user.id, newNote);
+      } catch (error) {
+        console.error("Cloud Save Error:", error);
+      }
     }
-    
     return newNote.id;
   }, [notes, folders, user, supabase, saveToStorage]);
 
@@ -165,8 +127,9 @@ export function useNotes() {
       saveToStorage(notes, updatedFolders);
 
       if (user) {
-        const { error } = await supabase.from("folders").insert([{ user_id: user.id, path }]);
-        if (error) {
+        try {
+          await supabaseService.upsertFolder(supabase, user.id, path);
+        } catch (error) {
           console.error("Cloud Folder Insert Error:", error);
           toast(`SYNC_ERROR: [FOLDER_CREATION_FAILED]`, "system");
         }
@@ -183,7 +146,6 @@ export function useNotes() {
       n.id === id ? { ...n, ...updates, updatedAt: Date.now() } : n
     );
 
-    // If title changed, update links in all other notes
     if (oldTitle && newTitle && oldTitle !== newTitle) {
       updatedNotes = updatedNotes.map(n => ({
         ...n,
@@ -196,41 +158,26 @@ export function useNotes() {
     saveToStorage(updatedNotes, folders);
 
     if (user) {
-      const dbUpdates: Record<string, unknown> = {};
-      if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.content !== undefined) {
-        dbUpdates.content = await encryptNote(updates.content, user.id);
-      }
-      if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
-      if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
-      dbUpdates.updated_at = new Date().toISOString();
-
-      // If links were updated, we need to sync those notes too
-      // For simplicity in this implementation, we'll focus on the main note sync
-      // and assume subsequent edits or a full sync will handle the others.
-      // But for a better UX, we'd batch update in Supabase too.
-      
-      const { error } = await supabase
-        .from("notes")
-        .update(dbUpdates)
-        .eq("id", id);
-      if (error) console.error("Cloud Update Error:", error);
-
-      // Batch update links in Supabase if title changed
-      if (oldTitle && newTitle && oldTitle !== newTitle) {
-        for (const n of updatedNotes) {
-          const originalNote = notes.find(on => on.id === n.id);
-          if (n.id !== id && n.content !== originalNote?.content) { 
-             const encrypted = await encryptNote(n.content, user.id);
-             await supabase.from("notes").update({ content: encrypted }).eq("id", n.id);
+      const updatedNote = updatedNotes.find(n => n.id === id);
+      if (updatedNote) {
+        try {
+          await supabaseService.upsertNote(supabase, user.id, updatedNote);
+          
+          if (oldTitle && newTitle && oldTitle !== newTitle) {
+            const linkedNotes = updatedNotes.filter(n => n.id !== id && n.content.includes(newTitle));
+            if (linkedNotes.length > 0) {
+              await supabaseService.batchUpsertNotes(supabase, user.id, linkedNotes);
+            }
           }
+        } catch (error) {
+          console.error("Cloud Update Error:", error);
         }
       }
     }
   }, [notes, folders, user, supabase, saveToStorage, toast]);
 
   const renameFolder = useCallback(async (oldPath: string, newPath: string) => {
-    const notesToUpdateInFolder = notes.filter(n => n.title.startsWith(oldPath + "/") || n.title === oldPath);
+    const notesInFolder = notes.filter(n => n.title.startsWith(oldPath + "/") || n.title === oldPath);
     
     let updatedNotes = notes.map(n => {
       if (n.title.startsWith(oldPath + "/") || n.title === oldPath) {
@@ -240,12 +187,10 @@ export function useNotes() {
       return n;
     });
 
-    // Update links pointing to any note that was moved
-    for (const note of notesToUpdateInFolder) {
+    for (const note of notesInFolder) {
       const relativePath = note.title.substring(oldPath.length);
       const oldTitle = note.title;
       const newTitle = `${newPath}${relativePath}`;
-      
       updatedNotes = updatedNotes.map(n => ({
         ...n,
         content: updateLinksInContent(n.content, oldTitle, newTitle)
@@ -265,33 +210,17 @@ export function useNotes() {
     saveToStorage(updatedNotes, updatedFolders);
 
     if (user) {
-      // Bulk update in Supabase
-      for (const note of notesToUpdateInFolder) {
-        const relativePath = note.title.substring(oldPath.length);
-        const newTitle = `${newPath}${relativePath}`;
-        
-        // Find the updated content for this note in local state
-        const updatedNote = updatedNotes.find(un => un.id === note.id);
-        const encryptedContent = updatedNote ? await encryptNote(updatedNote.content, user.id) : undefined;
-        
-        const dbUpdates: any = { title: newTitle, updated_at: new Date().toISOString() };
-        if (encryptedContent) dbUpdates.content = encryptedContent;
-
-        await supabase.from("notes").update(dbUpdates).eq("id", note.id);
+      try {
+        const affectedNotes = updatedNotes.filter(n => 
+          n.title.startsWith(newPath) || notesInFolder.some(inf => inf.id === n.id)
+        );
+        await supabaseService.batchUpsertNotes(supabase, user.id, affectedNotes);
+        await supabaseService.upsertFolder(supabase, user.id, newPath);
+        // Note: Realistically you'd want to delete the old folder entries too, 
+        // but simple upsert is safer for this implementation.
+      } catch (error) {
+        console.error("Cloud Folder Rename Error:", error);
       }
-      
-      // Update links in all other notes in Supabase
-      for (const n of updatedNotes) {
-        const wasInFolder = notesToUpdateInFolder.find(fn => fn.id === n.id);
-        if (!wasInFolder) {
-          const encrypted = await encryptNote(n.content, user.id);
-          await supabase.from("notes").update({ content: encrypted }).eq("id", n.id);
-        }
-      }
-
-      // Update folder record
-      const { error } = await supabase.from("folders").update({ path: newPath }).eq("path", oldPath).eq("user_id", user.id);
-      if (error) console.error("Cloud Folder Rename Error:", error);
     }
     toast(`CLUSTER_REFACTORED: [LINKS_SYNCED]`, "system");
   }, [notes, folders, user, supabase, saveToStorage, toast]);
@@ -307,12 +236,12 @@ export function useNotes() {
     saveToStorage(updatedNotes, updatedFolders);
 
     if (user) {
-      await supabase.from("notes").delete().like("title", `${path}/%`);
-      await supabase.from("notes").delete().eq("title", path);
-      const { error } = await supabase.from("folders").delete().eq("path", path).eq("user_id", user.id);
-      if (error) console.error("Cloud Folder Delete Error:", error);
+      try {
+        await supabaseService.deleteFolder(supabase, user.id, path);
+      } catch (error) {
+        console.error("Cloud Folder Delete Error:", error);
+      }
     }
-
     toast(`CLUSTER_DELETED: [${path}]`, "system");
   }, [notes, folders, user, supabase, saveToStorage, toast]);
 
@@ -322,23 +251,22 @@ export function useNotes() {
     saveToStorage(updatedNotes, folders);
 
     if (user) {
-      const { error } = await supabase.from("notes").delete().eq("id", id);
-      if (error) console.error("Cloud Delete Error:", error);
+      try {
+        await supabaseService.deleteNote(supabase, id);
+      } catch (error) {
+        console.error("Cloud Delete Error:", error);
+      }
     }
   }, [notes, folders, user, supabase, saveToStorage]);
 
   const toggleFavorite = useCallback((id: string) => {
     const note = notes.find(n => n.id === id);
-    if (note) {
-      updateNote(id, { isFavorite: !note.isFavorite });
-    }
+    if (note) updateNote(id, { isFavorite: !note.isFavorite });
   }, [notes, updateNote]);
 
   const togglePublic = useCallback((id: string) => {
     const note = notes.find(n => n.id === id);
-    if (note) {
-      updateNote(id, { isPublic: !note.isPublic });
-    }
+    if (note) updateNote(id, { isPublic: !note.isPublic });
   }, [notes, updateNote]);
 
   const exportAllNotes = useCallback(() => {
@@ -354,12 +282,36 @@ export function useNotes() {
   }, [notes, toast]);
 
   const importNotes = useCallback(async (importedNotes: Note[]) => {
+    const extractedFolders = new Set<string>();
+    importedNotes.forEach(note => {
+      const parts = note.title.split("/");
+      if (parts.length > 1) {
+        for (let i = 1; i < parts.length; i++) extractedFolders.add(parts.slice(0, i).join("/"));
+      }
+    });
+
     const updatedNotes = [...importedNotes, ...notes];
     const uniqueNotes = Array.from(new Map(updatedNotes.map(n => [n.id, n])).values());
+    const updatedFolders = Array.from(new Set([...folders, ...Array.from(extractedFolders)]));
+
     setNotes(uniqueNotes);
-    saveToStorage(uniqueNotes, folders);
-    toast(`IMPORT_SUCCESS: [${importedNotes.length}_ENTRIES]`, "system");
-  }, [notes, folders, saveToStorage, toast]);
+    setFolders(updatedFolders);
+    saveToStorage(uniqueNotes, updatedFolders);
+
+    if (user) {
+      toast(`SYNCING_IMPORT: [UPLOADING_TO_CLOUD]`, "system");
+      try {
+        await supabaseService.batchUpsertNotes(supabase, user.id, importedNotes);
+        await supabaseService.batchUpsertFolders(supabase, user.id, Array.from(extractedFolders));
+        toast(`IMPORT_SUCCESS: [${importedNotes.length}_ENTRIES_SYNCED]`, "system");
+      } catch (error) {
+        console.error("Cloud Import Error:", error);
+        toast(`SYNC_ERROR: [CLOUD_IMPORT_FAILED]`, "system");
+      }
+    } else {
+      toast(`IMPORT_SUCCESS: [${importedNotes.length}_ENTRIES_LOCAL_ONLY]`, "system");
+    }
+  }, [notes, folders, saveToStorage, user, supabase, toast]);
 
   const deleteAllNotes = useCallback(async () => {
     if (!window.confirm("WIPE_ALL_DATA: [CONFIRM_DESTRUCTION?]")) return;
@@ -370,11 +322,12 @@ export function useNotes() {
     await storage.saveFolders([], user?.id);
 
     if (user) {
-      const { error: notesError } = await supabase.from("notes").delete().eq("user_id", user.id);
-      const { error: foldersError } = await supabase.from("folders").delete().eq("user_id", user.id);
-      if (notesError || foldersError) console.error("Cloud Wipe Error:", notesError || foldersError);
+      try {
+        await supabaseService.wipeData(supabase, user.id);
+      } catch (error) {
+        console.error("Cloud Wipe Error:", error);
+      }
     }
-    
     toast("SYSTEM_WIPE_COMPLETE: [BUFFER_CLEARED]", "system");
   }, [user, supabase, toast]);
 

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "8f8e7d6c-5b4a-4c3d-9e8d-7c6b5a4b3c2d",
+    "title": "Projects/Codex/Architecture",
+    "content": "# System Architecture\n\nThe Abyssal Codex is built on a **Local-First** philosophy. Core systems include:\n\n- [[Projects/Codex/Encryption]] for security.\n- [[Research/Physics/Quantum_Computing]] for future scaling.\n- React 19 + Next.js 16 for performance.\n\n```typescript\nconst sync = async (data) => {\n  return await supabase.from('notes').upsert(data);\n};\n```",
+    "isFavorite": true,
+    "isPublic": false,
+    "tags": ["architecture", "nextjs", "core"],
+    "updatedAt": 1715750400000,
+    "createdAt": 1715750400000
+  },
+  {
+    "id": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+    "title": "Projects/Codex/Encryption",
+    "content": "# Encryption Protocol\n\nWe utilize **AES-GCM 256-bit** encryption for all data segments. \n\nRelated documentation: [[Projects/Codex/Architecture]]",
+    "isFavorite": false,
+    "isPublic": true,
+    "tags": ["security", "encryption"],
+    "updatedAt": 1715750400000,
+    "createdAt": 1715750400000
+  },
+  {
+    "id": "2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+    "title": "Research/Physics/Quantum_Computing",
+    "content": "# Quantum Computing Research\n\nExploration of qubit stability and neural graph mapping in high-dimensional spaces.\n\n| Prototype | Stability | Sync Status |\n|-----------|-----------|-------------|\n| Alpha-1   | 89%       | [[Projects/Codex/Architecture]] |\n| Beta-2    | 94%       | PENDING     |",
+    "isFavorite": false,
+    "isPublic": false,
+    "tags": ["research", "quantum"],
+    "updatedAt": 1715750400000,
+    "createdAt": 1715750400000
+  },
+  {
+    "id": "3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+    "title": "Meeting_Notes_2026",
+    "content": "- Discussed batch import sync with [[Projects/Codex/Architecture]].\n- Verified Supabase upsert logic.",
+    "isFavorite": false,
+    "isPublic": false,
+    "tags": ["meeting"],
+    "updatedAt": 1715750400000,
+    "createdAt": 1715750400000
+  }
+]
