@@ -90,6 +90,14 @@ export const supabaseService = {
     if (error) throw error;
   },
 
+  async deleteFolderEntry(supabase: SupabaseClient, userId: string, path: string) {
+    // Delete ONLY the folder entry, do not touch notes
+    // Also delete any subfolder entries that were under the old path
+    await supabase.from("folders").delete().like("path", `${path}/%`).eq("user_id", userId);
+    const { error } = await supabase.from("folders").delete().eq("path", path).eq("user_id", userId);
+    if (error) throw error;
+  },
+
   async wipeData(supabase: SupabaseClient, userId: string) {
     const { error: notesError } = await supabase.from("notes").delete().eq("user_id", userId);
     const { error: foldersError } = await supabase.from("folders").delete().eq("user_id", userId);

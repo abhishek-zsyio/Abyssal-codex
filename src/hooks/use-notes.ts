@@ -58,8 +58,18 @@ export function useNotes() {
           ]);
 
           setNotes(() => {
-            const localOnly = currentNotes.filter(ln => !remoteNotes.find(rn => rn.id === ln.id));
-            return [...remoteNotes, ...localOnly];
+            const merged = [...remoteNotes];
+            currentNotes.forEach(localNote => {
+              const remoteNoteIndex = merged.findIndex(rn => rn.id === localNote.id);
+              if (remoteNoteIndex === -1) {
+                merged.push(localNote);
+              } else {
+                if (localNote.updatedAt > merged[remoteNoteIndex].updatedAt) {
+                  merged[remoteNoteIndex] = localNote;
+                }
+              }
+            });
+            return merged;
           });
           setFolders(prev => Array.from(new Set([...prev, ...remoteFolders])));
         } catch (error) {
@@ -214,10 +224,14 @@ export function useNotes() {
         const affectedNotes = updatedNotes.filter(n => 
           n.title.startsWith(newPath) || notesInFolder.some(inf => inf.id === n.id)
         );
+        
+        const affectedFolders = updatedFolders.filter(f => 
+          f.startsWith(newPath + "/") || f === newPath
+        );
+
         await supabaseService.batchUpsertNotes(supabase, user.id, affectedNotes);
-        await supabaseService.upsertFolder(supabase, user.id, newPath);
-        // Note: Realistically you'd want to delete the old folder entries too, 
-        // but simple upsert is safer for this implementation.
+        await supabaseService.batchUpsertFolders(supabase, user.id, affectedFolders);
+        await supabaseService.deleteFolderEntry(supabase, user.id, oldPath);
       } catch (error) {
         console.error("Cloud Folder Rename Error:", error);
       }
